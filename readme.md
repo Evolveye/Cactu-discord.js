@@ -1,14 +1,14 @@
 # 🌵 Cactu framework for Discord.js 
-cactu-discord.js
+`npm i cactu-discord.js`
 
 ## Preliminary information
-The Cactu projects are using a `import {} export ""` instead the `require()`, so You have to use `--experimental-modules` node flag.
+The Cactu projects are using an `import {} export ""` instead of the `require()`, so You have to use `--experimental-modules` node flag.
 
-In example:  
+For example:  
 `node --experimental-modules app`
 
 ## Code
-A Code below is presenting main bot file. That is all what You need to run a Discord bot.
+A Code below is presenting main bot file. That is all that You need to run a Discord bot.
 ```js
 import CactuDiscordBot from "cactu-discord.js"
 
@@ -17,7 +17,7 @@ new CactuDiscordBot( { token:`That's my big secret` } )
 ```
 
 ### Config object
-Well - config object is a object with configuration data. Nothing special.
+Well - config object is an object with configuration data. Nothing special.
 ```js
 const configObject = {
   token: String, // Discord bot token
@@ -35,8 +35,8 @@ const configObject = {
 ```
 
 ## Filters and commands
-The bot have to filtering messages and doing actions? 🤔  
-Let's create a filters and commands!  
+Does the bot have to filter messages and do actions? 🤔  
+Let's create filters and commands!  
 
 Filters and commands code is evaluated by bot, so their code have acces to bot variables:
   * **this**: CactuDiscordBot instance
@@ -49,10 +49,9 @@ Filters and commands code is evaluated by bot, so their code have acces to bot v
   * **msg**: message.content
   * **cache**: CactuDiscordBot cache  
   Cache variable is almost empty namespace. That's a good place for commands variables, which need to be  cached.  
-  In example: cache.command_varName = 1
+  For example: cache.command_varName = 1
 
-If You want have filters and commands structures inside another files (recommended), You need to import exported data.
-In example:
+If You want to have filters and commands structures inside other files (recommended), You need to import exported data. For example:
 ```js
 import commands from "./commands.mjs"
 import filters from "./filters.mjs"
@@ -69,7 +68,7 @@ All filters are stored inside one array.
 Every filter is a object with methods which names are regular expressions:  
 `[/regular expression/] () { /*code*/ }`
 
-Every object method is a next `else if` statement. Look at a example below:
+Every object method is a next `else if` statement. Look at an example below:
 ```js
 export default [
   // Send "Cactuses >>>>> Roses" on Discord channel
@@ -163,7 +162,7 @@ Yea, that's really crazy.
 <img src="./what.png" width="25px" height="25px">
 
 #### Loose prefix
-Prefix is a first element of the commands. Cactu bot is using `prefix [...scopes] command ...params` syntax. If You don't want space between prefix and scope/command You need to set `loosePrefix` property on `false`. Examples: with `cc!` prefix:
+The prefix is a first element of the commands. Cactu bot is using `prefix [...scopes] command ...params` syntax. If You don't want space between the prefix and scope/command You need to set `loosePrefix` property on `false`. Examples: with `cc!` prefix:
 
 loosePrefix: true (default)  
 `cc! say Hello guys 👋`
@@ -172,8 +171,8 @@ loosePrefix: false
 `cc!say Hello again 👋`
 
 #### Scopes
-If you want create deepest scope - another subset of commands - You may create another object inside.  
-In example:
+If you want to create deeper scope - another subset of commands - You may create another object inside.  
+And the example:
 ```js
 const commands = {
   firstSubset: {
@@ -187,7 +186,7 @@ Inside scopes You may use a two properties: `roles` and `desc`:
 **`roles`**: Name, or array of names of the roles needed to see the scope.  
 **`desc`**: Description of the scope.
 
-In example:
+Example again:
 ```js
 const commands = {
   scopeA: {
@@ -205,17 +204,17 @@ const commands = {
 The main `commands` scope does not accept the properties.
 
 #### Commands
-Commands are a methods.  
-Methods have a parameters, and a code.
+Commands are methods.  
+Methods have parameters and a code.
 
-Here, parameters are a informations about command. These parameters, description, and permissions. Code is a code - nothing mutch.
+Here, parameters are informations about command. These parameters, description, and permissions. The code is a code - nothing much.
 
 Method properties:  
-**`params`**: Object which keys are the command names, and values are the command parameters masks (regular expresions).  
+**`params`**: Object which keys are the command names, and values are the command parameters masks (regular expressions).  
 **`roles`**: That's a standard. Name, or array of names of the roles needed to see the scope.  
 **`desc`**: That's a standard too. Description of the scope.
 
-In example:
+For example:
 ```js
 commandName(
   params: { amountOfSomething:/\d+/ },
