@@ -1,0 +1,21 @@
+{
+  "name": "cactu-discord.js",
+  "version": "0.10.0",
+  "description": "Transformed discord.js library into Cactu framework",
+  "main": "index.js",
+  "scripts": {
+    "hello": "Hello. You need to create bot intance to use that"
+  },
+  "keywords": [
+    "discord",
+    "discord.js",
+    "bot",
+    "cactu"
+  ],
+  "author": "Paweł S",
+  "homepage": "https://github.com/PawelekS/Cactu-discord.js",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^11.3.2"
+  }
+}
