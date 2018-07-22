@@ -3,9 +3,11 @@ import Discord from "discord.js"
 import Commands from './Commands.mjs'
 import Filters from './Filters.mjs'
 
+
 /**@typedef {Object} filters Functions created according to the pattern: `[/regular expression/](){ <code> }`
  * @property {Function} regExp
  */
+
 /**@typedef {Object} commands Commands structure
  * @property {String} prefix
  * @property {String} optionalParam
@@ -19,6 +21,7 @@ import Filters from './Filters.mjs'
  * @property {Function} commandMessenger
  * @property {Object} commands
  */
+
 
 export default class CactuDiscordBot {
   /** Bot constructor
@@ -36,18 +39,20 @@ export default class CactuDiscordBot {
    */
   constructor( config ) {
     let bot = this.discordClient = new Discord.Client
-    let spamConfig = this.spamConfig = config.spamConfig  ||  { points:10 }
+    let spamConfig = this.spamConfig = config.spamConfig || { points:10 }
     let cache = this.cache = {
       clients: new Map,
       messages: new Map
     }
 
-    this.filters = new Filters( config.filters  ||  {} )
-    this.commands = new Commands( config.commands  ||  {} )
+    if (config.filters)
+      this.filters = new Filters( config.filters )
+    if (config.commands)
+      this.commands = new Commands( config.commands )
 
     bot.login( config.token )
     bot.on( `message`, message => {
-      if (!(message.author.id in cache.clients)) {
+      if (!cache.clients.has( message.author.id )) {
         cache.clients.set( message.author.id, {
           lastMessageTime: 0,
           spamPoints: 0
@@ -63,15 +68,16 @@ export default class CactuDiscordBot {
 
           user.spamPoints = 0
         }
-      } else {
+      }
+      else {
         let pointsToRemove = Math.floor( (Date.now() - user.lastMessageTime) / 4000 )
         user.spamPoints -= user.spamPoints - pointsToRemove < 0  ?  user.spamPoints  :  pointsToRemove
       }
+    
+      user.lastMessageTime = Date.now()
       
       if (message.author.bot)
         return
-
-      let msg = message.content
 
       eval( this.filters.catch( message.content ) )
       eval( this.commands.convert( message.content, roles => {
@@ -89,8 +95,6 @@ export default class CactuDiscordBot {
             return true
         }
       } ) )
-    
-      user.lastMessageTime = Date.now()
     } )
     bot.on( `ready`, () => {
       console.log( `Bot was run` )

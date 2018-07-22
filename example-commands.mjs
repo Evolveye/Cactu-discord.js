@@ -9,7 +9,7 @@ export default {
     } } )
   },
 
-  commands: {
+  structure: {
     god: {
       roles: `God`,
       desc: `Special skills`,

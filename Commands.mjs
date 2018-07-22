@@ -4,9 +4,10 @@ export default class Commands {
     // Required config data test
     if (!config.prefix)
       throw new Error( `Your commands need to have the prefix!` )
-
     if (!config.commandsMessenger)
       throw new Error( `Your commands need to have the messenger!` )
+    if (!config.structure)
+      throw new Error( `Your commands need to have commands! (:thinking:)` )
 
     // Setting a variables
     this.prefix = config.prefix
@@ -29,7 +30,7 @@ export default class Commands {
     this.messenger = messenger[1] || messenger[2]
 
     // Build the commands
-    Object.assign( this.structure, Commands.builder( config.commands ) )
+    Object.assign( this.structure, Commands.builder( config.structure ) )
   }
 
   convert( command, roles ) {
@@ -158,16 +159,16 @@ export default class Commands {
           if (commandPath === this.prefix)
             commandPath += ` `
             
-          vals = [`\`❌  ${this.noCommand}\``,`\`👉  \\\`${commandPath}${err.value}\\\`\``]
+          finallyData.values = [`\`❌  ${this.noCommand}\``,`\`👉  \\\`${commandPath}${err.value}\\\`\``]
         break
         case `badRole`: 
-          vals = [`\`❌  ${this.badRole}\``,`\`👉  ${commandPath}\``]
+          finallyData.values = [`\`❌  ${this.badRole}\``,`\`👉  ${commandPath}\``]
         break
         case `badParam`:
-          vals = [`\`❌  ${this.badParam}\``,`\`👉  ${err.value}\``]
+          finallyData.values = [`\`❌  ${this.badParam}\``,`\`👉  ${err.value}\``]
         break
         case `noParam`:
-          vals = [`\`❌  ${this.noParam}\``,`\`👉  ${err.value}\``]
+          finallyData.values = [`\`❌  ${this.noParam}\``,`\`👉  ${err.value}\``]
         break
       }
       finallyData.params = [`title`, `description`]
