@@ -1,4 +1,4 @@
-# 🌵 Cactu framework for Discord.js 
+# 🌵 Cactu framework for Discord.js; v2.0.0 indev!
 `npm i cactu-discord.js`  
 Examples and configuration description on [GitHub Wiki](https://github.com/PawelekS/Cactu-discord.js/wiki)
 

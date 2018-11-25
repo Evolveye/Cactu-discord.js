@@ -1,76 +1,51 @@
-export default {
-  prefix: `cc!`,
+( { structure: {
+  $: {
+    roles: `God`,
+    desc: `Special skills`,
 
-  commandsMessenger( title, description ) {
-    message.channel.send( { embed: {
-      color: 0x00A000,
-      title,
-      description
-    } } )
-  },
-
-  structure: {
-    god: {
-      roles: `God`,
-      desc: `Special skills`,
-  
-      eval(
-        params = { code:`!!!` },
-        roles  = `Owner`,
-        desc   = `Evaluate the code`
-      ){
+    tell( p={ channelHash:`/<#\d{18}>(?:embeded)?/`, text:`!!!` }, d=`Send a message` ) {
+      if (/embeded$/.test( channelHash )) {
         try {
-          eval( code )
+          $.bot.channels
+          .find( `id`, channelHash.substring( 2, 20 ) )
+          .send( { embed: eval( `(${text})` ) } )
         }
-        catch (err) {
-          console.log( err )
-          message.reply( `You probably can't programming 🤦` )
-        }
-      },
-    
-      delete(
-        params = { amount:/\d+/ },
-        roles  = `Owner`,
-        desc   = `Delete the messages`
-      ) {
-        let count = ++amount<2  ?  2  :  amount>100  ?  100  :  amount
-
-        message.channel
-        .bulkDelete( count )
-        .then( deleted => {
-          message.channel.send( `✅  Deleted **${deleted.array().length - 1}** last messages` )
-        } )
-      },
-  
-      tell(
-        params = { channelHash:`/<#\d{18}>(?:embeded)?/`, text:`!!!` },
-        desc   = `Send a message`
-      ) {
-        if (/embeded$/.test( channelHash )) {
-          try {
-            bot.channels
-            .find( `id`, channelHash.substring( 2, 20 ) )
-            .send( { embed: eval( `(${text})` ) } )
-          }
-          catch (err) {}
-        }
-        else if (channelHash) {
-          bot.channels
-          .find( `id`, channelHash.substring( 2,20 ) )
-          .send( text )
-    
-        }
-        else
-          message.channel.send( text )
-  
-        message.delete()
+        catch (err) {}
       }
+      else if (channelHash) {
+        $.bot.channels
+        .find( `id`, channelHash.substring( 2,20 ) )
+        .send( text )
+  
+      }
+      else
+        $.message.channel.send( text )
+
+      $.message.delete()
+    },
+  
+    delete( p={ amount:/\d+/ }, r=`Owner`, d=`Delete the messages` ) {
+      let count = ++amount<2  ?  2  :  amount>100  ?  100  :  amount
+
+      $.message.channel
+      .bulkDelete( count )
+      .then( deleted => {
+        $.message.channel.send( `✅  Deleted **${deleted.array().length - 1}** last messages` )
+      } )
     },
 
-    cactuses(
-      desc = `Show count of harvested cactuses`,
-    ) {
-      message.channel.send( `We have harvested ${cache.sendedCactuses || 0} cactuses` )
+    eval( p={ code:`!!!` }, r=`Owner`, d=`Evaluate the code` ){
+      try {
+        eval( code )
+      }
+      catch (err) {
+        console.log( err )
+        $.message.reply( `You probably can't programming 🤦` )
+      }
     }
+  },
+
+  cactuses( d=`Show count of harvested cactuses` ) {
+    $.message.channel.send( `We have harvested ${$.db.sendedCactuses || 0} cactuses` )
   }
-}
+} } )
