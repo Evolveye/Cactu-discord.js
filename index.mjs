@@ -62,8 +62,8 @@ export default class CactuDiscordBot {
 
       this.evalVars.message = message
       this.evalVars.db = guildDb.db
-      guildDb.filters.catch( message.guild.id, message.content, this.evalVars )
-      guildDb.commands.convert( message.guild.id, message.content, this.evalVars, roles => {
+      guildDb.filters.catch( message.content, this.evalVars )
+      guildDb.commands.convert( message.content, this.evalVars, roles => {
         if (message.channel.type === `dm`)
           return false
 
@@ -95,6 +95,17 @@ export default class CactuDiscordBot {
       }
 
       c.user.setActivity( config.prefix, { type:'WATCHING' } )
+    } )
+    .on( `guildCreate`, guild => {
+      this.guildsDbs.set( guild.id, {
+        commands: new Commands( guild.id, config.prefix, config.spaceAfterPrefix ),
+        filters: new Filters( guild.id ),
+        users: new Map,
+        invites: null,
+        db: {}
+      } )
+
+      guild.fetchInvites().then( invites => this.guildsDbs.get( guild.id ).invites = invites )
     } )
     // .on( `guildMemberAdd`, member => {
     //   const guild = member.guild

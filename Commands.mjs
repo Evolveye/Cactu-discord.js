@@ -29,8 +29,8 @@ export default class Commands {
     this.setLang( configObject.myLang || {} )
   }
 
-  convert( guildId, command, variables, roles ) {
-    if (!guildId || !command)
+  convert( command, variables, roles ) {
+    if (!command)
       return
 
     // Initiating operations
@@ -343,32 +343,33 @@ Commands.predefinedCommands = {
       }
       
       if (attachment.url && !attachment.width) {
-        let fileName = `./guilds_config/${guildId}-${what}-${$.message.guild.name}.js`
+        let fileName = `./guilds_config/${guildId}-${what}.js`
 
         const file = fs.createWriteStream( fileName )
         https.get( attachment.url, res => {
           res.pipe( file ).on( `finish`, () => {
             file.close()
             let object = fs.readFileSync( fileName, `utf8` )
+            let guildDb = $.bot.guildsDbs.get( guildId )
 
             try {
               if (!reg.test( object ))
-                throw $.bot.commands.lang.$_loadFail
+                throw ""
                 
               object = eval( object )
 
               if (what == `commands`) {
-                $.bot.commands.structures.set( guildId,
+                guildDb.commands.structures.set( guildId,
                   Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
                 )
               }
               else
-                $.bot.filters.handlers.set( guildId, object )
+                guildDb.filters.handlers.set( guildId, object )
 
-              $.message.channel.send( $.bot.commands.lang.$_loadSucces )
+              $.message.channel.send( guildDb.commands.lang.$_loadSucces )
             }
             catch (err) {
-              $.message.channel.send( $.bot.commands.lang.$_loadFail )
+              $.message.channel.send( guildDb.commands.lang.$_loadFail )
               fs.unlink( fileName, err => {} )
               console.log( guildId, `->`, err )
             }

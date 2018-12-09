@@ -32,7 +32,7 @@ export default class Filters {
     }
   }
 
-  catch( guildId, message, variables ) {
+  catch( message, variables ) {
     Filters.eval( `( function(){ ${this.data.code} }() )`, message, variables )
   }
 
