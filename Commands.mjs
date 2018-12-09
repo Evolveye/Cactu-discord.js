@@ -2,30 +2,11 @@ import https from "https"
 import fs from "fs"
 
 
-
 export default class Commands {
-  constructor( guildsIds=[], prefix=`cc!`, prefixSpace=true ) {
+  constructor( guildId, prefix, spaceAfterPrefix=true ) {
     // Prefix
     this.prefix = prefix
-    this.prefixSpace = prefixSpace
-
-    // Lang
-    let lang = {}
-    this.lang = {
-      err_noCommand:  lang.err_noCommand  || `Command don't exists`,
-      err_badParam:   lang.err_badParam   || `Not valid parameter`,
-      err_noParam:    lang.err_noParam    || `You didn't write required parameters`,
-      err_badRole:    lang.err_badRole    || `You don't have permissions to use that!`,
-      help:           lang.help           || `Help for a syntax of the specified command`,
-      help_rest:      lang.help_rest      || `Any string of characters`,
-      help_scope:     lang.help_scope     || `Subset of commands`,
-      help_optional:  lang.help_optional  || `Optional parameter`,
-      $_loadCommands: lang.$_loadCommands || `Load the commands from attachment`,
-      $_loadFilters:  lang.$_loadFilters  || `Load the filters from attachment`,
-      $_loadSucces:   lang.$_loadSucces   || `✅ Commands has been loaded`,
-      $_loadFail:     lang.$_loadFail     || `❌ Wrong commands file!`,
-      $_close:        lang.$_close        || `Securely close the bot`
-    }
+    this.prefixSpace = spaceAfterPrefix
 
     // Messenger
     this.messenger = `
@@ -35,37 +16,26 @@ export default class Commands {
     `
 
     // Command structure
-    this.prefixHelpBoxFirstInfo = ``
-      + `**[${this.lang.help_optional}]**: abc**?**\n`
-      + `**[${this.lang.help_rest}]**: ...abc\n`
-      + `**[${this.lang.help_scope}]** ...`
+    let configFileName = `./guilds_config/${guildId}-commands.js`
+    let configObject = {}
+    if (fs.existsSync( configFileName )) {
+      configObject = eval( fs.readFileSync( configFileName, `utf8` ) )
 
-    if (!fs.existsSync( `./guilds_config/` ))
-      fs.mkdirSync( `./guilds_config/` )
+      this.structure = Commands.build( Commands.cloneObjects( {}, configObject.structure, Commands.predefinedCommands ) )
+    }
+    else
+      this.structure = Commands.build( Commands.cloneObjects( {}, Commands.predefinedCommands ) )
 
-    this.structures = new Map
-    fs.readdir( `./guilds_config/`, (err, files) =>
-      files.forEach( fileName => {
-        let guildId = fileName.split( `-` )[0]
-
-        if (guildsIds.includes( guildId )) {
-          let object = eval( fs.readFileSync( `./guilds_config/${fileName}`, `utf8` ) )
-          let structure = Commands.build( Commands.cloneObjects( {}, object.structure, Commands.predefinedCommands ) )
-          this.structures.set( guildId, structure )
-        }
-        else
-          fs.unlink( fileName )
-      } )
-    )
+    this.setLang( configObject.myLang || {} )
   }
 
-  convert( guildId, command, roles, variables ) {
+  convert( guildId, command, variables, roles ) {
     if (!guildId || !command)
       return
 
     // Initiating operations
     let partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ).groups
-    let structScope = this.structures.get( guildId )
+    let structScope = this.structure
     let prefixSpace = this.prefixSpace
     let commandPath = this.prefix
     let err = { type:null, value:null, paramMask:null }
@@ -142,7 +112,10 @@ export default class Commands {
         let help = ``
 
         if (commandPath === this.prefix)
-          help += this.prefixHelpBoxFirstInfo
+          help += ``
+            + `**[${this.lang.help_optional}]**: abc**?**\n`
+            + `**[${this.lang.help_rest}]**: ...abc\n`
+            + `**[${this.lang.help_scope}]** ...`
 
         if (commandPath !== this.prefix || prefixSpace)
           commandPath += ` `
@@ -186,16 +159,16 @@ export default class Commands {
           if (commandPath === this.prefix)
             commandPath += ` `
             
-          finallyData.values = [`\`❌  ${this.noCommand}\``,`\`👉  \\\`${commandPath}${err.value}\\\`\``]
+          finallyData.values = [`\`❌  ${this.lang.err_noCommand}\``,`\`👉  \\\`${commandPath}${err.value}\\\`\``]
         break
         case `badRole`: 
-          finallyData.values = [`\`❌  ${this.badRole}\``,`\`👉  ${commandPath}\``]
+          finallyData.values = [`\`❌  ${this.lang.err_badRole}\``,`\`👉  ${commandPath}\``]
         break
         case `badParam`:
-          finallyData.values = [`\`❌  ${this.badParam}\``,`\`👉  ${err.value}\``]
+          finallyData.values = [`\`❌  ${this.lang.err_badParam}\``,`\`👉  ${err.value}\``]
         break
         case `noParam`:
-          finallyData.values = [`\`❌  ${this.noParam}\``,`\`👉  ${err.value} \\\`${err.paramMask}\\\`\``]
+          finallyData.values = [`\`❌  ${this.lang.err_noParam}\``,`\`👉  ${err.value} \\\`${err.paramMask}\\\`\``]
         break
       }
       finallyData.params = [`title`, `description`]
@@ -206,6 +179,24 @@ export default class Commands {
       `( (${finallyData.params.join( ',' )}) => {${finallyData.code}} )(${finallyData.values.join( ',' )})`,
       variables
     )
+  }
+
+  setLang( langPack ) {
+    this.lang = {
+      err_noCommand:  langPack.err_noCommand  || `Command doesn't exists`,
+      err_badParam:   langPack.err_badParam   || `Not valid parameter`,
+      err_noParam:    langPack.err_noParam    || `You didn't write required parameters`,
+      err_badRole:    langPack.err_badRole    || `You don't have permissions to use that!`,
+      help:           langPack.help           || `Help for a syntax of the specified command`,
+      help_rest:      langPack.help_rest      || `Any string of characters`,
+      help_scope:     langPack.help_scope     || `Subset of commands`,
+      help_optional:  langPack.help_optional  || `Optional parameter`,
+      $_loadCommands: langPack.$_loadCommands || `Load the commands from attachment`,
+      $_loadFilters:  langPack.$_loadFilters  || `Load the filters from attachment`,
+      $_loadSucces:   langPack.$_loadSucces   || `✅ File has been loaded`,
+      $_loadFail:     langPack.$_loadFail     || `❌ Wrong file data!`,
+      $_close:        langPack.$_close        || `Securely close the bot`
+    }
   }
 
   static build( structure={} ) {
@@ -337,12 +328,22 @@ export default class Commands {
 Commands.predefinedCommands = {
   $: {
     //loadCommands( roles=`Owner`, params={ what:/commands|filters/ }, desc=xxx ) {
-    load( roles=`Owner`, desc=`Load commands from attachment to bot` ) {
+    load( roles=`Owner`, params={ what:/c|commands|f|filters/ }, desc=`Load commands/filters from attached file` ) {
       let attachment = $.message.attachments.first() || {}
       let guildId = $.message.guild.id
 
+      let reg
+      if ([ `c`, `commands` ].includes( what )) {
+        what = `commands`
+        reg = /^\( *{[\s\S]*structure *: *{[\s\S]*} *\)$/
+      }
+      else {
+        what = `filters`
+        reg = /^\[[ \r\n]*{[\s\S]+}[ \r\n]*]$/
+      }
+      
       if (attachment.url && !attachment.width) {
-        let fileName = `./guilds_config/${guildId}-${$.message.guild.name}.js`
+        let fileName = `./guilds_config/${guildId}-${what}-${$.message.guild.name}.js`
 
         const file = fs.createWriteStream( fileName )
         https.get( attachment.url, res => {
@@ -350,14 +351,26 @@ Commands.predefinedCommands = {
             file.close()
             let object = fs.readFileSync( fileName, `utf8` )
 
-            if (!/\( *{[\s\S]*structure *: *{[\s\S]*} *\)/.test( object ))
-              $.message.channel.send( $.bot.commands.lang.$_loadFail )
-            else {
+            try {
+              if (!reg.test( object ))
+                throw $.bot.commands.lang.$_loadFail
+                
               object = eval( object )
+
+              if (what == `commands`) {
+                $.bot.commands.structures.set( guildId,
+                  Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
+                )
+              }
+              else
+                $.bot.filters.handlers.set( guildId, object )
+
               $.message.channel.send( $.bot.commands.lang.$_loadSucces )
-              $.bot.commands.structures.set( guildId,
-                Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
-              )
+            }
+            catch (err) {
+              $.message.channel.send( $.bot.commands.lang.$_loadFail )
+              fs.unlink( fileName, err => {} )
+              console.log( guildId, `->`, err )
             }
           } )
         } )
