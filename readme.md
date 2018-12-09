@@ -1,18 +1,23 @@
-# 🌵 Cactu framework for Discord.js; v2.0.0 indev!
-`npm i cactu-discord.js`  
-Examples and configuration description on [GitHub Wiki](https://github.com/PawelekS/Cactu-discord.js/wiki)
+# 🌵 Cactu framework for Discord.js
 
-Cactu projects are using an `import {} export ""` instead of the `require()`, so you have to use `--experimental-modules` node.js flag, and `.mjs` instead of `js` files extensions
+`npm i cactu-discord.js`
 
-A Code below is presenting main bot file. That is all that you need to run a Discord bot.
+A Code below is presenting main bot file. This is the easiest code to run the bot. If you want commands or message filters you need to look [GitHub Wiki](https://github.com/PawelekS/Cactu-discord.js/wiki)
+
 ```js
 // ./app.mjs
 
 import CactuDiscordBot from "cactu-discord.js"
 
-new CactuDiscordBot( { token:`secret` } )
+new CactuDiscordBot( { token:`/-secret-/` } )
                           /* ^- configuration object */
 ```
+
+---
+
+**Note**: Cactu projects are using an `import {} export ""` instead of the `require()`, so you have to use `--experimental-modules` node.js flag, and `.mjs` instead of `js` files extensions
+
+---
 
 ## More options? Suggestions? Problems?
 If you have features propositions, tell me that [here](https://github.com/PawelekS/Cactu-discord.js/issues).

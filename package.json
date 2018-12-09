@@ -1,14 +1,15 @@
 {
   "name": "cactu-discord.js",
-  "version": "0.11.0",
+  "version": "2.0.0",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
   "scripts": {
-    "hello": "Hello. You need to create bot intance to use that"
+    "hello": "echo Hello. You need to create bot intance to use that"
   },
   "keywords": [
     "discord",
     "discord.js",
+    "framework",
     "bot",
     "cactu"
   ],
