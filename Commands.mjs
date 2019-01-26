@@ -1,7 +1,6 @@
 import https from "https"
 import fs from "fs"
 
-
 export default class Commands {
   constructor( guildId, prefix, spaceAfterPrefix=true ) {
     // Prefix
@@ -16,9 +15,9 @@ export default class Commands {
     `
 
     // Command structure
-    let configFileName = `./guilds_config/${guildId}-commands.js`
+    let configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-commands.js`
     let configObject = {}
-    if (fs.existsSync( configFileName )) {
+    if ( fs.existsSync( configFileName ) ) {
       configObject = eval( fs.readFileSync( configFileName, `utf8` ) )
 
       this.structure = Commands.build( Commands.cloneObjects( {}, configObject.structure, Commands.predefinedCommands ) )
@@ -30,7 +29,7 @@ export default class Commands {
   }
 
   convert( command, variables, roles ) {
-    if (!command)
+    if ( !command )
       return
 
     // Initiating operations
@@ -46,15 +45,15 @@ export default class Commands {
     }
 
     // Prefix test
-    if (!(new RegExp( `^${commandPath}` )).test( command ))
+    if ( !(new RegExp( `^${commandPath}` )).test( command ) )
       return
-    else if (prefixSpace) {
-      if (commandPath !== partedCommand.part)
+    else if ( prefixSpace ) {
+      if ( commandPath !== partedCommand.part )
         return
 
       command = partedCommand.rest
     }
-    else if (new RegExp( `^${commandPath} ` ).test( command )) {
+    else if ( new RegExp( `^${commandPath} ` ).test( command ) ) {
       err = { type:`noCommand`, value:`` }
       command = ``
     } 
@@ -62,46 +61,45 @@ export default class Commands {
       command = command.slice( commandPath.length )
 
     // Structure checker & noCommand and badRole errors finder
-    while (partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command )) {
-      if (!command)
+    while ( partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ) ) {
+      if ( !command )
         break
       
-      let {part, rest} = partedCommand.groups
+      let { part, rest } = partedCommand.groups
 
-      if (!(part in structScope)) {
+      if ( !(part in structScope) ) {
         err = { type:`noCommand`, value:part }
         break
       }
 
       command = rest || ``
       commandPath += ` ${part}`
-      structScope = structScope[part]
+      structScope = structScope[ part ]
 
-      if (!structScope[`@roles`].includes( `Anyone` ) && !roles( structScope[`@roles`] )) {
+      if ( !structScope[ `@roles` ].includes( `Anyone` ) && !roles( structScope[ `@roles` ] ) ) {
         err = { type:'badRole' }
         break
       }
-      else if (structScope[`@code`])
+      else if ( structScope[ `@code` ] )
         break
     }
 
-    if (!prefixSpace)
+    if ( !prefixSpace )
       commandPath = `${commandPath.slice( 0, this.prefix.length )}${commandPath.slice( this.prefix.length + 1 )}`
 
     // Parameters conditions & badParam and noParam errors finder & help builder
-    if (!err.type) {
-      if (`@code` in structScope) {
-        if (Commands.paramChecker( command, structScope[`@params`], err )) {
-          finallyData.code = structScope[`@code`]
-          let params = structScope[`@params`]
-
+    if ( !err.type ) {
+      if ( `@code` in structScope ) {
+        if ( Commands.paramChecker( command, structScope[ `@params` ], err ) ) {
+          finallyData.code = structScope[ `@code` ]
+          let params = structScope[ `@params` ]
     
-          for (let param of params) {
+          for ( const param of params ) {
             finallyData.params.push( param.name )
 
-            if (!param.value)
+            if ( !param.value )
               finallyData.values.push( `null` )
-            else if (param.value <= Number.MAX_SAFE_INTEGER && /^\d+$/.test( param.value ))
+            else if ( param.value <= Number.MAX_SAFE_INTEGER && /^\d+$/.test( param.value ) )
               finallyData.values.push( param.value )
             else 
               finallyData.values.push( `\`${param.value.replace(/`/g, `\\\``)}\`` )
@@ -111,28 +109,28 @@ export default class Commands {
       else { // help builder
         let help = ``
 
-        if (commandPath === this.prefix)
+        if ( commandPath === this.prefix )
           help += ``
             + `**[${this.lang.help_optional}]**: abc**?**\n`
             + `**[${this.lang.help_rest}]**: ...abc\n`
             + `**[${this.lang.help_scope}]** ...`
 
-        if (commandPath !== this.prefix || prefixSpace)
+        if ( commandPath !== this.prefix || prefixSpace )
           commandPath += ` `
 
-        for (let name in structScope) {
-          if (name.charAt( 0 ) != `@` && (structScope[name][`@roles`].includes( `Anyone` ) || roles( structScope[name][`@roles`] ))) {
-            let field = structScope[name]
+        for ( const name in structScope ) {
+          if ( name.charAt( 0 ) != `@` && (structScope[ name ][ `@roles` ].includes( `Anyone` ) || roles( structScope[ name ][ `@roles` ] )) ) {
+            let field = structScope[ name ]
 
             help += `\n\n**${commandPath}${name}**`
-            if (`@code` in field) {
+            if ( `@code` in field ) {
               help += `:`
-              for (let param of field[`@params`]) {
-                if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask ))
+              for ( const param of field[ `@params` ] ) {
+                if ( /^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask ) )
                   help += ` ${param.name}**?**`
-                else if (`/^[\\s\\S]+/` == param.mask)
+                else if ( `/^[\\s\\S]+/` == param.mask )
                   help += ` ...${param.name}`
-                else if (`/^[\\s\\S]*/` == param.mask)
+                else if ( `/^[\\s\\S]*/` == param.mask )
                   help += ` ...${param.name}**?**`
                 else
                   help += ` ${param.name}`
@@ -140,38 +138,37 @@ export default class Commands {
             }
             else
               help += ` ...`
-            if (`@desc` in field)
-              help += `\n   ${field[`@desc`].replace( /\n/g, `\n   ` )}`
+            if ( `@desc` in field )
+              help += `\n   ${field[ `@desc` ].replace( /\n/g, `\n   ` )}`
           }
-
         }
 
         finallyData.code = this.messenger
-        finallyData.params = [`title`, `description`]
-        finallyData.values = [`\`⚙ ${this.lang.help}:\``,`\`${help.replace(/`/g, `\\\``)}\``]
+        finallyData.params = [ `title`, `description` ]
+        finallyData.values = [ `\`⚙ ${this.lang.help}:\``, `\`${help.replace(/`/g, `\\\``)}\`` ]
       }
     }
 
     // Errors processing
-    if (err.type) {
-      switch (err.type) {
+    if ( err.type ) {
+      switch ( err.type ) {
         case `noCommand`:
-          if (commandPath === this.prefix)
+          if ( commandPath === this.prefix )
             commandPath += ` `
             
-          finallyData.values = [`\`❌  ${this.lang.err_noCommand}\``,`\`👉  \\\`${commandPath}${err.value}\\\`\``]
+          finallyData.values = [ `\`❌  ${this.lang.err_noCommand}\``, `\`👉  \\\`${commandPath}${err.value}\\\`\`` ]
         break
         case `badRole`: 
-          finallyData.values = [`\`❌  ${this.lang.err_badRole}\``,`\`👉  ${commandPath}\``]
+          finallyData.values = [ `\`❌  ${this.lang.err_badRole}\``, `\`👉  ${commandPath}\`` ]
         break
         case `badParam`:
-          finallyData.values = [`\`❌  ${this.lang.err_badParam}\``,`\`👉  ${err.value}\``]
+          finallyData.values = [ `\`❌  ${this.lang.err_badParam}\``, `\`👉  ${err.value}\`` ]
         break
         case `noParam`:
-          finallyData.values = [`\`❌  ${this.lang.err_noParam}\``,`\`👉  ${err.value} \\\`${err.paramMask}\\\`\``]
+          finallyData.values = [ `\`❌  ${this.lang.err_noParam}\``, `\`👉  ${err.value} \\\`${err.paramMask}\\\`\`` ]
         break
       }
-      finallyData.params = [`title`, `description`]
+      finallyData.params = [ `title`, `description` ]
       finallyData.code = this.messenger
     }
 
@@ -202,35 +199,35 @@ export default class Commands {
   static build( structure={} ) {
     let command = {}
 
-    for (let field in structure) {
-      if (![`function`,`object`].includes( typeof structure[field] ))
+    for ( const field in structure ) {
+      if ( ![ `function`, `object` ].includes( typeof structure[ field ] ))
         continue
         
-      if (typeof structure[field] === `function`) {
-        command[field] = Commands.funcData( structure[field] )
+      if ( typeof structure[ field ] == `function` ) {
+        command[ field ] = Commands.funcData( structure[ field ] )
           
-        let params = command[field][`@params`]
-        for (let param of params) {
-          if (/^\/.*\/$/.test( param.mask ))
+        let params = command[ field ][ `@params` ]
+        for ( const param of params ) {
+          if ( /^\/.*\/$/.test( param.mask ) )
             param.mask = eval( `/^${param.mask.substring( 1 )}` )
-          else if (/^['"`']\/.*\/['"`']$/.test( param.mask ))
-            param.mask = eval(`/^(?:${param.mask.slice( 2, -2 )}){0,1}/`)
-          else if (/^['"`']\?\?\?['"`']$/.test( param.mask ))
+          else if ( /^['"`']\/.*\/['"`']$/.test( param.mask ))
+            param.mask = eval( `/^(?:${param.mask.slice( 2, -2 )}){0,1}/` )
+          else if ( /^['"`']\?\?\?['"`']$/.test( param.mask ) )
             param.mask = /^[\s\S]*/
-          else if (/^['"`']!!!['"`']$/.test( param.mask ))
+          else if ( /^['"`']!!!['"`']$/.test( param.mask ) )
             param.mask = /^[\s\S]+/
         }
       }
-      else if (!Array.isArray( structure[field] )) {
-        if (!Array.isArray( structure[field].roles ))
-          structure[field].roles = [structure[field].roles  ||  `Anyone`]
+      else if ( !Array.isArray( structure[ field ] ) ) {
+        if ( !Array.isArray( structure[ field ].roles ) )
+          structure[ field ].roles = [ structure[ field ].roles  ||  `Anyone` ]
           
-        command[field] = { "@roles":structure[field].roles }
+        command[ field ] = { "@roles":structure[ field ].roles }
           
-        if (`desc` in structure[field])
-          command[field][`@desc`] = structure[field][`desc`]
+        if ( `desc` in structure[ field ] )
+          command[ field ][ `@desc` ] = structure[ field ][ `desc` ]
           
-        Object.assign( command[field], Commands.build( structure[field] ) )
+        Object.assign( command[ field ], Commands.build( structure[ field ] ) )
       }
     }
 
@@ -255,41 +252,40 @@ export default class Commands {
     let data = {
       "@code": code,
       "@params": [],
-      "@roles": [`Anyone`]
+      "@roles": [ `Anyone` ]
     }
 
-    for (let param of params.match( reg.params )) {
+    for ( const param of params.match( reg.params ) ) {
       let { paramName, paramData } = reg.paramCutter.exec( param ).groups
 
-      if ([ `params`, `p` ].includes( paramName )) {
-        for (let property of paramData.match( reg.objectProperties )) {
-          let {propertyName, propertyValue} = reg.objectPropertyCutter.exec( property ).groups
-          data[`@params`].push( {
+      if ( [ `params`, `p` ].includes( paramName ) ) {
+        for ( const property of paramData.match( reg.objectProperties ) ) {
+          let { propertyName, propertyValue } = reg.objectPropertyCutter.exec( property ).groups
+          data[ `@params` ].push( {
             name: propertyName,
             mask: propertyValue
           } )
         }
       }
-      else if ([ `roles`, `r` ].includes( paramName )) {
-        data[`@roles`] = eval(`(${paramData})`)
+      else if ( [ `roles`, `r` ].includes( paramName ) ) {
+        data[ `@roles` ] = eval( `(${paramData})` )
 
-        if (!Array.isArray( data[`@roles`] ))
-          data[`@roles`] = [data[`@roles`]]
-
+        if ( !Array.isArray( data[ `@roles` ] ) )
+          data[ `@roles` ] = [ data[ `@roles` ] ]
       }
-      else if ([ `desc`, `d` ].includes( paramName ))
-        data[`@desc`] = eval( `(${paramData})` )
+      else if ( [ `desc`, `d` ].includes( paramName ) )
+        data[ `@desc` ] = eval( `(${paramData})` )
     }
     
     return data
   }
 
   static paramChecker( command, params, errObject ) {
-    for (let param of params) {
-      if (!param.mask.test( command )) {
+    for ( const param of params ) {
+      if ( !param.mask.test( command ) ) {
         errObject.paramMask = param.mask
 
-        if (!command) {
+        if ( !command ) {
           errObject.type = `noParam`
           errObject.value = param.name
         }
@@ -300,9 +296,9 @@ export default class Commands {
         return false
       }
 
-      param.value = param.mask.exec( command )[0] || null
+      param.value = param.mask.exec( command )[ 0 ] || null
 
-      if (param.value)
+      if ( param.value )
         command = command.substr( param.value.length ).trimLeft()
     }
     return true
@@ -315,10 +311,10 @@ export default class Commands {
   static cloneObjects( target, ...objects ) {
     return objects.reduce( (target, object) => {
       Object.keys( object ).forEach( key => {
-        if (typeof object[key] === `object`)
-          target[key] = this.cloneObjects( target[key] || {}, object[key] )
+        if ( typeof object[ key ] == `object` )
+          target[ key ] = this.cloneObjects( target[ key ] || {}, object[ key ] )
         else
-          target[key] = object[key]
+          target[ key ] = object[ key ]
       } )
       return target
     }, target )
@@ -331,9 +327,9 @@ Commands.predefinedCommands = {
     load( roles=`Owner`, params={ what:/c|commands|f|filters/ }, desc=`Load commands/filters from attached file` ) {
       let attachment = $.message.attachments.first() || {}
       let guildId = $.message.guild.id
-
       let reg
-      if ([ `c`, `commands` ].includes( what )) {
+
+      if ( [ `c`, `commands` ].includes( what ) ) {
         what = `commands`
         reg = /^\( *{[\s\S]*structure *: *{[\s\S]*} *\)$/
       }
@@ -342,8 +338,8 @@ Commands.predefinedCommands = {
         reg = /^\[[ \r\n]*{[\s\S]+}[ \r\n]*]$/
       }
       
-      if (attachment.url && !attachment.width) {
-        let fileName = `./guilds_config/${guildId}-${what}.js`
+      if ( attachment.url && !attachment.width ) {
+        let fileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-${what}.js`
 
         const file = fs.createWriteStream( fileName )
         https.get( attachment.url, res => {
@@ -353,25 +349,22 @@ Commands.predefinedCommands = {
             let guildDb = $.bot.guildsDbs.get( guildId )
 
             try {
-              if (!reg.test( object ))
-                throw ""
+              if ( !reg.test( object ) )
+                throw ``
                 
               object = eval( object )
 
-              if (what == `commands`) {
-                guildDb.commands.structures.set( guildId,
-                  Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
-                )
-              }
+              if ( what == `commands` )
+                guildDb.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
               else
-                guildDb.filters.handlers.set( guildId, object )
+                guildDb.filters.setFilters( object )
 
               $.message.channel.send( guildDb.commands.lang.$_loadSucces )
             }
-            catch (err) {
+            catch ( err ) {
               $.message.channel.send( guildDb.commands.lang.$_loadFail )
               fs.unlink( fileName, err => {} )
-              console.log( guildId, `->`, err )
+              console.log( `ERROR`, guildId, `->`, err )
             }
           } )
         } )

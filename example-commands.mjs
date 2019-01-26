@@ -1,35 +1,35 @@
 ( { structure: {
   $: {
-      roles: `God`,
-      desc: `God skills`,
+    roles: `God`,
+    desc: `God skills`,
 
-      tell( p={ channelHash:`/<#\d{18}>(?:embeded)?/`, attachments:`/att/`, text:`!!!` }, d=`Send message by bot` ) {
-        let attachmentsUrls = []
+    tell( p={ channelHash:`/<#\d{18}>(?:embeded)?/`, attachments:`/att/`, text:`!!!` }, d=`Send message by bot` ) {
+      let attachmentsUrls = []
 
-        if (attachments === `att`)
-          for (let [name, att] of $.message.attachments)
-            attachmentsUrls.push( att.url )
+      if (attachments === `att`)
+        for (let [name, att] of $.message.attachments)
+          attachmentsUrls.push( att.url )
 
-        if (/embeded$/.test( channelHash )) {
-          try {
-            $.bot.discordClient.channels
-            .find( `id`, channelHash.substring( 2, 20 ) )
-            .send( { embed:eval( `(${text})` ), files:attachmentsUrls } )
-
-          } catch(err) {}
-    
-        } else if (channelHash) {
+      if (/embeded$/.test( channelHash )) {
+        try {
           $.bot.discordClient.channels
-          .find( `id`, channelHash.substring( 2,20 ) )
-          .send( text, { files:attachmentsUrls } )
+          .find( `id`, channelHash.substring( 2, 20 ) )
+          .send( { embed:eval( `(${text})` ), files:attachmentsUrls } )
+
+        } catch(err) {}
     
-        } else
-          $.message.channel.send( text, { files:attachmentsUrls } )
+      } else if (channelHash) {
+        $.bot.discordClient.channels
+        .find( `id`, channelHash.substring( 2,20 ) )
+        .send( text, { files:attachmentsUrls } )
+    
+      } else
+        $.message.channel.send( text, { files:attachmentsUrls } )
 
-        $.message.delete()
-      },
+      $.message.delete()
+    },
 
-      edit( p={ channelHash:`/<#\d{18}>/`, botMessageId:/\d{18}/, newText:`!!!` }, d=`Send message by bot` ) {
+    edit( p={ channelHash:`/<#\d{18}>/`, botMessageId:/\d{18}/, newText:`!!!` }, d=`Send message by bot` ) {
         let msg = $.message
         let channel = msg.channel
 
@@ -41,9 +41,9 @@
         .then( msg => msg.edit( newText ) )
         .catch( () => msg.channel.send( `🤦 You send me wrong ID` ) )
         msg.delete()
-      },
+    },
     
-      delete( p={ amount:/\d+/ }, r=`Owner`, d=`Remove messages` ) {
+    delete( p={ amount:/\d+/ }, r=`Owner`, d=`Remove messages` ) {
         let count = ++amount < 2  ?  2  :  amount > 100  ?  100  :  amount
 
         $.message.channel
@@ -51,9 +51,9 @@
         .then( deleted =>
           $.message.channel.send( `✅  Removed **${deleted.array().length - 1}** last messages` )
         )
-      },
+    },
 
-      eval( p={ code:`!!!` }, r=`Owner`, d=`Evaluate the code` ){
+    eval( p={ code:`!!!` }, r=`Owner`, d=`Evaluate the code` ){
         try {
           eval( code )
         }
@@ -61,7 +61,7 @@
           console.log( err )
           $.message.reply( `You aren't good programmer ;/` )
         }
-      },
+    },
   },
 
   tell( p={ text:`!!!` }, r=`cactus`, d=`Send the message by bot` ) {
