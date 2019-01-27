@@ -77,7 +77,7 @@ export default class Commands {
       structScope = structScope[ part ]
 
       if ( !structScope[ `@roles` ].includes( `Anyone` ) && !roles( structScope[ `@roles` ] ) ) {
-        err = { type:'badRole' }
+        err = { type:`badRole` }
         break
       }
       else if ( structScope[ `@code` ] )
@@ -93,8 +93,9 @@ export default class Commands {
         if ( Commands.paramChecker( command, structScope[ `@params` ], err ) ) {
           finallyData.code = structScope[ `@code` ]
           let params = structScope[ `@params` ]
+
     
-          for ( const param of params ) {
+          for ( let param of params ) {
             finallyData.params.push( param.name )
 
             if ( !param.value )
@@ -118,14 +119,14 @@ export default class Commands {
         if ( commandPath !== this.prefix || prefixSpace )
           commandPath += ` `
 
-        for ( const name in structScope ) {
+        for ( let name in structScope ) {
           if ( name.charAt( 0 ) != `@` && (structScope[ name ][ `@roles` ].includes( `Anyone` ) || roles( structScope[ name ][ `@roles` ] )) ) {
             let field = structScope[ name ]
 
             help += `\n\n**${commandPath}${name}**`
             if ( `@code` in field ) {
               help += `:`
-              for ( const param of field[ `@params` ] ) {
+              for ( let param of field[ `@params` ] ) {
                 if ( /^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask ) )
                   help += ` ${param.name}**?**`
                 else if ( `/^[\\s\\S]+/` == param.mask )
@@ -172,34 +173,40 @@ export default class Commands {
       finallyData.code = this.messenger
     }
 
-    Commands.eval(
-      `( (${finallyData.params.join( ',' )}) => {${finallyData.code}} )(${finallyData.values.join( ',' )})`,
-      variables
-    )
+    try {
+      Commands.eval(
+        `( (${finallyData.params.join( ',' )}) => {${finallyData.code}} )(${finallyData.values.join( ',' )})`,
+        variables
+      )
+    }
+    catch {
+      variables.message.channel.send( this.lang.err_invalidCommand )
+    }
   }
 
   setLang( langPack ) {
     this.lang = {
-      err_noCommand:  langPack.err_noCommand  || `Command doesn't exists`,
-      err_badParam:   langPack.err_badParam   || `Not valid parameter`,
-      err_noParam:    langPack.err_noParam    || `You didn't write required parameters`,
-      err_badRole:    langPack.err_badRole    || `You don't have permissions to use that!`,
-      help:           langPack.help           || `Help for a syntax of the specified command`,
-      help_rest:      langPack.help_rest      || `Any string of characters`,
-      help_scope:     langPack.help_scope     || `Subset of commands`,
-      help_optional:  langPack.help_optional  || `Optional parameter`,
-      $_loadCommands: langPack.$_loadCommands || `Load the commands from attachment`,
-      $_loadFilters:  langPack.$_loadFilters  || `Load the filters from attachment`,
-      $_loadSucces:   langPack.$_loadSucces   || `✅ File has been loaded`,
-      $_loadFail:     langPack.$_loadFail     || `❌ Wrong file data!`,
-      $_close:        langPack.$_close        || `Securely close the bot`
+      err_invalidCommand: langPack.err_invalidCommand || `❌ That command have invalid code!`,
+      err_noCommand:      langPack.err_noCommand      || `Command doesn't exists`,
+      err_badParam:       langPack.err_badParam       || `Not valid parameter`,
+      err_noParam:        langPack.err_noParam        || `You didn't write required parameters`,
+      err_badRole:        langPack.err_badRole        || `You don't have permissions to use that!`,
+      help:               langPack.help               || `Help for a syntax of the specified command`,
+      help_rest:          langPack.help_rest          || `Any string of characters`,
+      help_scope:         langPack.help_scope         || `Subset of commands`,
+      help_optional:      langPack.help_optional      || `Optional parameter`,
+      $_loadCommands:     langPack.$_loadCommands     || `Load the commands from attachment`,
+      // $_loadFilters:   langPack.$_loadFilters      || `Load the filters from attachment`,
+      $_loadSucces:       langPack.$_loadSucces       || `✅ File has been loaded`,
+      $_loadFail:         langPack.$_loadFail         || `❌ Wrong file data!`,
+      // $_close:         langPack.$_close            || `Securely close the bot`
     }
   }
 
   static build( structure={} ) {
     let command = {}
 
-    for ( const field in structure ) {
+    for ( let field in structure ) {
       if ( ![ `function`, `object` ].includes( typeof structure[ field ] ))
         continue
         
@@ -207,7 +214,7 @@ export default class Commands {
         command[ field ] = Commands.funcData( structure[ field ] )
           
         let params = command[ field ][ `@params` ]
-        for ( const param of params ) {
+        for ( let param of params ) {
           if ( /^\/.*\/$/.test( param.mask ) )
             param.mask = eval( `/^${param.mask.substring( 1 )}` )
           else if ( /^['"`']\/.*\/['"`']$/.test( param.mask ))
@@ -255,11 +262,11 @@ export default class Commands {
       "@roles": [ `Anyone` ]
     }
 
-    for ( const param of params.match( reg.params ) ) {
+    for ( let param of params.match( reg.params ) ) {
       let { paramName, paramData } = reg.paramCutter.exec( param ).groups
 
       if ( [ `params`, `p` ].includes( paramName ) ) {
-        for ( const property of paramData.match( reg.objectProperties ) ) {
+        for ( let property of paramData.match( reg.objectProperties ) ) {
           let { propertyName, propertyValue } = reg.objectPropertyCutter.exec( property ).groups
           data[ `@params` ].push( {
             name: propertyName,
@@ -281,7 +288,7 @@ export default class Commands {
   }
 
   static paramChecker( command, params, errObject ) {
-    for ( const param of params ) {
+    for ( let param of params ) {
       if ( !param.mask.test( command ) ) {
         errObject.paramMask = param.mask
 
@@ -323,7 +330,6 @@ export default class Commands {
 
 Commands.predefinedCommands = {
   $: {
-    //loadCommands( roles=`Owner`, params={ what:/commands|filters/ }, desc=xxx ) {
     load( roles=`Owner`, params={ what:/c|commands|f|filters/ }, desc=`Load commands/filters from attached file` ) {
       let attachment = $.message.attachments.first() || {}
       let guildId = $.message.guild.id
@@ -354,8 +360,10 @@ Commands.predefinedCommands = {
                 
               object = eval( object )
 
-              if ( what == `commands` )
+              if ( what == `commands` ) {
                 guildDb.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
+                guildDb.commands.setLang( object.myLang )
+              }
               else
                 guildDb.filters.setFilters( object )
 
@@ -369,6 +377,17 @@ Commands.predefinedCommands = {
           } )
         } )
       }
+    },
+    evalCmd( roles=`Owner`, params={ command:`!!!` }, desc=`Evaluate the command` ) {
+      let guildId = $.message.guild.id
+      let guildDb = $.bot.guildsDbs.get( guildId )
+      let vars = $.bot.evalVars
+      let bot = $.bot
+
+      vars.db = guildDb
+      vars.message = $.message
+
+      guildDb.commands.convert( command, vars, () => true )
     }
   }
 }
