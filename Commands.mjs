@@ -56,7 +56,7 @@ export default class Commands {
     else if ( new RegExp( `^${commandPath} ` ).test( command ) ) {
       err = { type:`noCommand`, value:`` }
       command = ``
-    } 
+    }
     else
       command = command.slice( commandPath.length )
 
@@ -64,7 +64,7 @@ export default class Commands {
     while ( partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ) ) {
       if ( !command )
         break
-      
+
       let { part, rest } = partedCommand.groups
 
       if ( !(part in structScope) ) {
@@ -94,7 +94,7 @@ export default class Commands {
           finallyData.code = structScope[ `@code` ]
           let params = structScope[ `@params` ]
 
-    
+
           for ( let param of params ) {
             finallyData.params.push( param.name )
 
@@ -102,7 +102,7 @@ export default class Commands {
               finallyData.values.push( `null` )
             else if ( param.value <= Number.MAX_SAFE_INTEGER && /^\d+$/.test( param.value ) )
               finallyData.values.push( param.value )
-            else 
+            else
               finallyData.values.push( `\`${param.value.replace(/`/g, `\\\``)}\`` )
           }
         }
@@ -156,10 +156,10 @@ export default class Commands {
         case `noCommand`:
           if ( commandPath === this.prefix )
             commandPath += ` `
-            
+
           finallyData.values = [ `\`❌  ${this.lang.err_noCommand}\``, `\`👉  \\\`${commandPath}${err.value}\\\`\`` ]
         break
-        case `badRole`: 
+        case `badRole`:
           finallyData.values = [ `\`❌  ${this.lang.err_badRole}\``, `\`👉  ${commandPath}\`` ]
         break
         case `badParam`:
@@ -209,10 +209,10 @@ export default class Commands {
     for ( let field in structure ) {
       if ( ![ `function`, `object` ].includes( typeof structure[ field ] ))
         continue
-        
+
       if ( typeof structure[ field ] == `function` ) {
         command[ field ] = Commands.funcData( structure[ field ] )
-          
+
         let params = command[ field ][ `@params` ]
         for ( let param of params ) {
           if ( /^\/.*\/$/.test( param.mask ) )
@@ -228,12 +228,12 @@ export default class Commands {
       else if ( !Array.isArray( structure[ field ] ) ) {
         if ( !Array.isArray( structure[ field ].roles ) )
           structure[ field ].roles = [ structure[ field ].roles  ||  `Anyone` ]
-          
+
         command[ field ] = { "@roles":structure[ field ].roles }
-          
+
         if ( `desc` in structure[ field ] )
           command[ field ][ `@desc` ] = structure[ field ][ `desc` ]
-          
+
         Object.assign( command[ field ], Commands.build( structure[ field ] ) )
       }
     }
@@ -242,15 +242,15 @@ export default class Commands {
   }
 
   /**
-   * @param {Function} func 
+   * @param {Function} func
    */
   static funcData( func ) {
     let reg = {
       functionCutter: /^(?<name>\w+) *\( *(?<params>[\w\W]*?) *\) *{ *(?<code>[\w\W]*)}$/,
-    
+
       params: /\w+ *= *(?:{((?!(?<!\\)=).)*}|\[.*?]|['"`].*?['"`]).*?(?=, *|$)/gs,
       paramCutter: /(?<paramName>\w+) *= *(?<paramData>(?:{.*}|\[.*]|['"`].*['"`]))/s,
-    
+
       objectProperties: /\w+: *['"`]?(?:\/.*?[^\\]\/|\?\?\?|!!!)['"`]?/g,
       objectPropertyCutter: /(?<propertyName>\w+): *(?<propertyValue>.*)/s
     }
@@ -283,7 +283,7 @@ export default class Commands {
       else if ( [ `desc`, `d` ].includes( paramName ) )
         data[ `@desc` ] = eval( `(${paramData})` )
     }
-    
+
     return data
   }
 
@@ -343,7 +343,7 @@ Commands.predefinedCommands = {
         what = `filters`
         reg = /^\[[ \r\n]*{[\s\S]+}[ \r\n]*]$/
       }
-      
+
       if ( attachment.url && !attachment.width ) {
         let fileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-${what}.js`
 
@@ -357,7 +357,7 @@ Commands.predefinedCommands = {
             try {
               if ( !reg.test( object ) )
                 throw ``
-                
+
               object = eval( object )
 
               if ( what == `commands` ) {
@@ -377,17 +377,17 @@ Commands.predefinedCommands = {
           } )
         } )
       }
-    },
-    evalCmd( roles=`Owner`, params={ command:`!!!` }, desc=`Evaluate the command` ) {
-      let guildId = $.message.guild.id
-      let guildDb = $.bot.guildsDbs.get( guildId )
-      let vars = $.bot.evalVars
-      let bot = $.bot
-
-      vars.db = guildDb
-      vars.message = $.message
-
-      guildDb.commands.convert( command, vars, () => true )
     }
+    // evalCmd( roles=`Owner`, params={ command:`!!!` }, desc=`Evaluate the command` ) {
+    //   let guildId = $.message.guild.id
+    //   let guildDb = $.bot.guildsDbs.get( guildId )
+    //   let vars = $.bot.evalVars
+    //   let bot = $.bot
+
+    //   vars.db = guildDb
+    //   vars.message = $.message
+
+    //   guildDb.commands.convert( command, vars, () => true )
+    // }
   }
 }
