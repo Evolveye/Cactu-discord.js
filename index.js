@@ -4,6 +4,16 @@ import fs from "fs"
 import Filters from './Filters.js'
 import Commands from './Commands.js'
 
+class GuildDb {
+  constructor( id, prefix, prefixSpace ) {
+    this.commands = new Commands( id, prefix, prefixSpace )
+    this.filters = new Filters( id )
+    this.users = new Map
+    this.invites = {}
+    this.db = {}
+  }
+}
+
 export default class CactuDiscordBot {
   constructor( config ) {
     this.validateConfig( config )
@@ -59,14 +69,7 @@ export default class CactuDiscordBot {
       console.log( `Bot has been started` )
 
       for ( const [ id, guild ] of c.guilds ) {
-        this.guildsDbs.set( id, {
-          commands: new Commands( id, prefix, prefixSpace ),
-          filters: new Filters( id ),
-          users: new Map,
-          invites: null,
-          db: {}
-        } )
-
+        this.guildsDbs.set( id, new GuildDb( id, prefix, prefixSpace ) )
         guild.fetchInvites().then( invites => this.guildsDbs.get( id ).invites = invites )
       }
 
@@ -143,6 +146,6 @@ export default class CactuDiscordBot {
     vars.db = guildDb.db
     vars.message = message
 
-    cmds.convert( `${cmds.prefix}${cmds.prefixSpace  ?  ` `  :  ``}${command}`, vars, () => true )
+    cmds.convert( `${cmds.prefix}${cmds.prefixSpace  ?  ` `  :  ``}${command}`, vars )
   }
 }

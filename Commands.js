@@ -12,11 +12,21 @@ export default class Commands {
       } )
     `
 
-    const configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-commands.js`
+    let configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-commands`
     let configObject = {}
 
-    if ( fs.existsSync( configFileName ) )
-      configObject = eval( fs.readFileSync( configFileName, `utf8` ) )
+    if ( fs.existsSync( `${configFileName}.js` ) )
+      configFileName += `.js`
+    else if ( fs.existsSync( `${configFileName}.mjs` ) )
+      configFileName += `.mjs`
+    else
+      configFileName = ``
+
+    if ( configFileName != `` )
+      configObject = eval( fs
+        .readFileSync( configFileName, `utf8` )
+        .match( /^.*?(\( *{[\s\S]*structure *: *{[\s\S]*} *\))$/s )[ 1 ]
+      )
     else
       configObject = { structure:{} }
 
@@ -335,6 +345,8 @@ export default class Commands {
   }
 
   static eval( code, $ ) {
+    const m = $.message
+
     eval( code )
   }
 
@@ -353,27 +365,29 @@ export default class Commands {
 
 Commands.predefinedCommands = {
   $: {
-    load( roles=`Owner`, params={ what:/c|commands|f|filters/ }, desc=`Load commands/filters from attached file` ) {
+    load( r=`Owner`, p={ what:/c|commands|f|filters/ }, d=`Load commands/filters from attached file` ) {
       let attachment = $.message.attachments.first() || {}
       let guildId = $.message.guild.id
       let reg
 
       if ( [ `c`, `commands` ].includes( what ) ) {
         what = `commands`
-        reg = /^\( *{[\s\S]*structure *: *{[\s\S]*} *\)$/
+        reg = /^.*?(\( *{[\s\S]*structure *: *{[\s\S]*} *\))$/s
       }
       else {
         what = `filters`
-        reg = /^\[[ \r\n]*{[\s\S]+}[ \r\n]*]$/
+        reg = /^.*?(\[[ \r\n]*{[\s\S]+}[ \r\n]*])$/
       }
 
       if ( attachment.url && !attachment.width ) {
-        let fileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-${what}.js`
-
+        const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
+        const fileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-${what}.${extension}`
         const file = fs.createWriteStream( fileName )
+
         https.get( attachment.url, res => {
           res.pipe( file ).on( `finish`, () => {
             file.close()
+
             let object = fs.readFileSync( fileName, `utf8` )
             let guildDb = $.bot.guildsDbs.get( guildId )
 
@@ -381,7 +395,7 @@ Commands.predefinedCommands = {
               if ( !reg.test( object ) )
                 throw ``
 
-              object = eval( object )
+              object = eval( object.match( reg )[ 1 ] )
 
               if ( what == `commands` ) {
                 guildDb.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
@@ -394,7 +408,7 @@ Commands.predefinedCommands = {
             }
             catch ( err ) {
               $.message.channel.send( guildDb.commands.lang.$_loadFail )
-              fs.unlink( fileName, err => {} )
+              fs.unlink( fileName, () => {} )
               console.log( `ERROR`, guildId, `->`, err )
             }
           } )
