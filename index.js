@@ -1,8 +1,8 @@
 import Discord from "discord.js"
 import fs from "fs"
 
-import Filters from './Filters.mjs'
-import Commands from './Commands.mjs'
+import Filters from './Filters.js'
+import Commands from './Commands.js'
 
 export default class CactuDiscordBot {
   constructor( config ) {

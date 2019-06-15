@@ -3,6 +3,7 @@
   "version": "2.2.0",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "hello": "echo Hello. Look at here for more information https://github.com/PawelekS/Cactu-discord.js."
   },
