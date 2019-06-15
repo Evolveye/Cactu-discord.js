@@ -3,29 +3,31 @@ import fs from "fs"
 export default class Filters {
   constructor( guildId ) {
     this.data = { code:``, regExps:[] }
-
-    let configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-filters.js`
+    const configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-filters.js`
 
     if ( fs.existsSync( configFileName ) )
       this.setFilters( eval( fs.readFileSync( configFileName, `utf8` ) ) )
   }
 
   setFilters( array ) {
+    this.data = { code:``, regExps:[] }
+
+    const d = this.data
     const funcCode  = func => func
       .toString()
       .match( /^[\S ]+\([\w\W]*?\)[ ]*{([\w\W]*)}$/ )[ 1 ]
       .trim()
 
-    let d = this.data
-    for ( let filter of array ) {
-      let conditions  = Object.keys( filter )
+    for ( const filter of array ) {
+      const conditions  = Object.keys( filter )
+
       d.regExps.push( conditions[ 0 ] )
       d.code += ``
         + `if (${conditions[ 0 ]}.test( message )) {`
         + `\n  ${funcCode( filter[ conditions.shift() ] )}`
         + `\n}`
 
-      for ( let condition of conditions ) {
+      for ( const condition of conditions ) {
         d.regExps.push( condition )
         d.code += `\n`
           + `else if (${condition}.test( message )) {`
@@ -38,7 +40,12 @@ export default class Filters {
   }
 
   catch( message, variables ) {
-    Filters.eval( `( function(){ ${this.data.code} }() )`, message, variables )
+    try {
+      Filters.eval( `( function(){ ${this.data.code} }() )`, message, variables )
+    }
+    catch {
+      variables.message.channel.send( `❌ Error!` )
+    }
   }
 
   static eval( code, message, $ ) {

@@ -3,36 +3,31 @@ import fs from "fs"
 
 export default class Commands {
   constructor( guildId, prefix, spaceAfterPrefix=true ) {
-    // Prefix
     this.prefix = prefix
     this.prefixSpace = spaceAfterPrefix
 
-    // Messenger
     this.messenger = `
       $.message.channel.send( {
         embed: { description, title, color: 0x00A000 }
       } )
     `
 
-    // Command structure
-    let configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-commands.js`
+    const configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-commands.js`
     let configObject = {}
-    if ( fs.existsSync( configFileName ) ) {
+
+    if ( fs.existsSync( configFileName ) )
       configObject = eval( fs.readFileSync( configFileName, `utf8` ) )
-
-      this.structure = Commands.build( Commands.cloneObjects( {}, configObject.structure, Commands.predefinedCommands ) )
-    }
     else
-      this.structure = Commands.build( Commands.cloneObjects( {}, Commands.predefinedCommands ) )
+      configObject = { structure:{} }
 
+    this.structure = Commands.build( Commands.cloneObjects( {}, configObject.structure, Commands.predefinedCommands ) )
     this.setLang( configObject.myLang || {} )
   }
 
-  convert( command, variables, roles ) {
+  convert( command, variables, roles=()=>true ) {
     if ( !command )
       return
 
-    // Initiating operations
     let partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ).groups
     let structScope = this.structure
     let prefixSpace = this.prefixSpace
@@ -44,7 +39,10 @@ export default class Commands {
       code: []
     }
 
-    // Prefix test
+
+    /* *
+     * Prefix tester */
+
     if ( !(new RegExp( `^${commandPath}` )).test( command ) )
       return
     else if ( prefixSpace ) {
@@ -60,7 +58,10 @@ export default class Commands {
     else
       command = command.slice( commandPath.length )
 
-    // Structure checker & noCommand and badRole errors finder
+
+    /* *
+     * Structure checker & noCommand and badRole errors finder */
+
     while ( partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ) ) {
       if ( !command )
         break
@@ -87,7 +88,10 @@ export default class Commands {
     if ( !prefixSpace )
       commandPath = `${commandPath.slice( 0, this.prefix.length )}${commandPath.slice( this.prefix.length + 1 )}`
 
-    // Parameters conditions & badParam and noParam errors finder & help builder
+
+    /* *
+     * Parameters conditions & badParam and noParam errors finder & help builder */
+
     if ( !err.type ) {
       if ( `@code` in structScope ) {
         if ( Commands.paramChecker( command, structScope[ `@params` ], err ) ) {
@@ -128,13 +132,13 @@ export default class Commands {
               help += `:`
               for ( let param of field[ `@params` ] ) {
                 if ( /^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask ) )
-                  help += ` ${param.name}**?**`
+                  help += `  ${param.name}**?**`
                 else if ( `/^[\\s\\S]+/` == param.mask )
-                  help += ` ...${param.name}`
+                  help += `  ...${param.name}`
                 else if ( `/^[\\s\\S]*/` == param.mask )
-                  help += ` ...${param.name}**?**`
+                  help += `  ...${param.name}**?**`
                 else
-                  help += ` ${param.name}`
+                  help += `  ${param.name}`
               }
             }
             else
@@ -150,28 +154,47 @@ export default class Commands {
       }
     }
 
-    // Errors processing
+
+    /* *
+     * Errors processing */
+
     if ( err.type ) {
       switch ( err.type ) {
         case `noCommand`:
           if ( commandPath === this.prefix )
             commandPath += ` `
 
-          finallyData.values = [ `\`❌  ${this.lang.err_noCommand}\``, `\`👉  \\\`${commandPath}${err.value}\\\`\`` ]
+          finallyData.values = [
+            `\`❌  ${this.lang.err_noCommand}\``,
+            `\`👉  \\\`${commandPath} ${err.value}\\\`\``
+          ]
         break
         case `badRole`:
-          finallyData.values = [ `\`❌  ${this.lang.err_badRole}\``, `\`👉  ${commandPath}\`` ]
+          finallyData.values = [
+            `\`❌  ${this.lang.err_badRole}\``,
+            `\`👉  ${commandPath}\``
+          ]
         break
         case `badParam`:
-          finallyData.values = [ `\`❌  ${this.lang.err_badParam}\``, `\`👉  ${err.value}\`` ]
+          finallyData.values = [
+            `\`❌  ${this.lang.err_badParam}\``,
+            `\`👉  ${err.value}\``
+          ]
         break
         case `noParam`:
-          finallyData.values = [ `\`❌  ${this.lang.err_noParam}\``, `\`👉  ${err.value} \\\`${err.paramMask}\\\`\`` ]
+          finallyData.values = [
+            `\`❌  ${this.lang.err_noParam}\``,
+            `\`👉  ${err.value} \\\`${`${err.paramMask}`.replace( /\\/g, `\\\\` )}\\\`\``
+          ]
         break
       }
       finallyData.params = [ `title`, `description` ]
       finallyData.code = this.messenger
     }
+
+
+    /* *
+     * Evaluation */
 
     try {
       Commands.eval(
