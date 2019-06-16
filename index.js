@@ -3,11 +3,12 @@ import fs from "fs"
 
 import Filters from './Filters.js'
 import Commands from './Commands.js'
+import Logger from "./Logger.js"
 
 class GuildDb {
-  constructor( id, prefix, prefixSpace ) {
-    this.commands = new Commands( id, prefix, prefixSpace )
-    this.filters = new Filters( id )
+  constructor( logger, id, prefix, prefixSpace ) {
+    this.commands = new Commands( logger, id, prefix, prefixSpace )
+    this.filters = new Filters( logger, id )
     this.users = new Map
     this.invites = {}
     this.db = {}
@@ -27,6 +28,11 @@ export default class CactuDiscordBot {
 
     this.client = new Discord.Client
     this.guildsDbs = new Map
+    this.log = new Logger( [
+      { align:`right`, color:`fgBlue`,  length:10 }, // /(Filter|Command)/
+      { length:3 },  // /:  /
+      { length:3 },  // /.*/
+    ] )
 
     this.evalVars = evalVars
     this.evalVars.message = null
@@ -71,7 +77,7 @@ export default class CactuDiscordBot {
       console.log( `Bot has been started` )
 
       for ( const [ id, guild ] of c.guilds ) {
-        this.guildsDbs.set( id, new GuildDb( id, prefix, prefixSpace ) )
+        this.guildsDbs.set( id, new GuildDb( this.log, id, prefix, prefixSpace ) )
         guild.fetchInvites().then( invites => this.guildsDbs.get( id ).invites = invites )
       }
 

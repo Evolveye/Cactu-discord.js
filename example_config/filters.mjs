@@ -28,7 +28,7 @@ const $ = {
     $.message.delete()
   } },
   { [/#num/i] () {
-    $.message.channel.send( $.db.numOfThatBoTRun ) // Variable from index.js
+    $.message.channel.send( $.numOfThatBoTRun ) // Variable from index.js
   } },
   { [/f[uvo]ck/i] () {
     $.message.delete()

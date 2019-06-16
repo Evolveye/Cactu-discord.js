@@ -1,7 +1,8 @@
 import fs from "fs"
 
 export default class Filters {
-  constructor( guildId ) {
+  constructor( logger, guildId ) {
+    this.logger = logger
     this.data = { code:``, regExps:[] }
     let configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-filters`
 
@@ -20,41 +21,49 @@ export default class Filters {
   }
 
   setFilters( array ) {
-    this.data = { code:``, regExps:[] }
+    this.data = { code:`let matched = false \n\n`, regExps:[] }
 
     const d = this.data
     const funcCode  = func => func
       .toString()
       .match( /^[\S ]+\([\w\W]*?\)[ ]*{([\w\W]*)}$/ )[ 1 ]
       .trim()
+      .concat( `\n\n    matched = true` )
 
     for ( const filter of array ) {
       const conditions  = Object.keys( filter )
 
       d.regExps.push( conditions[ 0 ] )
       d.code += ``
-        + `if (${conditions[ 0 ]}.test( message )) {`
-        + `\n  ${funcCode( filter[ conditions.shift() ] )}`
-        + `\n}`
+        + `\n if (${conditions[ 0 ]}.test( message )) {`
+        + `\n   ${funcCode( filter[ conditions.shift() ] )}`
+        + `\n }`
 
       for ( const condition of conditions ) {
         d.regExps.push( condition )
         d.code += `\n`
-          + `else if (${condition}.test( message )) {`
-          + `\n  ${funcCode( filter[ condition ] )}`
-          + `\n}`
+          + `\n else if (${condition}.test( message )) {`
+          + `\n   ${funcCode( filter[ condition ] )}`
+          + `\n }`
       }
 
       d.code += `\n\n`
     }
+
+    d.code += ``
+      + `\n if ( matched )`
+      + `\n   throw ""`
   }
 
   catch( message, variables ) {
     try {
       Filters.eval( `( function(){ ${this.data.code} }() )`, message, variables )
     }
-    catch {
-      variables.message.channel.send( `❌ Error!` )
+    catch (err) {
+      if ( err == ``)
+        this.logger( `Filters`, `:`, message.replace( /\\n/g, "\\n  | " ) )
+      else
+        variables.message.channel.send( `❌ Filters rrror!` )
     }
   }
 

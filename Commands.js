@@ -2,10 +2,11 @@ import https from "https"
 import fs from "fs"
 
 export default class Commands {
-  constructor( guildId, prefix, spaceAfterPrefix=true ) {
+  constructor( logger, guildId, prefix, spaceAfterPrefix=true ) {
     this.prefix = prefix
     this.prefixSpace = spaceAfterPrefix
 
+    this.logger = logger
     this.messenger = `
       $.message.channel.send( {
         embed: { description, title, color: 0x00A000 }
@@ -211,6 +212,8 @@ export default class Commands {
         `( (${finallyData.params.join( ',' )}) => {${finallyData.code}} )(${finallyData.values.join( ',' )})`,
         variables
       )
+
+      this.logger( `Commands`, `:`, commandPath )
     }
     catch {
       variables.message.channel.send( this.lang.err_invalidCommand )
