@@ -3,10 +3,20 @@ import fs from "fs"
 export default class Filters {
   constructor( guildId ) {
     this.data = { code:``, regExps:[] }
-    const configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-filters.js`
+    let configFileName = `${fs.realpathSync( `.` )}/guilds_config/${guildId}-filters`
+
+    if ( fs.existsSync( `${configFileName}.js` ) )
+      configFileName += `.js`
+    else if ( fs.existsSync( `${configFileName}.mjs` ) )
+      configFileName += `.mjs`
+    else
+      configFileName = ``
 
     if ( fs.existsSync( configFileName ) )
-      this.setFilters( eval( fs.readFileSync( configFileName, `utf8` ) ) )
+      this.setFilters( eval( fs
+        .readFileSync( configFileName, `utf8` )
+        .match( /^.*?(\[[ \r\n]*{[\s\S]+}[ \r\n]*])$/s )[ 1 ]
+      ) )
   }
 
   setFilters( array ) {

@@ -376,7 +376,7 @@ Commands.predefinedCommands = {
       }
       else {
         what = `filters`
-        reg = /^.*?(\[[ \r\n]*{[\s\S]+}[ \r\n]*])$/
+        reg = /^.*?(\[[ \r\n]*{[\s\S]+}[ \r\n]*])$/s
       }
 
       if ( attachment.url && !attachment.width ) {
