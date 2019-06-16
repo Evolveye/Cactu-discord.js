@@ -39,6 +39,7 @@ export default class Commands {
     if ( !command )
       return
 
+    let commandCopy = command
     let partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ).groups
     let structScope = this.structure
     let prefixSpace = this.prefixSpace
@@ -213,7 +214,7 @@ export default class Commands {
         variables
       )
 
-      this.logger( `Commands`, `:`, commandPath )
+      this.logger( `Commands`, `:`, commandCopy )
     }
     catch {
       variables.message.channel.send( this.lang.err_invalidCommand )
