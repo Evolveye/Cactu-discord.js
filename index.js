@@ -21,7 +21,9 @@ export default class CactuDiscordBot {
     if ( !fs.existsSync( `./guilds_config/` ) )
       fs.mkdirSync( `./guilds_config/` )
 
-    const { prefix, prefixSpace, spam, evalVars, token } = config
+    const { prefix, prefixSpace, spamConfig, evalVars, token } = config
+
+    this.spamConfig = spamConfig
 
     this.client = new Discord.Client
     this.guildsDbs = new Map
@@ -40,7 +42,7 @@ export default class CactuDiscordBot {
 
       const guildDb = this.guildsDbs.get( message.guild.id )
 
-      if ( `roleId` in spam )
+      if ( `roleId` in spamConfig )
         this.testSpam( message, guildDb )
       if ( message.author.bot )
         return
@@ -106,13 +108,15 @@ export default class CactuDiscordBot {
       config.prefix = `cc!`
     if ( !("prefixSpace" in config) )
       config.prefixSpace = true
-    if ( !("spam" in config) )
-      config.spam = {}
+    if ( !("spamConfig" in config) )
+      config.spamConfig = {}
     if ( !("evalVars" in config) )
       config.evalVars = {}
   }
 
   testSpam( message, guildDb ) {
+    const s = this.spamConfig
+
     if ( !guildDb.users.has( message.author.id ) ) {
       guildDb.users.set( message.author.id, {
         lastMessageTime: 0,
@@ -122,10 +126,10 @@ export default class CactuDiscordBot {
 
     let user = guildDb.users.get( message.author.id )
 
-    if ( Date.now() - user.lastMessageTime < spam.interval || 2000 ) {
-      if ( ++user.spamPoints >= spam.points || 10 ) {
-        if ( c.user.id != message.author.id )
-          message.member.addRole( message.guild.roles.get( spam.roleId ) )
+    if ( Date.now() - user.lastMessageTime < s.interval || 2000 ) {
+      if ( ++user.spamPoints >= (s.points || 10) ) {
+        // if ( c.user.id != message.author.id )
+        message.member.addRole( message.guild.roles.get( s.roleId ) )
 
         user.spamPoints = 0
       }
