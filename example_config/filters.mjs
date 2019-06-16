@@ -24,7 +24,7 @@ const $ = {
 
 ;[
   { [/.+>{5,}.+/] () {
-    $.message.channel.send( `${message}\nBut what you want ¯\\\_(ツ)\_/¯` )
+    $.message.channel.send( `${$.message}\nBut what you want ¯\\\_(ツ)\_/¯` )
     $.message.delete()
   } },
   { [/#num/i] () {
