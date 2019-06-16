@@ -76,7 +76,7 @@ const $ = {
         $.message.channel
         .bulkDelete( count )
         .then( deleted =>
-          $.message.channel.send( `✅  **${deleted.array().length - 1}** have been deleted` )
+          $.message.channel.send( `✅  **${deleted.array().length - 1}** messages have been deleted` )
         )
       },
       eval( p={ code:`!!!` }, r=`Owner`, d=`Evalueate the code` ){
