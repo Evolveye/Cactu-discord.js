@@ -1,18 +1,28 @@
-# 🌵 Cactu framework for Discord.js 
+# 🌵 Cactu framework for Discord.js
 `npm i cactu-discord.js`  
 Examples and configuration description on [GitHub Wiki](https://github.com/PawelekS/Cactu-discord.js/wiki)
 
-Cactu projects are using an `import {} export ""` instead of the `require()`, so you have to use `--experimental-modules` node.js flag, and `.mjs` instead of `js` files extensions
+Cactu projects are using an `import {} export ""` instead of the `require()`, so you have to use `--experimental-modules` node.js flag, and `.mjs` instead of `js` files extensions or `"type": "module"` field in package.json
 
-A Code below is presenting main bot file. That is all that you need to run a Discord bot.
-```js
-// ./app.mjs
+Look into `example_config/` folder for *example config*
 
-import CactuDiscordBot from "cactu-discord.js"
+## Screens with bot in action
 
-new CactuDiscordBot( { token:`secret` } )
-                          /* ^- configuration object */
-```
+Bot without commands:  
+<img src=./img/before_load.png>
 
-## More options? Suggestions? Problems?
-If you have features propositions, tell me that [here](https://github.com/PawelekS/Cactu-discord.js/issues).
+Error handling (on screen you can see only one error)  
+<img src=./img/before_load-error.png>
+
+Example commands loading (information about loaded commands is from `commands.mjs`)  
+<img src=./img/before_load-loading.png>
+
+Loaded commands are working immediately after loading  
+<img src=./img/new_cmds.png>  
+<img src=./img/new_cmds-working.png>
+
+Example of filters  
+<img src=./img/filters.png>
+
+And logs on the end  
+<img src=./img/logs.png>

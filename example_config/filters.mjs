@@ -2,7 +2,7 @@
  * References for evaluation variables */
 
 import { Message } from "discord.js"
-import CactuDiscordBot from "cactu-discord.js"
+import CactuDiscordBot from "./node_modules/cactu-discord.js.js"
 
 const $ = {
   /** Discord.Message instance
