@@ -131,8 +131,6 @@ const $ = {
     tell( p={ text:`!!!` }, r=`Deserved`, d=`Send message by the bot` ) {
       let m = $.message
 
-      console.log( ` - ${m.member.displayName}:  ${text}` )
-
       if ( /@everyone|@here/.test( text ) )
         text = `Not today ;]`
 

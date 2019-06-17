@@ -214,7 +214,7 @@ export default class Commands {
         variables
       )
 
-      this.logger( `Commands`, `:`, commandCopy.replace( /\n/g, "\n     | " ) )
+      this.logger( `Commands`, `:`, variables.message.member.displayName, `:`, commandCopy )
     }
     catch {
       variables.message.channel.send( this.lang.err_invalidCommand )

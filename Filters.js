@@ -55,15 +55,18 @@ export default class Filters {
       + `\n   throw ""`
   }
 
-  catch( message, variables ) {
+  catch( content, variables ) {
+    const m = variables.message
+    const author = m.member.displayName
+
     try {
-      Filters.eval( `( function(){ ${this.data.code} }() )`, message, variables )
+      Filters.eval( `( function(){ ${this.data.code} }() )`, content, variables )
     }
     catch (err) {
       if ( err == ``)
-        this.logger( `Filters`, `:`, message.replace( /\\n/g, "\\n  | " ) )
+        this.logger( `Filters`, `:`, author, `:`, content )
       else
-        variables.message.channel.send( `❌ Filters rrror!` )
+        m.channel.send( `❌ Filters rrror!` )
     }
   }
 

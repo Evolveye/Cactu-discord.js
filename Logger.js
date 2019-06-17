@@ -63,33 +63,49 @@ export default class Logger {
         if ( !part )
           break
 
-        const { align=`left`, length=10 } = part
+        const { align=`left`, length=10, splitLen, splitFLLen } = part
         let len = length - items[ i ].length
+        let item = items[ i ]
 
         if ( len < 0 )
           len = 0
 
         switch ( align ) {
           case `left`:
-            items[ i ] += ` `.repeat( len )
+            item += ` `.repeat( len )
             break
 
           case `right`:
-            items[ i ] = `${` `.repeat( len )}${items[ i ]}`
+            item = `${` `.repeat( len )}${item}`
             break
 
           case `center`:
             for ( let j = len;  j;  j-- )
               if ( j % 2 )
-                items[ i ] += ` `
+                item += ` `
               else
-                items[ i ] = ` ${items[ i ]}`
+                item = ` ${item}`
             break
         }
+
+        if ( splitLen )
+          item = Logger.split( item, splitLen, splitFLLen || splitLen )
+
+        items[ i ] = item.replace( /\n/g, "\n     | " ) 
       }
 
       console.log( pattern, ...items )
     }
+  }
+
+  static split( sting, lineLen, firstLineLen=lineLen ) {
+    for ( let i = 0;  i < Math.floor( sting.length / lineLen );  i++ ) {
+      const itemLength = i == 0 ?  firstLineLen :  i * lineLen + firstLineLen + i
+
+      sting = `${sting.slice( 0, itemLength )}\n${sting.slice( itemLength )}`
+    }
+
+    return sting
   }
 }
 

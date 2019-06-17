@@ -29,9 +29,11 @@ export default class CactuDiscordBot {
     this.client = new Discord.Client
     this.guildsDbs = new Map
     this.log = new Logger( [
-      { align:`right`, color:`fgBlue`,  length:10 }, // /(Filter|Command)/
+      { align:`right`, color:`fgGreen`,  length:10 }, // /(Filter|Command)/
       { length:3 },  // /:  /
-      { length:3 },  // /.*/
+      { align:`right`, color:`fgBlue`,  length:15 }, // /displayName/
+      { length:3 },  // /:  /
+      { splitLen:55, splitFLLen:30 }  // /.*/
     ] )
 
     this.evalVars = evalVars
