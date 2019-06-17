@@ -299,7 +299,7 @@ export default class Commands {
       "@roles": [ `Anyone` ]
     }
 
-    for ( let param of params.match( reg.params ) ) {
+    for ( let param of params.match( reg.params ) || [] ) {
       let { paramName, paramData } = reg.paramCutter.exec( param ).groups
 
       if ( [ `params`, `p` ].includes( paramName ) ) {
