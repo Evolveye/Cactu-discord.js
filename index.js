@@ -132,7 +132,7 @@ export default class CactuDiscordBot {
 
     let user = guildDb.users.get( message.author.id )
 
-    if ( Date.now() - user.lastMessageTime < s.interval || 2000 ) {
+    if ( Date.now() - user.lastMessageTime < (s.interval || 2000) ) {
       if ( ++user.spamPoints >= (s.points || 10) ) {
         // if ( c.user.id != message.author.id )
         message.member.addRole( message.guild.roles.get( s.roleId ) )
