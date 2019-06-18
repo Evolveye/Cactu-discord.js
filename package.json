@@ -1,11 +1,11 @@
 {
   "name": "cactu-discord.js",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "hello": "echo Hello. Look at here for more information https://github.com/PawelekS/Cactu-discord.js."
+    "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js."
   },
   "keywords": [
     "cactu",
@@ -15,7 +15,7 @@
     "framework"
   ],
   "author": "Paweł S",
-  "homepage": "https://github.com/PawelekS/Cactu-discord.js",
+  "homepage": "https://github.com/Evolveye/Cactu-discord.js",
   "license": "ISC",
   "dependencies": {
     "discord.js": "^11.3.2"
