@@ -1,3 +1,5 @@
+import { stringify } from "querystring";
+
 class Color {
   /**
    * @param {"#123456"|Color} color
@@ -98,14 +100,47 @@ export default class Logger {
     }
   }
 
-  static split( sting, lineLen, firstLineLen=lineLen ) {
-    for ( let i = 0;  i < Math.floor( sting.length / lineLen );  i++ ) {
-      const itemLength = i == 0 ?  firstLineLen :  i * lineLen + firstLineLen + i
+  /** Split the long one line to several shorter lines
+   * @param {String} string 
+   * @param {Number} lineLength 
+   * @param {Number} firstLineLength 
+   */
+  static split( string, lineLength, firstLineLength=lineLength ) {
+    const lBrReg = /[- ,:;.]/
+    const fL = firstLineLength
+    const l = lineLength
 
-      sting = `${sting.slice( 0, itemLength )}\n${sting.slice( itemLength )}`
+    let cLL // current line length
+    let chrsFrStart = 0
+
+    for ( let i = 0;  chrsFrStart < string.length - (cLL = i == 0 ?  fL  :  l);  i++ ) {
+      let retreat = 0
+
+      while ( retreat < 15 && !lBrReg.test( string[ chrsFrStart + cLL - retreat ] ) )
+        retreat++
+
+      chrsFrStart = chrsFrStart + cLL - retreat
+
+      switch ( string[ chrsFrStart ] ) {
+        case ` `:
+          string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart + 1 )}`
+          chrsFrStart++
+          break
+
+        case `,`:
+        case `:`:
+        case `;`:
+        case `-`:
+          string = `${string.slice( 0, chrsFrStart + 1 )}\n${string.slice( chrsFrStart + 1 )}`
+          break
+
+        case `.`:
+          string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart )}`
+          break
+      }
     }
 
-    return sting
+    return string
   }
 }
 

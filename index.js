@@ -33,7 +33,7 @@ export default class CactuDiscordBot {
       { length:3 },  // /:  /
       { align:`right`, color:`fgBlue`,  length:15 }, // /displayName/
       { length:3 },  // /:  /
-      { splitLen:55, splitFLLen:30 }  // /.*/
+      { splitLen:90, splitFLLen:65 }  // /.*/
     ] )
 
     this.evalVars = evalVars
