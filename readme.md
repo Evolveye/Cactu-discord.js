@@ -9,21 +9,21 @@ Look into `example_config/` folder for *example config*
 ## Screens with bot in action
 
 Bot without commands:  
-<img src=./img/before_load.png>
+![First run - without commands](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/before_load.png)
 
 Error handling (on screen you can see only one error)  
-<img src=./img/before_load-error.png>
+![First run - attempt to load commands without file](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/before_load-error.png)
 
 Example commands loading (information about loaded commands is from `commands.mjs`)  
-<img src=./img/before_load-loading.png>
-<img src=./img/bad_guy.png>
+![Loading the commands](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/before_load-loading.png)  
+![bad guy want to load own commands](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/bad_guy.png)
 
 Loaded commands are working immediately after loading  
-<img src=./img/new_cmds.png>  
-<img src=./img/new_cmds-working.png>
+![New commands](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/new_cmds.png)  
+![New commands working!](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/new_cmds-working.png)
 
 Example of filters  
-<img src=./img/filters.png>
+![Filters](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/filters.png)
 
 And logs on the end  
-<img src=./img/logs.png>
+![Logs](https://raw.githubusercontent.com/Evolveye/Cactu-discord.js/master/img/logs.png)
