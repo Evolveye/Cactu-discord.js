@@ -25,6 +25,7 @@ export default class CactuDiscordBot {
     const { prefix, prefixSpace, spamConfig, evalVars, token } = config
 
     this.spamConfig = spamConfig
+    this.botOperatorId = null
 
     this.client = new Discord.Client
     this.guildsDbs = new Map

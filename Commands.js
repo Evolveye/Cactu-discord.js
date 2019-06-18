@@ -419,7 +419,12 @@ Commands.predefinedCommands = {
         } )
       }
     },
-    botOperator( r=`Owner`, p={ roleName:`!!!` }, d=`Set the role which will have owner permissions for bot` ) {
+    botOperator( r=`Owner`, p={ roleName:`???` }, d=`Set the role which will have owner permissions for bot` ) {
+      if ( !roleName ) {
+        $.bot.botOperatorId = null
+        return
+      }
+
       const role = $.message.guild.roles.find( "name", roleName )
 
       if ( role ) {
