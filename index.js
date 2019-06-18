@@ -29,10 +29,15 @@ export default class CactuDiscordBot {
 
     this.client = new Discord.Client
     this.guildsDbs = new Map
-    this.log = new Logger( [
-      { align:`right`, color:`fgGreen`,  length:10 }, // /(Filter|Command)/
+    this.messageDataLogger = new Logger( [
+      { align:`right`, color:`fgBlue`,  length:10 }, // /(Filter|Command)/
       { length:3 },  // /:  /
-      { align:`right`, color:`fgBlue`,  length:15 }, // /displayName/
+      { align:`right`, color:`fgYellow`,  length:15 }, // /displayName/
+      { length:3 },  // /:  /
+      { splitLen:90, splitFLLen:65 }  // /.*/
+    ] )
+    this.logger = new Logger( [
+      { align:`right`, color:`fgMagenta`,  length:5 }, // /Bot/
       { length:3 },  // /:  /
       { splitLen:90, splitFLLen:65 }  // /.*/
     ] )
@@ -77,17 +82,19 @@ export default class CactuDiscordBot {
       } )
     } )
     .on( `ready`, () => {
-      console.log( `Bot has been started` )
+      console.log()
+      this.log( `I have been started` )
+      console.log()
 
       for ( const [ id, guild ] of c.guilds ) {
-        this.guildsDbs.set( id, new GuildDb( this.log, id, prefix, prefixSpace ) )
+        this.guildsDbs.set( id, new GuildDb( this.messageDataLogger, id, prefix, prefixSpace ) )
         guild.fetchInvites().then( invites => this.guildsDbs.get( id ).invites = invites )
       }
 
       c.user.setActivity( prefix, { type:'WATCHING' } )
     } )
     .on( `guildCreate`, guild => {
-      this.guildsDbs.set( guild.id, new GuildDb( this.log, guild.id, prefix, prefixSpace ) )
+      this.guildsDbs.set( guild.id, new GuildDb( this.messageDataLogger, guild.id, prefix, prefixSpace ) )
 
       guild.fetchInvites().then( invites => this.guildsDbs.get( guild.id ).invites = invites )
     } )
@@ -154,5 +161,9 @@ export default class CactuDiscordBot {
     vars.message = message
 
     cmds.convert( `${cmds.prefix}${cmds.prefixSpace  ?  ` `  :  ``}${command}`, vars )
+  }
+
+  log( string ) {
+    this.logger( `Bot`, `:`, string )
   }
 }
