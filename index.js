@@ -63,7 +63,7 @@ export default class CactuDiscordBot {
         if ( message.channel.type === `dm` )
           return false
 
-        if ( message.author.id === message.guild.ownerID )
+        if ( message.author.id === message.guild.ownerID || message.member.roles.has( this.botOperatorId ) )
           return true
 
         for ( const role of roles ) {
@@ -86,13 +86,7 @@ export default class CactuDiscordBot {
       c.user.setActivity( prefix, { type:'WATCHING' } )
     } )
     .on( `guildCreate`, guild => {
-      this.guildsDbs.set( guild.id, {
-        commands: new Commands( guild.id, prefix, prefixSpace ),
-        filters: new Filters( guild.id ),
-        users: new Map,
-        invites: null,
-        db: {}
-      } )
+      this.guildsDbs.set( guild.id, new GuildDb( this.log, guild.id, prefix, prefixSpace ) )
 
       guild.fetchInvites().then( invites => this.guildsDbs.get( guild.id ).invites = invites )
     } )

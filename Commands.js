@@ -418,17 +418,16 @@ Commands.predefinedCommands = {
           } )
         } )
       }
+    },
+    botOperator( r=`Owner`, p={ roleName:`!!!` }, d=`Set the role which will have owner permissions for bot` ) {
+      const role = $.message.guild.roles.find( "name", roleName )
+
+      if ( role ) {
+        $.bot.botOperatorId = role.id
+        $.message.channel.send( `✅ Bot operator has been setted successfully set` )
+      }
+      else
+        $.message.channel.send( `❌ That role doesn't exists` )
     }
-    // evalCmd( roles=`Owner`, params={ command:`!!!` }, desc=`Evaluate the command` ) {
-    //   let guildId = $.message.guild.id
-    //   let guildDb = $.bot.guildsDbs.get( guildId )
-    //   let vars = $.bot.evalVars
-    //   let bot = $.bot
-
-    //   vars.db = guildDb
-    //   vars.message = $.message
-
-    //   guildDb.commands.convert( command, vars, () => true )
-    // }
   }
 }
