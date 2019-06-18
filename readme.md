@@ -16,6 +16,7 @@ Error handling (on screen you can see only one error)
 
 Example commands loading (information about loaded commands is from `commands.mjs`)  
 <img src=./img/before_load-loading.png>
+<img src=./img/bad_guy.png>
 
 Loaded commands are working immediately after loading  
 <img src=./img/new_cmds.png>  
