@@ -24,11 +24,10 @@ export default class Filters {
     this.data = { code:`let matched = false \n\n`, regExps:[] }
 
     const d = this.data
-    const funcCode  = func => func
+    const funcCode  = func => `    matched = true\n\n    ` + func
       .toString()
       .match( /^[\S ]+\([\w\W]*?\)[ ]*{([\w\W]*)}$/ )[ 1 ]
       .trim()
-      .concat( `\n\n    matched = true` )
 
     for ( const filter of array ) {
       const conditions  = Object.keys( filter )
