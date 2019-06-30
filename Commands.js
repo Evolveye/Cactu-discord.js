@@ -357,8 +357,12 @@ export default class Commands {
   static cloneObjects( target, ...objects ) {
     return objects.reduce( (target, object) => {
       Object.keys( object ).forEach( key => {
-        if ( typeof object[ key ] == `object` )
-          target[ key ] = this.cloneObjects( target[ key ] || {}, object[ key ] )
+        if ( typeof object[ key ] == `object` ) {
+          if ( Array.isArray( object[ key ] ) )
+            target[ key ] = object[ key ]
+          else
+            target[ key ] = this.cloneObjects( target[ key ] || {}, object[ key ] )
+        }
         else
           target[ key ] = object[ key ]
       } )
