@@ -293,7 +293,7 @@ export default class Commands {
         data[ '@roles' ] = eval( `(${paramData})` )
 
         if (!Array.isArray( data[ '@roles' ] )) data[ '@roles' ] = [ data[ '@roles' ] ]
-      } else if ( [ 'desc', 'd' ].includes( paramName ) ) data[ '@desc' ] = eval( `(${paramData})` )
+      } else if ([ 'desc', 'd' ].includes( paramName )) data[ '@desc' ] = eval( `(${paramData})` )
     }
 
     return data
@@ -349,7 +349,7 @@ Commands.predefinedCommands = {
     load( r='Owner', p={ what:/c|commands|f|filters/ }, d='Load commands/filters from attached file' ) {
       const attachment = $.message.attachments.first() || {}
       const guildId = $.message.guild.id
-      const reg
+      let reg
 
       if ([ 'c', 'commands' ].includes( what )) {
         what = 'commands'

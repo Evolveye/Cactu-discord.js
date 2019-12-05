@@ -5,13 +5,13 @@ import Filters from './Filters.js'
 import Commands from './Commands.js'
 import Logger from "./Logger.js"
 
-class GuildDb {
+export class GuildData {
   constructor( logger, id, prefix, prefixSpace ) {
     this.commands = new Commands( logger, id, prefix, prefixSpace )
     this.filters = new Filters( logger, id )
     this.users = new Map
     this.invites = {}
-    this.db = {}
+    this.userScope = {}
   }
 }
 
@@ -21,11 +21,13 @@ export default class CactuDiscordBot {
 
     const { prefix, prefixSpace, spamConfig, evalVars, token } = config
 
+    this.prefix = prefix
+    this.prefixSpace = prefixSpace
     this.evalVars = evalVars
     this.spamConfig = spamConfig
     this.botOperatorId = null
     this.client = new Discord.Client
-    this.guildsDbs = new Map
+    this.guildsData = new Map
 
     // Command:  Evolveye: cc! log message
     this.messageDataLogger = new Logger( [
@@ -71,19 +73,18 @@ export default class CactuDiscordBot {
     if (!('evalVars' in config)) config.evalVars = {}
 
     config.evalVars.message = null
-    config.evalVars.db = null
-    config.evalVars.bot = this
+    config.evalVars.guildData = null
   }
 
-  testSpam( message, guildDb ) {
+  testSpam( message, guildData ) {
     const s = this.spamConfig
 
-    if (!guildDb.users.has( message.author.id )) guildDb.users.set( message.author.id, {
+    if (!guildData.users.has( message.author.id )) guildData.users.set( message.author.id, {
       lastMessageTime: 0,
       spamPoints: 0
     } )
 
-    const user = guildDb.users.get( message.author.id )
+    const user = guildData.users.get( message.author.id )
 
     if (Date.now() - user.lastMessageTime < (s.interval || 2000)) {
       if (++user.spamPoints >= (s.points || 10)) {
@@ -102,12 +103,11 @@ export default class CactuDiscordBot {
   }
 
   evalCmd( message, command ) {
-    const guildDb = this.guildsDbs.get( message.guild.id )
+    const guildDb = this.guildsData.get( message.guild.id )
     const cmds = guildDb.commands
-    const vars = this.evalVars
 
-    vars.db = guildDb.db
-    vars.message = message
+    this.evalVars.message = message
+    this.evalVars.guildData = guildData
 
     cmds.convert( `${cmds.prefix}${cmds.prefixSpace ?  ' ' : ''}${command}`, vars )
   }
@@ -121,17 +121,17 @@ export default class CactuDiscordBot {
 
   onMessage( message ) {
     const { guild, content, author, member, channel } = message
-    const guildDb = this.guildsDbs.get( guild.id )
+    const guildData = this.guildsData.get( guild.id )
 
     if (!guild) return
-    if ('roleId' in spamConfig) this.testSpam( message, guildDb )
+    if ('roleId' in this.spamConfig) this.testSpam( message, guildData )
     if (author.bot) return
 
     this.evalVars.message = message
-    this.evalVars.db = guildDb.db
+    this.evalVars.guildData = guildData
 
-    guildDb.filters.catch( content, this.evalVars )
-    guildDb.commands.convert( content, this.evalVars, roles => {
+    guildData.filters.catch( content, this.evalVars )
+    guildData.commands.convert( content, this.evalVars, roles => {
       if (channel.type === 'dm') return false
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
 
@@ -150,12 +150,12 @@ export default class CactuDiscordBot {
     console.log()
 
     this.client.guilds.forEach( guild => this.onCreateGuild( guild ) )
-    this.client.user.setActivity( prefix, { type:'WATCHING' } )
+    this.client.user.setActivity( this.prefix, { type:'WATCHING' } )
   }
 
   onCreateGuild( guild ) {
-    this.guildsDbs.set( guild.id, new GuildDb( this.messageDataLogger, guild.id, prefix, prefixSpace ) )
+    this.guildsData.set( guild.id, new GuildData( this.messageDataLogger, guild.id, this.prefix, this.prefixSpace ) )
 
-    guild.fetchInvites().then( invites => this.guildsDbs.get( guild.id ).invites = invites )
+    guild.fetchInvites().then( invites => this.guildsData.get( guild.id ).invites = invites )
   }
 }
