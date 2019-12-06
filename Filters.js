@@ -46,7 +46,7 @@ export default class Filters {
     }
 
     d.code += ''
-      + '\n if ( matched )'
+      + '\n if (matched)'
       + '\n   throw ""'
   }
 
@@ -58,7 +58,7 @@ export default class Filters {
       Filters.eval( `( function(){ ${this.data.code} }() )`, content, variables )
     } catch (err) {
       if (err == '')  this.logger( 'Filters', ':', author, ':', content )
-      else m.channel.send( '❌ Filters rrror!' )
+      else m.channel.send( '❌ Filters error!' )
     }
   }
 

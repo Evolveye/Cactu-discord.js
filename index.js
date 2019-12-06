@@ -74,6 +74,7 @@ export default class CactuDiscordBot {
 
     config.evalVars.message = null
     config.evalVars.guildData = null
+    config.evalVars.evalCmd = (message, command) => this.evalCmd( message, command )
   }
 
   testSpam( message, guildData ) {
@@ -103,13 +104,13 @@ export default class CactuDiscordBot {
   }
 
   evalCmd( message, command ) {
-    const guildDb = this.guildsData.get( message.guild.id )
-    const cmds = guildDb.commands
+    const guildData = this.guildsData.get( message.guild.id )
+    const cmds = guildData.commands
 
     this.evalVars.message = message
     this.evalVars.guildData = guildData
 
-    cmds.convert( `${cmds.prefix}${cmds.prefixSpace ?  ' ' : ''}${command}`, vars )
+    cmds.convert( `${cmds.prefix}${cmds.prefixSpace ?  ' ' : ''}${command}`, this.evalVars )
   }
 
   log( string ) {
