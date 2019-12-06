@@ -261,7 +261,7 @@ export default class Commands {
    */
   static funcData( func ) {
     const reg = {
-      functionCutter: /^(?<name>\w+) *\( *(?<params>[\w\W]*?) *\) *{ *(?<code>[\w\W]*)}$/,
+      functionCutter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
 
       params: /\w+ *= *(?:{((?!(?<!\\)=).)*}|\[.*?]|['"`].*?['"`]).*?(?=, *|$)/gs,
       paramCutter: /(?<paramName>\w+) *= *(?<paramData>(?:{.*}|\[.*]|['"`].*['"`]))/s,
