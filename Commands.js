@@ -2,6 +2,12 @@ import https from 'https'
 import fs from 'fs'
 
 export default class Commands {
+  /**
+   * @param {Logger} logger
+   * @param {string} guildId
+   * @param {string} prefix
+   * @param {boolean} spaceAfterPrefix
+   */
   constructor( logger, guildId, prefix, spaceAfterPrefix=true ) {
     this.prefix = prefix
     this.prefixSpace = spaceAfterPrefix
@@ -31,179 +37,47 @@ export default class Commands {
     this.setLang( configObject.myLang || {} )
   }
 
-  convert( command, variables, roles=()=>true ) {
+  /**
+   * @param {string} command
+   * @param {any} variables
+   * @param {function(string[]): boolean} rolesTest
+   */
+  execute( command, variables, rolesTest=()=>true ) {
     if (!command) return
 
-    let commandCopy = command
-    let partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ).groups
-    let structScope = this.structure
-    let prefixSpace = this.prefixSpace
-    let commandPath = this.prefix
-    let err = { type:null, value:null, paramMask:null }
-    let finallyData = {
-      params: [],
-      values: [],
-      code: []
+    const data = {
+      command: command.trim(),
+      path: '',
+      parts: this.partCommand( command ),
+      structure: this.structure,
+      response: { code:[], params:[], values:[] },
+      err: { type:null, value:null, paramMask:null }
     }
 
+    const err = data.err
 
-    /* *
-     * Prefix tester */
+    if (!this.checkPrefix( data )) return
 
-    if (!(new RegExp( `^${commandPath}` )).test( command )) return
-    else if (prefixSpace) {
-      if (commandPath !== partedCommand.part) return
+    if (!err.type) this.checkAccesToStructure( data, rolesTest )
+    if (!err.type) this.buildResponse( data, rolesTest )
 
-      command = partedCommand.rest
-    } else if (new RegExp( `^${commandPath} ` ).test( command )) {
-      err = { type:'noCommand', value:'' }
-      command = ''
-    } else command = command.slice( commandPath.length )
-
-
-    /* *
-     * Structure checker & noCommand and badRole errors finder */
-
-    while (partedCommand = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command )) {
-      if (!command) break
-
-      let { part, rest } = partedCommand.groups
-
-      if (!(part in structScope)) {
-        err = { type:'noCommand', value:part }
-
-        break
-      }
-
-      command = rest || ''
-      commandPath += ` ${part}`
-      structScope = structScope[ part ]
-
-      if (!structScope[ '@roles' ].includes( 'Anyone' ) && !roles( structScope[ '@roles' ] )) {
-        err = { type:'badRole' }
-
-        break
-      } else if (structScope[ '@code' ]) break
-    }
-
-    if (!prefixSpace)
-      commandPath = `${commandPath.slice( 0, this.prefix.length )}${commandPath.slice( this.prefix.length + 1 )}`
-
-
-    /* *
-     * Parameters conditions & badParam and noParam errors finder & help builder */
-
-    if (!err.type) {
-      if ('@code' in structScope) {
-        if (Commands.paramChecker( command, structScope[ '@params' ], err )) {
-          finallyData.code = structScope[ '@code' ]
-          let params = structScope[ '@params' ]
-
-
-          for (const param of params) {
-            finallyData.params.push( param.name )
-
-            if (!param.value) finallyData.values.push( 'null' )
-            else if (param.value <= Number.MAX_SAFE_INTEGER && /^\d+$/.test( param.value ))
-              finallyData.values.push( param.value )
-            else finallyData.values.push( `\`${param.value.replace(/`/g, `\\\``)}\`` )
-          }
-        }
-      } else { // help builder
-        let help = ''
-
-        if (commandPath === this.prefix) help += ''
-          + `**[${this.lang.help_optional}]**: abc**?**\n`
-          + `**[${this.lang.help_rest}]**: ...abc\n`
-          + `**[${this.lang.help_scope}]** ...`
-
-        if (commandPath !== this.prefix || prefixSpace) commandPath += ' '
-
-        for (const name in structScope ) {
-          if (name.charAt( 0 ) != '@' && (structScope[ name ][ '@roles' ].includes( 'Anyone' ) || roles( structScope[ name ][ '@roles' ] ))) {
-            let field = structScope[ name ]
-
-            help += `\n\n**${commandPath}${name}**`
-
-            if ('@code' in field) {
-              help += ':'
-
-              for (const param of field[ '@params' ] ) {
-                if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) help += `  ${param.name}**?**`
-                else if ('/^[\\s\\S]+/' == param.mask) help += `  ...${param.name}`
-                else if ('/^[\\s\\S]*/' == param.mask) help += `  ...${param.name}**?**`
-                else help += `  ${param.name}`
-              }
-            } else help += ' ...'
-
-            if ('@desc' in field) help += `\n   ${field[ '@desc' ].replace( /\n/g, '\n   ' )}`
-          }
-        }
-
-        finallyData.code = this.messenger
-        finallyData.params = [ 'title', 'description' ]
-        finallyData.values = [ `\`⚙ ${this.lang.help}:\``, `\`${help.replace(/`/g, `\\\``)}\`` ]
-      }
-    }
-
-
-    /* *
-     * Errors processing */
-
-    if (err.type) {
-      switch (err.type) {
-        case 'noCommand':
-          if (commandPath === this.prefix) commandPath += ' '
-
-          finallyData.values = [
-            `\`❌  ${this.lang.err_noCommand}\``,
-            `\`👉  \\\`${commandPath} ${err.value}\\\`\``
-          ]
-        break
-
-        case 'badRole':
-          finallyData.values = [
-            `\`❌  ${this.lang.err_badRole}\``,
-            `\`👉  ${commandPath}\``
-          ]
-        break
-
-        case 'badParam':
-          finallyData.values = [
-            `\`❌  ${this.lang.err_badParam}\``,
-            `\`👉  ${err.value}\``
-          ]
-        break
-
-        case 'noParam':
-          finallyData.values = [
-            `\`❌  ${this.lang.err_noParam}\``,
-            `\`👉  ${err.value} \\\`${`${err.paramMask}`.replace( /\\/g, '\\\\' )}\\\`\``
-          ]
-        break
-      }
-
-      finallyData.params = [ 'title', 'description' ]
-      finallyData.code = this.messenger
-    }
-
-
-    /* *
-     * Evaluation */
+    if (err.type) this.processErrors( data )
 
     try {
-      Commands.eval(
-        `( (${finallyData.params.join( ',' )}) => {${finallyData.code}} )(${finallyData.values.join( ',' )})`,
-        variables
-      )
+      const { params, values, code } = data.response
 
-      this.logger( 'Commands', ':', variables.message.member.displayName, ':', commandCopy )
+      Commands.eval( `( (${params.join( ',' )}) => {${code}} )(${values.join( ',' )})`, variables )
+
+      this.logger( 'Commands', ':', variables.message.member.displayName, ':', command )
     }
     catch {
       variables.message.channel.send( this.lang.err_invalidCommand )
     }
   }
 
+  /**
+   * @param {any} langPack
+   */
   setLang( langPack ) {
     this.lang = {
       err_invalidCommand: langPack.err_invalidCommand || "❌ That command have invalid code!",
@@ -223,13 +97,201 @@ export default class Commands {
     }
   }
 
+  /**
+   * @param {any} err
+   * @param {string} type
+   * @param {string} value
+   */
+  setError( err, type, value ) {
+    err.type = type
+    err.value = value
+  }
+
+  /**
+   * @param {string} command
+   */
+  partCommand( command ) {
+    const { groups } = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
+
+    if (!groups.part) groups.part = ''
+    if (!groups.rest) groups.rest = ''
+
+    return groups
+  }
+
+  /**
+   * @param {any} commandData
+   */
+  checkPrefix( commandData ) {
+    const { prefix, prefixSpace } = this
+    const { command, parts } = commandData
+
+    if (!command.startsWith( prefix )) return false
+    if (prefixSpace) {
+      if (prefix !== parts.part) return false
+    } else {
+      if (parts.part === prefix && parts.rest !== '') return false
+    }
+
+
+    if (prefixSpace) commandData.command = parts.rest
+    else commandData.command = command.slice( prefix.length )
+
+    return true
+  }
+
+  /**
+   * @param {any} commandData
+   * @param {function(string[]): boolean} rolesTest
+   */
+  checkAccesToStructure( commandData, rolesTest ) {
+    const { prefix, prefixSpace } = this
+    let { command, path, structure, parts, err } = commandData
+
+    while ((parts = this.partCommand( command )).part !== '') {
+      if (!command) break
+
+      const { part, rest } = parts
+
+      if (!(part in structure)) {
+        this.setError( err, 'noCommand', part )
+        break
+      }
+
+      command = rest || ''
+      path += ` ${part}`
+      structure = structure[ part ]
+
+      if (structure[ '@code' ]) break
+      else if (!structure[ '@roles' ].includes( 'Anyone' ) && !rolesTest( structure[ '@roles' ] )) {
+        this.setError( err, 'badRole' )
+        break
+      }
+    }
+
+    if (prefixSpace) path = `${prefix}${path}`
+    else path = `${prefix}${path.slice( 1 )}`
+
+    commandData.command = command
+    commandData.path = path
+    commandData.parts = parts
+    commandData.structure = structure
+  }
+
+  /**
+   * @param {any} commandData
+   * @param {function(string[]): boolean} rolesTest
+   */
+  buildResponse( commandData, rolesTest ) {
+    const { command, structure, err, response } = commandData
+    const { prefix, prefixSpace, lang } = this
+
+    if ('@code' in structure) {
+      if (Commands.paramChecker( command, structure[ '@params' ], err )) {
+        response.code = structure[ '@code' ]
+
+        const params = structure[ '@params' ]
+
+        for (const param of params) {
+          response.params.push( param.name )
+
+          if (!param.value) response.values.push( 'null' )
+          else if (param.value <= Number.MAX_SAFE_INTEGER && /^\d+$/.test( param.value ))
+            response.values.push( param.value )
+          else response.values.push( `\`${param.value.replace(/`/g, `\\\``)}\`` )
+        }
+      }
+    } else { // help builder
+      let { path } = commandData
+      let help = ''
+
+      if (path === prefix) help += ''
+        + `**[${lang.help_optional}]**: abc**?**\n`
+        + `**[${lang.help_rest}]**: ...abc\n`
+        + `**[${lang.help_scope}]** ...`
+
+      if (path !== prefix || prefixSpace) path += ' '
+
+      for (const name in structure) {
+        const field = structure[ name ]
+
+        if (name.charAt( 0 ) != '@' && (field[ '@roles' ].includes( 'Anyone' ) || rolesTest( field[ '@roles' ] ))) {
+          help += `\n\n**${path}${name}**`
+
+          if ('@code' in field) {
+            help += ':'
+
+            for (const param of field[ '@params' ] ) {
+              if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) help += `  ${param.name}**?**`
+              else if ('/^[\\s\\S]+/' === param.mask) help += `  ...${param.name}`
+              else if ('/^[\\s\\S]*/' === param.mask) help += `  ...${param.name}**?**`
+              else help += `  ${param.name}`
+            }
+          } else help += ' ...'
+
+          if ('@desc' in field) help += `\n   ${field[ '@desc' ].replace( /\n/g, '\n   ' )}`
+        }
+      }
+
+      response.code = this.messenger
+      response.params = [ 'title', 'description' ]
+      response.values = [ `\`⚙ ${this.lang.help}:\``, `\`${help.replace(/`/g, `\\\``)}\`` ]
+    }
+  }
+
+  /**
+   * @param {any} commandData
+   */
+  processErrors( commandData ) {
+    const { response } = commandData
+    const { type, value, paramMask } = commandData.err
+
+    switch (type) {
+      case 'noCommand':
+        if (commandPath === this.prefix) commandPath += ' '
+
+        response.values = [
+          `\`❌  ${this.lang.err_noCommand}\``,
+          `\`👉  \\\`${commandPath} ${value}\\\`\``
+        ]
+      break
+
+      case 'badRole':
+        response.values = [
+          `\`❌  ${this.lang.err_badRole}\``,
+          `\`👉  ${commandPath}\``
+        ]
+      break
+
+      case 'badParam':
+        response.values = [
+          `\`❌  ${this.lang.err_badParam}\``,
+          `\`👉  ${value}\``
+        ]
+      break
+
+      case 'noParam':
+        response.values = [
+          `\`❌  ${this.lang.err_noParam}\``,
+          `\`👉  ${value} \\\`${`${paramMask}`.replace( /\\/g, '\\\\' )}\\\`\``
+        ]
+      break
+    }
+
+    response.params = [ 'title', 'description' ]
+    response.code = this.messenger
+  }
+
+  /**
+   * @param {any} structure
+   */
   static build( structure={} ) {
     const command = {}
 
     for (const field in structure) {
       if (![ 'function', 'object' ].includes( typeof structure[ field ] )) continue
 
-      if (typeof structure[ field ] == 'function') {
+      if (typeof structure[ field ] === 'function') {
         command[ field ] = Commands.funcData( structure[ field ] )
 
         const params = command[ field ][ '@params' ]
@@ -299,17 +361,22 @@ export default class Commands {
     return data
   }
 
-  static paramChecker( command, params, errObject ) {
+  /**
+   * @param {string} command
+   * @param {any} params
+   * @param {any} err
+   */
+  static paramChecker( command, params, err ) {
     for (const param of params) {
       if (!param.mask.test( command )) {
-        errObject.paramMask = param.mask
+        err.paramMask = param.mask
 
         if (!command) {
-          errObject.type = 'noParam'
-          errObject.value = param.name
+          err.type = 'noParam'
+          err.value = param.name
         } else {
-          errObject.type = 'badParam'
-          errObject.value = (command || '').split( ' ' )[0]  ||  ' 👈'
+          err.type = 'badParam'
+          err.value = (command || '').split( ' ' )[0]  ||  ' 👈'
         }
 
         return false
@@ -323,16 +390,24 @@ export default class Commands {
     return true
   }
 
+  /**
+   * @param {string} code
+   * @param {any} $
+   */
   static eval( code, $ ) {
     const m = $.message
 
     eval( code )
   }
 
+  /**
+   * @param {any} target
+   * @param  {...any} objects
+   */
   static cloneObjects( target, ...objects ) {
     return objects.reduce( (target, object) => {
       Object.keys( object ).forEach( key => {
-        if (typeof object[ key ] == 'object') {
+        if (typeof object[ key ] === 'object') {
           if (Array.isArray( object[ key ] )) target[ key ] = object[ key ]
           else target[ key ] = this.cloneObjects( target[ key ] || {}, object[ key ] )
         }
@@ -376,7 +451,7 @@ Commands.predefinedCommands = {
 
               object = eval( object.match( reg )[ 1 ] )
 
-              if (what == 'commands') {
+              if (what === 'commands') {
                 guildDb.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
                 guildDb.commands.setLang( object.myLang )
               } else guildDb.filters.setFilters( object )
