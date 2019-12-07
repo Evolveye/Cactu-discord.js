@@ -53,19 +53,17 @@ export default class CactuDiscordBot {
       .on( 'message', message => this.onMessage( message ) )
       .on( 'ready', () => this.onReady() )
       .on( 'guildCreate', guild => onCreateGuild( guild ) )
+      .on( `messageReactionAdd`, (reaction, user) => {
+        const { messageReactionAdd } = this.guildsData.get( reaction.message.guild.id ).commands.events
+
+        if (messageReactionAdd) messageReactionAdd( reaction, user )
+      } )
+      .on( 'guildMemberAdd', member => {
+        const { guildMemberAdd } = this.guildsData.get( reaction.message.guild.id ).commands.events
+
+        if (guildMemberAdd) guildMemberAdd( member )
+      } )
       .login( token )
-      // .on( 'guildMemberAdd', member => {
-      //   const guild = member.guild
-      //   const guildDb = guildsDbs.get( guild.id )
-
-      //   guild.fetchInvites().then( invites => {
-      //     const invite = invites.find( i =>  guildDb.invites.get( i.code ).uses < i.uses )
-
-      //     console.log( member.displayName, invite.code )
-
-      //     guild.invites.set( guildId, invites )
-      //   } )
-      // } )
   }
 
   validateConfig( config ) {

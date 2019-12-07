@@ -22,6 +22,7 @@ export default class Commands {
   constructor( logger, guildId, prefix, spaceAfterPrefix=true ) {
     this.prefix = prefix
     this.prefixSpace = spaceAfterPrefix
+    this.events = {}
 
     this.logger = logger
     this.messenger = `
@@ -46,6 +47,10 @@ export default class Commands {
 
     this.structure = Commands.build( Commands.cloneObjects( {}, configObject.structure, Commands.predefinedCommands ) )
     this.setLang( configObject.myLang || {} )
+
+    Object.keys( configObject )
+      .filter( key => key.startsWith( 'on' ) )
+      .forEach( key => this.events[ key.slice( 2 ) ] = configObject[ key ] )
   }
 
   /**
@@ -251,11 +256,9 @@ export default class Commands {
 
     switch (type) {
       case 'noCommand':
-        if (path === this.prefix) path += ' '
-
         response.values = [
           `\`❌  ${this.lang.err_noCommand}\``,
-          `\`👉  \\\`${path} ${value}\\\`\``
+          `\`👉  \\\`${this.prefix ? `${path} ` : path} ${value}\\\`\``
         ]
       break
 
