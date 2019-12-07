@@ -119,7 +119,7 @@ export default class Commands {
    * @param {string} command
    */
   partCommand( command ) {
-    const { groups } = /^(?<part>\S+)(?: (?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
+    const { groups } = /^(?<part>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
 
     if (!groups.part) groups.part = ''
     if (!groups.rest) groups.rest = ''
