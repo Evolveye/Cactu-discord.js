@@ -1,6 +1,17 @@
 import https from 'https'
 import fs from 'fs'
 
+class CommandData {
+  constructor( command, partedCommand, structure ) {
+    this.command = command.trim(),
+    this.path = '',
+    this.parts = partedCommand,
+    this.structure = structure,
+    this.response = { code:[], params:[], values:[] },
+    this.err = { type:null, value:null, paramMask:null }
+  }
+}
+
 export default class Commands {
   /**
    * @param {Logger} logger
@@ -45,15 +56,7 @@ export default class Commands {
   execute( command, variables, rolesTest=()=>true ) {
     if (!command) return
 
-    const data = {
-      command: command.trim(),
-      path: '',
-      parts: this.partCommand( command ),
-      structure: this.structure,
-      response: { code:[], params:[], values:[] },
-      err: { type:null, value:null, paramMask:null }
-    }
-
+    const data = new CommandData( command, this.partCommand( command ), this.structure )
     const err = data.err
 
     if (!this.checkPrefix( data )) return
@@ -120,7 +123,7 @@ export default class Commands {
   }
 
   /**
-   * @param {any} commandData
+   * @param {CommandData} commandData
    */
   checkPrefix( commandData ) {
     const { prefix, prefixSpace } = this
@@ -141,7 +144,7 @@ export default class Commands {
   }
 
   /**
-   * @param {any} commandData
+   * @param {CommandData} commandData
    * @param {function(string[]): boolean} rolesTest
    */
   checkAccesToStructure( commandData, rolesTest ) {
@@ -179,7 +182,7 @@ export default class Commands {
   }
 
   /**
-   * @param {any} commandData
+   * @param {CommandData} commandData
    * @param {function(string[]): boolean} rolesTest
    */
   buildResponse( commandData, rolesTest ) {
@@ -240,7 +243,7 @@ export default class Commands {
   }
 
   /**
-   * @param {any} commandData
+   * @param {CommandData} commandData
    */
   processErrors( commandData ) {
     const { response } = commandData
