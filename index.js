@@ -54,12 +54,20 @@ export default class CactuDiscordBot {
       .on( 'ready', () => this.onReady() )
       .on( 'guildCreate', guild => onCreateGuild( guild ) )
       .on( `messageReactionAdd`, (reaction, user) => {
-        const { messageReactionAdd } = this.guildsData.get( reaction.message.guild.id ).commands.events
+        const { guild } = reaction.message
+
+        if (!guild) return
+
+        const { messageReactionAdd } = this.guildsData.get( guild.id ).commands.events
 
         if (messageReactionAdd) messageReactionAdd( reaction, user )
       } )
       .on( 'guildMemberAdd', member => {
-        const { guildMemberAdd } = this.guildsData.get( reaction.message.guild.id ).commands.events
+        const { guild } = reaction.message
+
+        if (!guild) return
+
+        const { guildMemberAdd } = this.guildsData.get( guild.id ).commands.events
 
         if (guildMemberAdd) guildMemberAdd( member )
       } )
@@ -110,7 +118,7 @@ export default class CactuDiscordBot {
     this.evalVars.message = message
     this.evalVars.guildData = guildData
 
-    cmds.convert( `${cmds.prefix}${cmds.prefixSpace ?  ' ' : ''}${command}`, this.evalVars )
+    cmds.execute( `${cmds.prefix}${cmds.prefixSpace ?  ' ' : ''}${command}`, this.evalVars )
   }
 
   log( string ) {
