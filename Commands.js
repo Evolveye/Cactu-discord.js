@@ -246,23 +246,23 @@ export default class Commands {
    * @param {CommandData} commandData
    */
   processErrors( commandData ) {
-    const { response } = commandData
+    const { response, path } = commandData
     const { type, value, paramMask } = commandData.err
 
     switch (type) {
       case 'noCommand':
-        if (commandPath === this.prefix) commandPath += ' '
+        if (path === this.prefix) path += ' '
 
         response.values = [
           `\`❌  ${this.lang.err_noCommand}\``,
-          `\`👉  \\\`${commandPath} ${value}\\\`\``
+          `\`👉  \\\`${path} ${value}\\\`\``
         ]
       break
 
       case 'badRole':
         response.values = [
           `\`❌  ${this.lang.err_badRole}\``,
-          `\`👉  ${commandPath}\``
+          `\`👉  ${path}\``
         ]
       break
 
