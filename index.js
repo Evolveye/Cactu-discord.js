@@ -27,6 +27,8 @@ export default class CactuDiscordBot {
     this.spamConfig = spamConfig
     this.botOperatorId = null
     this.client = new Discord.Client
+
+    /** @type {Map<string,GuildData>} */
     this.guildsData = new Map
 
     // Command:  Evolveye: cc! log message
@@ -122,9 +124,11 @@ export default class CactuDiscordBot {
 
   onMessage( message ) {
     const { guild, content, author, member, channel } = message
-    const guildData = this.guildsData.get( guild.id )
 
     if (!guild) return
+
+    const guildData = this.guildsData.get( guild.id )
+
     if ('roleId' in this.spamConfig) this.testSpam( message, guildData )
     if (author.bot) return
 
@@ -132,7 +136,7 @@ export default class CactuDiscordBot {
     this.evalVars.guildData = guildData
 
     guildData.filters.catch( content, this.evalVars )
-    guildData.commands.convert( content, this.evalVars, roles => {
+    guildData.commands.execute( content, this.evalVars, roles => {
       if (channel.type === 'dm') return false
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
 
