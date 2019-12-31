@@ -487,6 +487,15 @@ Commands.predefinedCommands = {
         $.bot.botOperatorId = role.id
         $.message.channel.send( "✅ Bot operator has been setted successfully set" )
       } else $.message.channel.send( "❌ That role doesn't exists" )
+    },
+    getConfigFile( r=`Owner`, p={ what:/c|commands|f|filters/ }, d=`Get file with commands or filters` ) {
+      let configFileName = `${fs.realpathSync( '.' )}/guilds_config/${m.guild.id}-${/c|commands/.test( what ) ? 'commands' : 'filters'}`
+
+      if (fs.existsSync( `${configFileName}.js` )) configFileName += '.js'
+      else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += '.mjs'
+      else configFileName = ''
+
+      m.channel.send( { files:[ configFileName ] } )
     }
   }
 }
