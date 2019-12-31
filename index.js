@@ -140,6 +140,7 @@ export default class CactuDiscordBot {
 
     this.evalVars.message = message
     this.evalVars.guildData = guildData
+    this.evalVars.vars = guildData.userScope
 
     guildData.filters.catch( content, this.evalVars )
     guildData.commands.execute( content, this.evalVars, roles => {
