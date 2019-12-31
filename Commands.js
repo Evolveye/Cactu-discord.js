@@ -77,9 +77,10 @@ export default class Commands {
       Commands.eval( `( (${params.join( ',' )}) => {${code}} )(${values.join( ',' )})`, variables )
 
       this.logger( 'Commands', ':', variables.message.member.displayName, ':', command )
-    }
-    catch {
-      variables.message.channel.send( this.lang.err_invalidCommand )
+    } catch ( error ) {
+      const errorMessage = typeof error === 'string' ? error : this.lang.err_invalidCommand
+
+      variables.sendStatus( `${errorMessage}`, 'error' )
     }
   }
 
@@ -88,7 +89,7 @@ export default class Commands {
    */
   setLang( langPack ) {
     this.lang = {
-      err_invalidCommand: langPack.err_invalidCommand || "❌ That command have invalid code!",
+      err_invalidCommand: langPack.err_invalidCommand || "That command have invalid code!",
       err_noCommand:      langPack.err_noCommand      || "Command doesn't exists",
       err_badParam:       langPack.err_badParam       || "Not valid parameter",
       err_noParam:        langPack.err_noParam        || "You didn't write required parameters",
@@ -100,7 +101,7 @@ export default class Commands {
       $_loadCommands:     langPack.$_loadCommands     || "Load the commands from attachment",
       // $_loadFilters:   langPack.$_loadFilters      || "Load the filters from attachment",
       $_loadSucces:       langPack.$_loadSucces       || "✅ File has been loaded",
-      $_loadFail:         langPack.$_loadFail         || "❌ Wrong file data!",
+      $_loadFail:         langPack.$_loadFail         || "Wrong file data!",
       // $_close:         langPack.$_close            || "Securely close the bot`
     }
   }
@@ -449,8 +450,9 @@ Commands.predefinedCommands = {
           res.pipe( file ).on( 'finish', () => {
             file.close()
 
-            const object = fs.readFileSync( fileName, 'utf8' )
             const { guildData } = $
+
+            let object = fs.readFileSync( fileName, 'utf8' )
 
             try {
               if (!reg.test( object )) throw ''
@@ -462,38 +464,32 @@ Commands.predefinedCommands = {
                 guildData.commands.setLang( object.myLang )
               } else guildData.filters.setFilters( object )
 
-              $.message.channel.send( guildData.commands.lang.$_loadSucces )
+              $.sendStatus( guildData.commands.lang.$_loadSucces )
             }
             catch (err) {
-              $.message.channel.send( guildData.commands.lang.$_loadFail )
+              $.sendStatus( `${guildData.commands.lang.$_loadFail}\n\n${err}`, 'error' )
               fs.unlink( fileName, () => {} )
-
-              console.log( 'ERROR', guildId, '->', err )
             }
           } )
         } )
       }
     },
     botOperator( r='Owner', p={ roleName:'???' }, d='Set the role which will have owner permissions for bot' ) {
-      if (!roleName) {
-        $.bot.botOperatorId = null
+      if (!roleName) return $.bot.botOperatorId = null
 
-        return
-      }
-
-      const role = $.message.guild.roles.find( 'name', roleName )
+      const role = $.message.guild.roles.find( r => r.name === role.name )
 
       if (role) {
         $.bot.botOperatorId = role.id
-        $.message.channel.send( "✅ Bot operator has been setted successfully set" )
-      } else $.message.channel.send( "❌ That role doesn't exists" )
+        $.sendStatus( 'Bot operator has been setted successfully' )
+      } else throw "That role doesn't exists"
     },
     getConfigFile( r=`Owner`, p={ what:/c|commands|f|filters/ }, d=`Get file with commands or filters` ) {
       let configFileName = `${fs.realpathSync( '.' )}/guilds_config/${m.guild.id}-${/c|commands/.test( what ) ? 'commands' : 'filters'}`
 
       if (fs.existsSync( `${configFileName}.js` )) configFileName += '.js'
       else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += '.mjs'
-      else return m.channel.send( "❌ That guild doesn't have the config file" )
+      else throw "That guild doesn't have the config file"
 
       m.channel.send( { files:[ configFileName ] } )
     }

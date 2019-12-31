@@ -19,12 +19,13 @@ export default class CactuDiscordBot {
   constructor( config ) {
     this.validateConfig( config )
 
-    const { prefix, prefixSpace, spamConfig, evalVars, token } = config
+    const { prefix, prefixSpace, spamConfig, evalVars, token, signs } = config
 
     this.prefix = prefix
     this.prefixSpace = prefixSpace
     this.evalVars = evalVars
     this.spamConfig = spamConfig
+    this.signs = signs
     this.botOperatorId = null
     this.client = new Discord.Client
 
@@ -79,10 +80,14 @@ export default class CactuDiscordBot {
     if (!('prefixSpace' in config)) config.prefixSpace = true
     if (!('spamConfig' in config)) config.spamConfig = {}
     if (!('evalVars' in config)) config.evalVars = {}
+    if (!('signs' in config)) config.signs = {}
+
+    config.signs = Object.assign( {}, config.signs, { error:'❌', warn:'⚠️', ok:'✅' } )
 
     config.evalVars.message = null
     config.evalVars.guildData = null
     config.evalVars.evalCmd = (message, command) => this.evalCmd( message, command )
+    config.evalVars.sendStatus = (message, status='ok') => this.sendStatus( message, status )
   }
 
   testSpam( message, guildData ) {
@@ -111,14 +116,24 @@ export default class CactuDiscordBot {
     user.lastMessageTime = Date.now()
   }
 
-  evalCmd( message, command ) {
-    const guildData = this.guildsData.get( message.guild.id )
-    const cmds = guildData.commands
+  /** Send message with sign on start
+   * @param {string} status guild command without prefix
+   */
+  evalCmd( command ) {
+    const message = this.evalVars.message
+    const cmds = this.guildsData.get( message.guild.id ).commands
 
-    this.evalVars.message = message
-    this.evalVars.guildData = guildData
+    cmds.execute( `${cmds.prefix}${cmds.prefixSpace ? ' ' : ''}${command}`, this.evalVars )
+  }
 
-    cmds.execute( `${cmds.prefix}${cmds.prefixSpace ?  ' ' : ''}${command}`, this.evalVars )
+  /** Send message with sign on start
+   * @param {Discord.Message} message
+   * @param {"error"|"warn"|"ok"} status
+   */
+  sendStatus( message, status='ok' ) {
+    const sign = status in this.signs ? this.signs[ status ] : `ok`
+
+    this.evalVars.message.channel.send( `${sign}  ${message}` )
   }
 
   log( string ) {
@@ -128,6 +143,9 @@ export default class CactuDiscordBot {
   /* *
    * Events below */
 
+  /** New message event handler
+   * @param {Discord.Message} message
+   */
   onMessage( message ) {
     const { guild, content, author, member, channel } = message
 
@@ -148,7 +166,7 @@ export default class CactuDiscordBot {
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
 
       for (const role of roles) {
-        const roleObject = guild.roles.find( 'name', role )
+        const roleObject = guild.roles.find( r => r.name === role.name )
         const havingARole = roleObject ? member.roles.has( roleObject.id ) : false
 
         if (havingARole) return true
