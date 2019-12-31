@@ -449,8 +449,8 @@ Commands.predefinedCommands = {
           res.pipe( file ).on( 'finish', () => {
             file.close()
 
-            let object = fs.readFileSync( fileName, 'utf8' )
-            let guildDb = $.bot.guildsDbs.get( guildId )
+            const object = fs.readFileSync( fileName, 'utf8' )
+            const { guildData } = $
 
             try {
               if (!reg.test( object )) throw ''
@@ -458,14 +458,14 @@ Commands.predefinedCommands = {
               object = eval( object.match( reg )[ 1 ] )
 
               if (what === 'commands') {
-                guildDb.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
-                guildDb.commands.setLang( object.myLang )
-              } else guildDb.filters.setFilters( object )
+                guildData.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
+                guildData.commands.setLang( object.myLang )
+              } else guildData.filters.setFilters( object )
 
-              $.message.channel.send( guildDb.commands.lang.$_loadSucces )
+              $.message.channel.send( guildData.commands.lang.$_loadSucces )
             }
             catch (err) {
-              $.message.channel.send( guildDb.commands.lang.$_loadFail )
+              $.message.channel.send( guildData.commands.lang.$_loadFail )
               fs.unlink( fileName, () => {} )
 
               console.log( 'ERROR', guildId, '->', err )
@@ -493,7 +493,7 @@ Commands.predefinedCommands = {
 
       if (fs.existsSync( `${configFileName}.js` )) configFileName += '.js'
       else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += '.mjs'
-      else configFileName = ''
+      else return m.channel.send( "❌ That guild doesn't have the config file" )
 
       m.channel.send( { files:[ configFileName ] } )
     }
