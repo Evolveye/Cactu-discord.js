@@ -64,13 +64,20 @@ export default class CactuDiscordBot {
         if (messageReactionAdd) messageReactionAdd( reaction, user )
       } )
       .on( 'guildMemberAdd', member => {
-        const { guild } = reaction.message
+        const { guild } = member
 
         if (!guild) return
 
-        const { guildMemberAdd } = this.guildsData.get( guild.id ).commands.events
+        const guildData = this.guildsData.get( guild.id )
+        const { guildMemberAdd } = guildData.commands.events
 
-        if (guildMemberAdd) guildMemberAdd( member )
+        guild.fetchInvites().then( invites => {
+          if (guildMemberAdd) try {
+            guildMemberAdd( member, invites.find( i => guildData.invites.get( i.code ).uses < i.uses ) )
+          } catch {
+            this.logger( 'Bot', ':', `onGuildMemberAdd command error` )
+          }
+        } )
       } )
       .login( token )
   }
