@@ -5,6 +5,7 @@ import Filters from './Filters.js'
 import Commands from './Commands.js'
 import Logger from "./Logger.js"
 
+export const LoggerClass = Logger
 export class GuildData {
   constructor( logger, id, prefix, prefixSpace ) {
     this.commands = new Commands( logger, id, prefix, prefixSpace )
