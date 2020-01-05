@@ -30,14 +30,14 @@ export default class Filters {
 
       d.regExps.push( conditions[ 0 ] )
       d.code += ''
-        + `\n if (${conditions[ 0 ]}.test( message )) {`
+        + `\n if (${conditions[ 0 ]}.test( m )) {`
         + `\n   ${funcCode( filter[ conditions.shift() ] )}`
         + '\n }'
 
       for (const condition of conditions) {
         d.regExps.push( condition )
         d.code += '\n'
-          + `\n else if (${condition}.test( message )) {`
+          + `\n else if (${condition}.test( m )) {`
           + `\n   ${funcCode( filter[ condition ] )}`
           + '\n }'
       }
@@ -46,23 +46,25 @@ export default class Filters {
     }
 
     d.code += ''
-      + '\n if (matched)'
-      + '\n   throw ""'
+      + '\n if (matched) throw ""'
   }
 
   catch( content, variables ) {
-    const m = variables.message
-    const author = m.member.displayName
+    const author = variables.message.member.displayName
 
     try {
-      Filters.eval( `( function(){ ${this.data.code} }() )`, content, variables )
-    } catch (err) {
-      if (err == '')  this.logger( 'Filters', ':', author, ':', content )
-      else m.channel.send( '❌ Filters error!' )
+      Filters.eval( `( function(){ ${this.data.code} }() )`, variables )
+    } catch (error) {
+      if (typeof error === 'string') {
+        this.logger( 'Filters', ':', author, ':', content )
+
+        if (error != ``) variables.sendStatus( error, 'error' )
+      } else variables.sendStatus( 'Filters error!', 'error' )
     }
   }
 
-  static eval( code, message, $ ) {
+  static eval( code, $ ) {
+    const m = $.message
     eval( code )
   }
 }
