@@ -173,7 +173,7 @@ export default class CactuDiscordBot {
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
 
       for (const role of roles) {
-        const roleObject = guild.roles.find( r => r.name === role.name )
+        const roleObject = guild.roles.find( r => r.name === role )
         const havingARole = roleObject ? member.roles.has( roleObject.id ) : false
 
         if (havingARole) return true

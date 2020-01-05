@@ -171,7 +171,10 @@ export default class Commands {
       path += ` ${part}`
       structure = structure[ part ]
 
-      if (structure[ '@code' ]) break
+      if (structure[ '@code' ]) {
+        if (!rolesTest( structure[ '@roles' ] )) this.setError( err, 'badRole' )
+        break
+      }
       else if (!structure[ '@roles' ].includes( 'Anyone' ) && !rolesTest( structure[ '@roles' ] )) {
         this.setError( err, 'badRole' )
         break
@@ -477,7 +480,7 @@ Commands.predefinedCommands = {
     botOperator( r='Owner', p={ roleName:'???' }, d='Set the role which will have owner permissions for bot' ) {
       if (!roleName) return $.bot.botOperatorId = null
 
-      const role = $.message.guild.roles.find( r => r.name === role.name )
+      const role = $.message.guild.roles.find( r => r.name === role )
 
       if (role) {
         $.bot.botOperatorId = role.id
