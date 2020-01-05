@@ -85,6 +85,9 @@ export default class CactuDiscordBot {
       .login( token ).catch( () => this.logError( `loginFailed`, `I can't login in` ) )
   }
 
+  /**
+   * @param {any} config
+   */
   validateConfig( config ) {
     if (!('prefix' in config)) config.prefix = 'cc!'
     if (!('prefixSpace' in config)) config.prefixSpace = true
@@ -100,6 +103,10 @@ export default class CactuDiscordBot {
     config.evalVars.sendStatus = (message, status='ok') => this.sendStatus( message, status )
   }
 
+  /**
+   * @param {Discord.Message} message
+   * @param {GuildData} guildData
+   */
   testSpam( message, guildData ) {
     const s = this.spamConfig
 
@@ -146,11 +153,18 @@ export default class CactuDiscordBot {
     this.evalVars.message.channel.send( `${sign}  ${message}` )
   }
 
+  /** if error was not previously logged, do it
+   * @param {string} title
+   * @param {string} message
+   */
   logError( title, message ) {
     if (!this.loggedErrors.includes( title )) this.log( message )
     else this.loggedErrors.push( title )
   }
 
+  /**
+   * @param {string} string
+   */
   log( string ) {
     this.logger( 'Bot', ':', string )
   }
@@ -198,6 +212,9 @@ export default class CactuDiscordBot {
     this.client.user.setActivity( this.prefix, { type:'WATCHING' } )
   }
 
+  /**
+   * @param {Discord.Guild} guild
+   */
   onCreateGuild( guild ) {
     this.guildsData.set( guild.id, new GuildData( this.messageDataLogger, guild.id, this.prefix, this.prefixSpace ) )
 
