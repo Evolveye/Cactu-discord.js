@@ -30,6 +30,8 @@ export default class CactuDiscordBot {
     this.botOperatorId = null
     this.client = new Discord.Client
 
+    this.loggedErrors = []
+
     /** @type {Map<string,GuildData>} */
     this.guildsData = new Map
 
@@ -80,7 +82,7 @@ export default class CactuDiscordBot {
           }
         } )
       } )
-      .login( token )
+      .login( token ).catch( () => this.logError( `loginFailed`, `I can't login in` ) )
   }
 
   validateConfig( config ) {
@@ -144,6 +146,11 @@ export default class CactuDiscordBot {
     this.evalVars.message.channel.send( `${sign}  ${message}` )
   }
 
+  logError( title, message ) {
+    if (!this.loggedErrors.includes( title )) this.log( message )
+    else this.loggedErrors.push( title )
+  }
+
   log( string ) {
     this.logger( 'Bot', ':', string )
   }
@@ -194,6 +201,8 @@ export default class CactuDiscordBot {
   onCreateGuild( guild ) {
     this.guildsData.set( guild.id, new GuildData( this.messageDataLogger, guild.id, this.prefix, this.prefixSpace ) )
 
-    guild.fetchInvites().then( invites => this.guildsData.get( guild.id ).invites = invites )
+    guild.fetchInvites()
+      .then( invites => this.guildsData.get( guild.id ).invites = invites )
+      .catch( () => this.logError( `fetchInvites`, `I don't have permissions to read invites` ) )
   }
 }
