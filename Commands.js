@@ -171,11 +171,12 @@ export default class Commands {
       path += ` ${part}`
       structure = structure[ part ]
 
+      const roles = structure[ '@roles' ]
+
       if (structure[ '@code' ]) {
-        if (!rolesTest( structure[ '@roles' ] )) this.setError( err, 'badRole' )
+        if (!roles.includes( 'Anyone' ) && !rolesTest( roles )) this.setError( err, 'badRole' )
         break
-      }
-      else if (!structure[ '@roles' ].includes( 'Anyone' ) && !rolesTest( structure[ '@roles' ] )) {
+      } else if (!roles.includes( 'Anyone' ) && !rolesTest( roles )) {
         this.setError( err, 'badRole' )
         break
       }
@@ -262,7 +263,7 @@ export default class Commands {
       case 'noCommand':
         response.values = [
           `\`❌  ${this.lang.err_noCommand}\``,
-          `\`👉  \\\`${this.prefix ? `${path} ` : path} ${value}\\\`\``
+          `\`👉  \\\`${this.prefixSpace ? `${path} ` : path}${value}\\\`\``
         ]
       break
 
@@ -495,6 +496,23 @@ Commands.predefinedCommands = {
       else throw "That guild doesn't have the config file"
 
       m.channel.send( { files:[ configFileName ] } )
-    }
+    },
+    upload( r='Owner', d='Upload attached file' ) {
+      const attachment = $.message.attachments.first() || {}
+      const guildId = $.message.guild.id
+
+      if (!attachment.url) throw `No attached file`
+
+      const fileName = `${fs.realpathSync( '.' )}/guilds_config/${guildId}-${fileName}`
+      const file = fs.createWriteStream( fileName )
+
+      https.get( attachment.url, res => {
+        res.pipe( file ).on( 'finish', () => {
+          file.close()
+
+          $.sendStatus( `Done` )
+        } )
+      } )
+    },
   }
 }
