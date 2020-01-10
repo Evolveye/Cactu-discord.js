@@ -2,20 +2,32 @@
  * References for evaluation variables */
 
 import { Message } from "discord.js"
-import CactuDiscordBot from "./node_modules/cactu-discord.js.js"
+import { GuildData } from "cactu-discord.js"
 
+/** @type {Message} */
+const m = Message
 const $ = {
   /** Discord.Message instance
    * @type {Message} */
   message: {},
 
-  /** CactuBot instance
-   * @type {CactuDiscordBot} */
-  bot: {},
+  /** Guild data
+   * @type {GuildData} */
+  guildData: {},
 
-  /** Scope for variables
-   * @type {Any} */
-  db: {}
+  /** Scope for variables */
+  vars: {},
+
+  /** Send message with sign on start
+   * @param {string} status guild command without prefix
+   */
+  evalCmd( command ) {},
+
+  /** Send message with sign on start
+   * @param {String} message
+   * @param {"error"|"warn"|"ok"} status
+   */
+  sendStatus( message, status=`ok` ) {},
 }
 
 
@@ -23,14 +35,11 @@ const $ = {
  * And the filters below */
 
 ;[
-  { [/.+>{5,}.+/] () {
+  { [/.+>{5,}.+/]() {
     $.message.channel.send( `${$.message}\nBut what you want ¯\\\_(ツ)\_/¯` )
     $.message.delete()
   } },
-  { [/#num/i] () {
-    $.message.channel.send( $.numOfThatBoTRun ) // Variable from index.js
-  } },
-  { [/f[uvo]ck/i] () {
+  { [/f[uvo]ck/i]() {
     $.message.delete()
-  } /* Comma (and anything else) on the end (after next curly bracket) is forbidden! */ }
+  } }
 ]
