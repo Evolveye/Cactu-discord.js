@@ -50,7 +50,7 @@ export default class Commands {
 
     Object.keys( configObject )
       .filter( key => key.startsWith( 'on' ) )
-      .forEach( key => this.events[ key.slice( 2 ) ] = configObject[ key ] )
+      .forEach( key => this.events[ key.charAt( 2 ).toLowerCase() + key.slice( 3 ) ] = configObject[ key ] )
   }
 
   /**
@@ -466,6 +466,12 @@ Commands.predefinedCommands = {
               if (what === 'commands') {
                 guildData.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
                 guildData.commands.setLang( object.myLang )
+
+                const { events } = guildData.commands
+
+                Object.keys( object )
+                  .filter( key => key.startsWith( 'on' ) )
+                  .forEach( key => events[ key.charAt( 2 ).toLowerCase() + key.slice( 3 ) ] = object[ key ] )
               } else guildData.filters.setFilters( object )
 
               $.sendStatus( guildData.commands.lang.$_loadSucces )
