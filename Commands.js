@@ -2,7 +2,8 @@ import https from 'https'
 import fs from 'fs'
 
 class CommandData {
-  constructor( command, partedCommand, structure ) {
+  constructor( command, author, partedCommand, structure ) {
+    this.authorAvatarUrl = author.avatarURL
     this.command = command.trim(),
     this.path = '',
     this.parts = partedCommand,
@@ -29,7 +30,7 @@ export default class Commands {
       $.message.channel.send( {
         embed: { title, description, author, fields,
           color: 0x18d818,
-          footer: { text:footerText },
+          footer: { text:footerText, icon_url:authorAvatarUrl },
           timestamp: new Date(),
         }
       } )
@@ -62,10 +63,10 @@ export default class Commands {
    * @param {any} variables
    * @param {function(string[]): boolean} rolesTest
    */
-  execute( command, variables, rolesTest=()=>true ) {
+  execute( command, author, variables, rolesTest=()=>true ) {
     if (!command) return
 
-    const data = new CommandData( command, this.partCommand( command ), this.structure )
+    const data = new CommandData( command, author, this.partCommand( command ), this.structure )
     const err = data.err
 
     if (!this.checkPrefix( data )) return
@@ -76,7 +77,6 @@ export default class Commands {
 
     try {
       const { params, values, code } = data.response
-      console.log( `( (${params.join( ',' )}) => {} )(${values.join( ',' )})` )
 
       Commands.eval( `( (${params.join( ',' )}) => {${code}} )(${values.join( ',' )})`, variables )
 
@@ -102,7 +102,7 @@ export default class Commands {
       help_showMasks:     langPack.help_showMasks     || "Send **!!** as first parameter of command to show description and params syntax",
       help_params:        langPack.help_params        || "The X**?** means optional parameter and the **...**X means any string",
       help_checkMasks:    langPack.help_checkMasks    || "If you don't know what is going on, you can ask somebody from server stuff, or you can check \"masks\" on",
-      footer_yourCmds:    langPack.footer_yourCmds    || "These are your personalized commands after sending:",
+      footer_yourCmds:    langPack.footer_yourCmds    || "these are your personalized commands after sending:",
       footer_cmdsInfo:    langPack.footer_cmdsInfo    || "Commands information",
       $_loadCommands:     langPack.$_loadCommands     || "Load the commands from attachment",
       // $_loadFilters:   langPack.$_loadFilters      || "Load the filters from attachment",
@@ -223,15 +223,14 @@ export default class Commands {
         description += `\\\`\\\`\\\``
         description += `\n${lang.help_checkMasks} https://regexr.com/`
 
-
-
         response.code = this.messenger
-        response.params = [ `title`, `description`, `author`, `fields`, `footerText` ]
+        response.params = [ `title`, `description`, `author`, `fields`, `authorAvatarUrl`, `footerText` ]
         response.values = [
           `\`⚙ ${lang.help}: ${path}\``,
           `\`${description}\``,
           `"undefined"`,
           `[]`,
+          `null`,
           `\`${lang.footer_cmdsInfo} ${path}\``
         ]
       } else if (Commands.paramChecker( command, structure[ '@params' ], err )) {
@@ -285,15 +284,16 @@ export default class Commands {
       } else fields = [ ...fieldsSections.commands ]
 
       response.code = this.messenger
-      response.params = [ `title`, `description`, `author`, `fields`, `footerText` ]
+      response.params = [ `title`, `description`, `author`, `fields`, `authorAvatarUrl`, `footerText` ]
       response.values = [
         `\`⚙ ${lang.help}:\``,
         `\`${help.replace(/`/g, `\\\``)}\``,
         `${JSON.stringify( {
-          name: 'CodeCactu (niedługo z aktywnym nickiem)',
+          name: 'CodeCactu',
           icon_url: 'https://avatars2.githubusercontent.com/u/47976703?s=200&v=4'
         } )}`,
         `${JSON.stringify( fields )}`,
+        `\`${commandData.authorAvatarUrl}\``,
         `\`${lang.footer_yourCmds} ${pathWithSpace}\``
       ]
     }
@@ -313,6 +313,7 @@ export default class Commands {
           `\`> ${this.prefix ? `${path} ` : path} ${value}\``,
           `\`undefined\``,
           `[]`,
+          `null`,
           `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
@@ -323,6 +324,7 @@ export default class Commands {
           `\`>  ${path}\``,
           `\`undefined\``,
           `[]`,
+          `null`,
           `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
@@ -333,6 +335,7 @@ export default class Commands {
           `\`>  ${value}\``,
           `\`undefined\``,
           `[]`,
+          `null`,
           `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
@@ -343,13 +346,14 @@ export default class Commands {
           `\`>  ${value} \\\`${`${paramMask}`.replace( /\\/g, '\\\\' )}\\\`\``,
           `\`undefined\``,
           `[]`,
+          `null`,
           `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
     }
 
     response.code = this.messenger
-    response.params = [ `title`, `description`, `author`, `fields`, `footerText` ]
+    response.params = [ `title`, `description`, `author`, `fields`, `authorAvatarUrl`, `footerText` ]
   }
 
   /**

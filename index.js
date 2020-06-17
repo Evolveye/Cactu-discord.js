@@ -190,7 +190,7 @@ export default class CactuDiscordBot {
     this.evalVars.vars = guildData.userScope
 
     guildData.filters.catch( content, this.evalVars )
-    guildData.commands.execute( content, this.evalVars, roles => {
+    guildData.commands.execute( content, author, this.evalVars, roles => {
       if (channel.type === 'dm') return false
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
 
