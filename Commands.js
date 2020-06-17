@@ -30,9 +30,6 @@ export default class Commands {
         embed: { title, description, author, fields,
           color: 0x18d818,
           footer: { text:footerText },
-          thumbnail: {
-            url: 'https://discordapp.com/assets/a6d05968d7706183143518d96c9f066e.svg',
-          },
           timestamp: new Date(),
         }
       } )
@@ -75,11 +72,11 @@ export default class Commands {
 
     if (!err.type) this.checkAccesToStructure( data, rolesTest )
     if (!err.type) this.buildResponse( data, rolesTest )
-
     if (err.type) this.processErrors( data )
 
     try {
       const { params, values, code } = data.response
+      console.log( `( (${params.join( ',' )}) => {} )(${values.join( ',' )})` )
 
       Commands.eval( `( (${params.join( ',' )}) => {${code}} )(${values.join( ',' )})`, variables )
 
@@ -104,7 +101,9 @@ export default class Commands {
       help:               langPack.help               || "Help for a syntax of the specified command",
       help_showMasks:     langPack.help_showMasks     || "Send **!!** as first parameter of command to show description and params syntax",
       help_params:        langPack.help_params        || "The X**?** means optional parameter and the **...**X means any string",
+      help_checkMasks:    langPack.help_checkMasks    || "If you don't know what is going on, you can ask somebody from server stuff, or you can check \"masks\" on",
       footer_yourCmds:    langPack.footer_yourCmds    || "These are your personalized commands after sending:",
+      footer_cmdsInfo:    langPack.footer_cmdsInfo    || "Commands information",
       $_loadCommands:     langPack.$_loadCommands     || "Load the commands from attachment",
       // $_loadFilters:   langPack.$_loadFilters      || "Load the filters from attachment",
       $_loadSucces:       langPack.$_loadSucces       || "✅ File has been loaded",
@@ -202,14 +201,41 @@ export default class Commands {
    * @param {function(string[]): boolean} rolesTest
    */
   buildResponse( commandData, rolesTest ) {
-    const { command, structure, err, response } = commandData
+    const { command, structure, err, response, path } = commandData
     const { prefix, prefixSpace, lang } = this
 
     if ('@code' in structure) {
-      if (Commands.paramChecker( command, structure[ '@params' ], err )) {
-        response.code = structure[ '@code' ]
+      const params = structure[ '@params' ]
 
-        const params = structure[ '@params' ]
+      if (command && command.match( /[^ ]+/ )[ 0 ] == `!!`) {
+        console.log( 123 )
+        let description = structure[ '@desc' ]
+
+        description += `\n\\\`\\\`\\\``
+
+        for (const param of structure[ '@params' ] ) {
+          if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) description += `${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+          else if ('/^[\\s\\S]+/' === param.mask) description += `...${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+          else if ('/^[\\s\\S]*/' === param.mask) description += `...${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+          else description += `${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+        }
+
+        description += `\\\`\\\`\\\``
+        description += `\n${lang.help_checkMasks} https://regexr.com/`
+
+
+
+        response.code = this.messenger
+        response.params = [ `title`, `description`, `author`, `fields`, `footerText` ]
+        response.values = [
+          `\`⚙ ${lang.help}: ${path}\``,
+          `\`${description}\``,
+          `"undefined"`,
+          `[]`,
+          `\`${lang.footer_cmdsInfo} ${path}\``
+        ]
+      } else if (Commands.paramChecker( command, structure[ '@params' ], err )) {
+        response.code = structure[ '@code' ]
 
         for (const param of params) {
           response.params.push( param.name )
@@ -222,18 +248,16 @@ export default class Commands {
       }
     } else { // help builder
       const fieldsSections = { scopes:[], commands:[] }
-
-      let { path } = commandData
-      let help = ''
+      const pathWithSpace = path + (path !== prefix || prefixSpace ? ` ` : ``)
+      let help = ``
 
       if (path === prefix) help += `${lang.help_showMasks}\n${lang.help_params}`
-      if (path !== prefix || prefixSpace) path += ' '
 
       for (const fragment in structure) {
         const field = structure[ fragment ]
 
         if (fragment.charAt( 0 ) != '@' && (field[ '@roles' ].includes( 'Anyone' ) || rolesTest( field[ '@roles' ] ))) {
-          let name = `**${path}${fragment}**`
+          let name = `**${pathWithSpace}${fragment}**`
           let section = `scopes`
           let value = `- - -`
 
@@ -265,9 +289,12 @@ export default class Commands {
       response.values = [
         `\`⚙ ${lang.help}:\``,
         `\`${help.replace(/`/g, `\\\``)}\``,
-        `\`CodeCactu (*later with active link*)\``,
+        `${JSON.stringify( {
+          name: 'CodeCactu (niedługo z aktywnym nickiem)',
+          icon_url: 'https://avatars2.githubusercontent.com/u/47976703?s=200&v=4'
+        } )}`,
         `${JSON.stringify( fields )}`,
-        `\`${lang.footer_yourCmds} ${path}\``
+        `\`${lang.footer_yourCmds} ${pathWithSpace}\``
       ]
     }
   }
@@ -283,10 +310,10 @@ export default class Commands {
       case 'noCommand':
         response.values = [
           `\`❌  ${this.lang.err_noCommand}\``,
-          `\`> \\\`${this.prefix ? `${path} ` : path} ${value}\\\`\``,
-          undefined,
-          undefined,
-          `${this.lang.written}: ${command}`
+          `\`> ${this.prefix ? `${path} ` : path} ${value}\``,
+          `\`undefined\``,
+          `[]`,
+          `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
 
@@ -294,9 +321,9 @@ export default class Commands {
         response.values = [
           `\`❌  ${this.lang.err_badRole}\``,
           `\`>  ${path}\``,
-          undefined,
-          undefined,
-          `${this.lang.written}: ${command}`
+          `\`undefined\``,
+          `[]`,
+          `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
 
@@ -304,9 +331,9 @@ export default class Commands {
         response.values = [
           `\`❌  ${this.lang.err_badParam}\``,
           `\`>  ${value}\``,
-          undefined,
-          undefined,
-          `${this.lang.written}: ${command}`
+          `\`undefined\``,
+          `[]`,
+          `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
 
@@ -314,9 +341,9 @@ export default class Commands {
         response.values = [
           `\`❌  ${this.lang.err_noParam}\``,
           `\`>  ${value} \\\`${`${paramMask}`.replace( /\\/g, '\\\\' )}\\\`\``,
-          undefined,
-          undefined,
-          `${this.lang.written}: ${command}`
+          `\`undefined\``,
+          `[]`,
+          `\`${this.lang.footer_cmdsInfo}\``
         ]
       break
     }
