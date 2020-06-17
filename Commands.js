@@ -27,7 +27,14 @@ export default class Commands {
     this.logger = logger
     this.messenger = `
       $.message.channel.send( {
-        embed: { description, title, color: 0x00A000 }
+        embed: { title, description, author, fields,
+          color: 0x18d818,
+          footer: { text:footerText },
+          thumbnail: {
+            url: 'https://discordapp.com/assets/a6d05968d7706183143518d96c9f066e.svg',
+          },
+          timestamp: new Date(),
+        }
       } )
     `
 
@@ -50,7 +57,7 @@ export default class Commands {
 
     Object.keys( configObject )
       .filter( key => key.startsWith( 'on' ) )
-      .forEach( key => this.events[ key.charAt( 2 ).toLowerCase() + key.slice( 3 ) ] = configObject[ key ] )
+      .forEach( key => this.events[ key.slice( 2 ) ] = configObject[ key ] )
   }
 
   /**
@@ -77,10 +84,10 @@ export default class Commands {
       Commands.eval( `( (${params.join( ',' )}) => {${code}} )(${values.join( ',' )})`, variables )
 
       this.logger( 'Commands', ':', variables.message.member.displayName, ':', command )
-    } catch ( error ) {
+    } catch (error) {
       const errorMessage = typeof error === 'string' ? error : this.lang.err_invalidCommand
 
-      variables.sendStatus( `${errorMessage}`, 'error' )
+      variables.sendStatus( `${errorMessage} \n ${error}`, 'error' )
     }
   }
 
@@ -95,9 +102,9 @@ export default class Commands {
       err_noParam:        langPack.err_noParam        || "You didn't write required parameters",
       err_badRole:        langPack.err_badRole        || "You don't have permissions to use that!",
       help:               langPack.help               || "Help for a syntax of the specified command",
-      help_rest:          langPack.help_rest          || "Any string of characters",
-      help_scope:         langPack.help_scope         || "Subset of commands",
-      help_optional:      langPack.help_optional      || "Optional parameter",
+      help_showMasks:     langPack.help_showMasks     || "Send **!!** as first parameter of command to show description and params syntax",
+      help_params:        langPack.help_params        || "The X**?** means optional parameter and the **...**X means any string",
+      footer_yourCmds:    langPack.footer_yourCmds    || "These are your personalized commands after sending:",
       $_loadCommands:     langPack.$_loadCommands     || "Load the commands from attachment",
       // $_loadFilters:   langPack.$_loadFilters      || "Load the filters from attachment",
       $_loadSucces:       langPack.$_loadSucces       || "✅ File has been loaded",
@@ -171,12 +178,11 @@ export default class Commands {
       path += ` ${part}`
       structure = structure[ part ]
 
-      const roles = structure[ '@roles' ]
-
       if (structure[ '@code' ]) {
-        if (!roles.includes( 'Anyone' ) && !rolesTest( roles )) this.setError( err, 'badRole' )
+        if (!rolesTest( structure[ '@roles' ] )) this.setError( err, 'badRole' )
         break
-      } else if (!roles.includes( 'Anyone' ) && !rolesTest( roles )) {
+      }
+      else if (!structure[ '@roles' ].includes( 'Anyone' ) && !rolesTest( structure[ '@roles' ] )) {
         this.setError( err, 'badRole' )
         break
       }
@@ -215,40 +221,54 @@ export default class Commands {
         }
       }
     } else { // help builder
+      const fieldsSections = { scopes:[], commands:[] }
+
       let { path } = commandData
       let help = ''
 
-      if (path === prefix) help += ''
-        + `**[${lang.help_optional}]**: abc**?**\n`
-        + `**[${lang.help_rest}]**: ...abc\n`
-        + `**[${lang.help_scope}]** ...`
-
+      if (path === prefix) help += `${lang.help_showMasks}\n${lang.help_params}`
       if (path !== prefix || prefixSpace) path += ' '
 
-      for (const name in structure) {
-        const field = structure[ name ]
+      for (const fragment in structure) {
+        const field = structure[ fragment ]
 
-        if (name.charAt( 0 ) != '@' && (field[ '@roles' ].includes( 'Anyone' ) || rolesTest( field[ '@roles' ] ))) {
-          help += `\n\n**${path}${name}**`
+        if (fragment.charAt( 0 ) != '@' && (field[ '@roles' ].includes( 'Anyone' ) || rolesTest( field[ '@roles' ] ))) {
+          let name = `**${path}${fragment}**`
+          let section = `scopes`
+          let value = `- - -`
 
           if ('@code' in field) {
-            help += ':'
-
             for (const param of field[ '@params' ] ) {
-              if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) help += `  ${param.name}**?**`
-              else if ('/^[\\s\\S]+/' === param.mask) help += `  ...${param.name}`
-              else if ('/^[\\s\\S]*/' === param.mask) help += `  ...${param.name}**?**`
-              else help += `  ${param.name}`
+              if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) name += `   ${param.name}**?**`
+              else if ('/^[\\s\\S]+/' === param.mask) name += `   ...${param.name}`
+              else if ('/^[\\s\\S]*/' === param.mask) name += `   ...${param.name}**?**`
+              else name += `   ${param.name}`
             }
-          } else help += ' ...'
 
-          if ('@desc' in field) help += `\n   ${field[ '@desc' ].replace( /\n/g, '\n   ' )}`
+            section = `commands`
+          } else name += `...`
+
+          if ('@desc' in field) value = `${field[ '@desc' ].replace( /\n/g, '\n' )}`
+
+          fieldsSections[ section ].push( { name, value, inline:(section == `scopes`) } )
         }
       }
 
+      let fields = [ ...fieldsSections.commands ]
+
+      if (fieldsSections.scopes.length) {
+        fields = [ ...fieldsSections.scopes, { name:'\u200B', value:'\u200B' }, ...fieldsSections.commands ]
+      } else fields = [ ...fieldsSections.commands ]
+
       response.code = this.messenger
-      response.params = [ 'title', 'description' ]
-      response.values = [ `\`⚙ ${this.lang.help}:\``, `\`${help.replace(/`/g, `\\\``)}\`` ]
+      response.params = [ `title`, `description`, `author`, `fields`, `footerText` ]
+      response.values = [
+        `\`⚙ ${lang.help}:\``,
+        `\`${help.replace(/`/g, `\\\``)}\``,
+        `\`CodeCactu (*later with active link*)\``,
+        `${JSON.stringify( fields )}`,
+        `\`${lang.footer_yourCmds} ${path}\``
+      ]
     }
   }
 
@@ -263,34 +283,46 @@ export default class Commands {
       case 'noCommand':
         response.values = [
           `\`❌  ${this.lang.err_noCommand}\``,
-          `\`👉  \\\`${this.prefixSpace ? `${path} ` : path}${value}\\\`\``
+          `\`> \\\`${this.prefix ? `${path} ` : path} ${value}\\\`\``,
+          undefined,
+          undefined,
+          `${this.lang.written}: ${command}`
         ]
       break
 
       case 'badRole':
         response.values = [
           `\`❌  ${this.lang.err_badRole}\``,
-          `\`👉  ${path}\``
+          `\`>  ${path}\``,
+          undefined,
+          undefined,
+          `${this.lang.written}: ${command}`
         ]
       break
 
       case 'badParam':
         response.values = [
           `\`❌  ${this.lang.err_badParam}\``,
-          `\`👉  ${value}\``
+          `\`>  ${value}\``,
+          undefined,
+          undefined,
+          `${this.lang.written}: ${command}`
         ]
       break
 
       case 'noParam':
         response.values = [
           `\`❌  ${this.lang.err_noParam}\``,
-          `\`👉  ${value} \\\`${`${paramMask}`.replace( /\\/g, '\\\\' )}\\\`\``
+          `\`>  ${value} \\\`${`${paramMask}`.replace( /\\/g, '\\\\' )}\\\`\``,
+          undefined,
+          undefined,
+          `${this.lang.written}: ${command}`
         ]
       break
     }
 
-    response.params = [ 'title', 'description' ]
     response.code = this.messenger
+    response.params = [ `title`, `description`, `author`, `fields`, `footerText` ]
   }
 
   /**
@@ -466,12 +498,6 @@ Commands.predefinedCommands = {
               if (what === 'commands') {
                 guildData.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
                 guildData.commands.setLang( object.myLang )
-
-                const { events } = guildData.commands
-
-                Object.keys( object )
-                  .filter( key => key.startsWith( 'on' ) )
-                  .forEach( key => events[ key.charAt( 2 ).toLowerCase() + key.slice( 3 ) ] = object[ key ] )
               } else guildData.filters.setFilters( object )
 
               $.sendStatus( guildData.commands.lang.$_loadSucces )
