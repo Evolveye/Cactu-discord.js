@@ -210,20 +210,22 @@ export default class Commands {
       const params = structure[ '@params' ]
 
       if (command && command.match( /[^ ]+/ )[ 0 ] == `!!`) {
-        console.log( 123 )
+        const params = structure[ '@params' ]
         let description = structure[ '@desc' ]
 
-        description += `\n\\\`\\\`\\\``
+        if (params.length) {
+          description += `\n\\\`\\\`\\\``
 
-        for (const param of structure[ '@params' ] ) {
-          if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) description += `${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
-          else if ('/^[\\s\\S]+/' === param.mask) description += `...${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
-          else if ('/^[\\s\\S]*/' === param.mask) description += `...${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
-          else description += `${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+          for (const param of params) {
+            if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) description += `${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+            else if ('/^[\\s\\S]+/' === param.mask) description += `...${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+            else if ('/^[\\s\\S]*/' === param.mask) description += `...${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+            else description += `${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+          }
+
+          description += `\\\`\\\`\\\``
+          description += `\n${lang.help_checkMasks} https://regexr.com/`
         }
-
-        description += `\\\`\\\`\\\``
-        description += `\n${lang.help_checkMasks} https://regexr.com/`
 
         response.code = this.messenger
         response.params = [ `title`, `description`, `author`, `fields`, `authorAvatarUrl`, `footerText` ]
