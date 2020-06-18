@@ -211,7 +211,7 @@ export default class Commands {
 
       if (command && command.match( /[^ ]+/ )[ 0 ] == `!!`) {
         const params = structure[ '@params' ]
-        let description = structure[ '@desc' ]
+        let description = structure[ '@desc' ] || ``
 
         if (params.length) {
           description += `\n\\\`\\\`\\\``
