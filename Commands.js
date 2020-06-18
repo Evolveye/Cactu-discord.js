@@ -183,8 +183,7 @@ export default class Commands {
       if (structure[ '@code' ]) {
         if (!rolesTest( structure[ '@roles' ] )) this.setError( err, 'badRole' )
         break
-      }
-      else if (!structure[ '@roles' ].includes( 'Anyone' ) && !rolesTest( structure[ '@roles' ] )) {
+      } else if (!rolesTest( structure[ '@roles' ] )) {
         this.setError( err, 'badRole' )
         break
       }
@@ -258,7 +257,7 @@ export default class Commands {
       for (const fragment in structure) {
         const field = structure[ fragment ]
 
-        if (fragment.charAt( 0 ) != '@' && (field[ '@roles' ].includes( 'Anyone' ) || rolesTest( field[ '@roles' ] ))) {
+        if (fragment.charAt( 0 ) != '@' && rolesTest( field[ '@roles' ] )) {
           let name = `**${pathWithSpace}${fragment}**`
           let section = `scopes`
           let value = `- - -`

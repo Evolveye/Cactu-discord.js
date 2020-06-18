@@ -195,6 +195,7 @@ export default class CactuDiscordBot {
     guildData.commands.execute( content, this.evalVars, roles => {
       if (channel.type === 'dm') return false
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
+      if (roles.includes( 'Anyone' )) return true
 
       for (const role of roles) {
         const roleObject = guild.roles.find( r => r.name === role )
