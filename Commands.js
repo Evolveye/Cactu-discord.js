@@ -216,11 +216,14 @@ export default class Commands {
         if (params.length) {
           description += `\n\\\`\\\`\\\``
 
+
           for (const param of params) {
-            if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) description += `${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
-            else if ('/^[\\s\\S]+/' === param.mask) description += `...${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
-            else if ('/^[\\s\\S]*/' === param.mask) description += `...${param.name}?`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
-            else description += `${param.name}`.padStart( 15, ` ` ) + ` => ${param.mask}\n`
+            const paramStr = `${param.mask}`.replace( /\\/g, `\\\\` )
+
+            if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) description += `${param.name}?`.padStart( 15, ` ` ) + ` => ${paramStr}\n`
+            else if ('/^[\\s\\S]+/' == param.mask) description += `...${param.name}`.padStart( 15, ` ` ) + ` => ${paramStr}\n`
+            else if ('/^[\\s\\S]*/' == param.mask) description += `...${param.name}?`.padStart( 15, ` ` ) + ` => ${paramStr}\n`
+            else description += `${param.name}`.padStart( 15, ` ` ) + ` => ${paramStr}\n`
           }
 
           description += `\\\`\\\`\\\``
@@ -267,8 +270,8 @@ export default class Commands {
           if ('@code' in field) {
             for (const param of field[ '@params' ] ) {
               if (/^\/\^\(\?:[\S ]+\)\{0,1}\//.test( param.mask )) name += `   ${param.name}**?**`
-              else if ('/^[\\s\\S]+/' === param.mask) name += `   ...${param.name}`
-              else if ('/^[\\s\\S]*/' === param.mask) name += `   ...${param.name}**?**`
+              else if ('/^[\\s\\S]+/' == param.mask) name += `   ...${param.name}`
+              else if ('/^[\\s\\S]*/' == param.mask) name += `   ...${param.name}**?**`
               else name += `   ${param.name}`
             }
 
