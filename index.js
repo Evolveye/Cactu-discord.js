@@ -37,11 +37,13 @@ export default class CactuDiscordBot {
 
     // Command:  Evolveye: cc! log message
     this.messageDataLogger = new Logger( [
-      { align:'right', color:'fgBlue',   length:10 },  // /(Filter|Command)/
-      { length:3 },                                    // /:  /
-      { align:'right', color:'fgYellow', length:15 },  // /displayName/
-      { length:3 },                                    // /:  /
-      { splitLen:90, splitFLLen:65 },                  // /.*/
+      { align:'right',  color:'fgMagenta', length:30 }, // /(Filter|Command)/
+      { align:'center', color:'bright',    length:6 },  // /(Filter|Command)/
+      { align:'right',  color:'fgBlue',    length:10 }, // /(Filter|Command)/
+      { length:3 },                                     // /:  /
+      { align:'right',  color:'fgYellow',  length:15 }, // /displayName/
+      { length:3 },                                     // /:  /
+      { splitLen:200, splitFLLen:150 },                 // /.*/
     ] )
 
     // Bot:  message
@@ -56,7 +58,7 @@ export default class CactuDiscordBot {
     this.client
       .on( 'message', message => this.onMessage( message ) )
       .on( 'ready', () => this.onReady() )
-      .on( 'guildCreate', guild => onCreateGuild( guild ) )
+      .on( 'guildCreate', guild => this.onCreateGuild( guild ) )
       .on( `messageReactionAdd`, (reaction, user) => {
         const { guild } = reaction.message
 
@@ -190,7 +192,7 @@ export default class CactuDiscordBot {
     this.evalVars.vars = guildData.userScope
 
     guildData.filters.catch( content, this.evalVars )
-    guildData.commands.execute( content, author, this.evalVars, roles => {
+    guildData.commands.execute( content, this.evalVars, roles => {
       if (channel.type === 'dm') return false
       if (author.id === guild.ownerID || member.roles.has( this.botOperatorId )) return true
 

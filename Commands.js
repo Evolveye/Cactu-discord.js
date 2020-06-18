@@ -63,10 +63,10 @@ export default class Commands {
    * @param {any} variables
    * @param {function(string[]): boolean} rolesTest
    */
-  execute( command, author, variables, rolesTest=()=>true ) {
+  execute( command, variables, rolesTest=()=>true ) {
     if (!command) return
 
-    const data = new CommandData( command, author, this.partCommand( command ), this.structure )
+    const data = new CommandData( command, variables.message.author, this.partCommand( command ), this.structure )
     const err = data.err
 
     if (!this.checkPrefix( data )) return
@@ -80,7 +80,10 @@ export default class Commands {
 
       Commands.eval( `( (${params.join( ',' )}) => {${code}} )(${values.join( ',' )})`, variables )
 
-      this.logger( 'Commands', ':', variables.message.member.displayName, ':', command )
+      const guildName = variables.message.guild.name
+      const loggedGuildName = guildName.length > 30 ? `${guildName.slice( 0, 27 )}...` : guildName.slice( 0, 30 )
+
+      this.logger( loggedGuildName, `::`, `Commands`, `:`, variables.message.member.displayName, `:`, command )
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : this.lang.err_invalidCommand
 

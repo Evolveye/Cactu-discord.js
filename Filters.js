@@ -50,14 +50,14 @@ export default class Filters {
   }
 
   catch( content, variables ) {
-    const author = variables.message.member.displayName
-
     try {
       Filters.eval( `( function(){ ${this.data.code} }() )`, variables )
     } catch (error) {
       if (typeof error === 'string') {
-        this.logger( 'Filters', ':', author, ':', content )
+        const guildName = variables.message.guild.name
+        const loggedGuildName = guildName.length > 30 ? `${guildName.slice( 0, 27 )}...` : guildName.slice( 0, 30 )
 
+        this.logger( loggedGuildName, `::`, `Filters`, `:`, variables.message.member.displayName, `:`, content )
         if (error != ``) variables.sendStatus( error, 'error' )
       } else variables.sendStatus( 'Filters error!', 'error' )
     }
