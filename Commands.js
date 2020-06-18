@@ -521,6 +521,7 @@ Commands.predefinedCommands = {
             file.close()
 
             const { guildData } = $
+            const cmdsInstance = guildData.commands
 
             let object = fs.readFileSync( fileName, 'utf8' )
 
@@ -530,14 +531,18 @@ Commands.predefinedCommands = {
               object = eval( object.match( reg )[ 1 ] )
 
               if (what === 'commands') {
-                guildData.commands.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
-                guildData.commands.setLang( object.myLang )
+
+                cmdsInstance.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
+                cmdsInstance.setLang( object.myLang )
+
+                Object.keys( object )
+                  .filter( key => key.startsWith( 'on' ) )
+                  .forEach( key => cmdsInstance.events[ key.slice( 2 ) ] = object[ key ] )
               } else guildData.filters.setFilters( object )
 
-              $.sendStatus( guildData.commands.lang.$_loadSucces )
-            }
-            catch (err) {
-              $.sendStatus( `${guildData.commands.lang.$_loadFail}\n\n${err}`, 'error' )
+              $.sendStatus( cmdsInstance.lang.$_loadSucces )
+            } catch (err) {
+              $.sendStatus( `${cmdsInstance.lang.$_loadFail}\n\n${err}`, 'error' )
               fs.unlink( fileName, () => {} )
             }
           } )
