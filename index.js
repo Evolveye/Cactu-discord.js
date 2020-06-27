@@ -9,12 +9,24 @@ if (!fs.existsSync( `./guilds_modules/` )) fs.mkdirSync( `./guilds_modules/` )
 
 export const LoggerClass = Logger
 
-/**
- * @typedef {object} GuildModule
- * @property {object} translation
- * @property {object} filters
- * @property {object} commands
- */
+class GuildModule {
+  /**
+   * @property {object} translation
+   * @property {object} filters
+   * @property {object} commands
+   */
+  constructor( translation={}, filters={}, commands={} ) {
+    this.translation = translation
+    this.filters = filters
+    this.command = commands
+  }
+
+  include( { translation, filters, commands } ) {
+    this.translation = Object.assign( translation, this.translation )
+    this.commands = Object.assign( commands, this.commands )
+    this.filters = Object.assign( filters, this.filters )
+  }
+}
 
 class CommandData {
   /**
@@ -83,21 +95,21 @@ export default class CactuDiscordBot {
   signs = {}
 
   constructor( config ) {
-    if (  'prefix'      in config) this.prefix      = config.prefix
-    if (  'prefixSpace' in config) this.prefixSpace = config.prefixSpace
-    if (  'spamConfig'  in config) this.spamConfig  = config.spamConfig
-    if (  'evalVars'    in config) this.evalVars    = config.evalVars
-    if (  'signs'       in config) this.signs       = config.signs
+    if ('prefix'      in config) this.prefix      = config.prefix
+    if ('prefixSpace' in config) this.prefixSpace = config.prefixSpace
+    if ('spamConfig'  in config) this.spamConfig  = config.spamConfig
+    if ('evalVars'    in config) this.evalVars    = config.evalVars
+    if ('signs'       in config) this.signs       = config.signs
 
     const guilds = this.guildsData
 
     fs.readdirSync( `./guilds_modules` ).forEach( fileName => {
       const id = fileName.match( /(.*?)-(.*)/ )[ 1 ]
 
-      if (!guilds.has( id )) guilds.set( id, [] )
+      if (!guilds.has( id )) guilds.set( id, new GuildModule() )
 
       import( `./guilds_modules/${fileName}` )
-        .then( module => guilds.get( id ).push( module.default ) )
+        .then( module => guilds.get( id ).include( module.default ) )
         .catch( console.log )
     } )
 
@@ -185,14 +197,14 @@ export default class CactuDiscordBot {
     const guildData = this.guildsData.get( message.guild.id )
     const commandData = new CommandData( message )
 
-    if (!this.checkPrefix( commandData )) return
+    // if (!this.checkPrefix( commandData )) return
 
     // if (!err.type) this.checkAccesToStructure( commandData, structure )
     // if (!err.type) this.buildResponse( data )
 
     // if (err.type) this.processErrors( data )
 
-    // console.log( guildData )
+    console.log( guildData )
   }
 
   onReady = () => {
