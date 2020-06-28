@@ -30,21 +30,24 @@ class GuildModule {
   }
 
   normalizeCommands( commands ) {
-    const checkField = (field, property, surrogate) => {
+    const checkField = (field, property, surrogate, defaultVal) => {
       if (surrogate in field) {
         field[ property ] = field[ surrogate ]
 
         delete field[ surrogate ]
+      } else if (!(property in field)) {
+        field[ property ] = defaultVal
       }
     }
+
     for (const property in commands) {
       const field = commands[ property ]
 
-      checkField( field, `roles`, `r` )
-      checkField( field, `desc`, `d` )
+      checkField( field, `roles`, `r`, [] )
+      checkField( field, `desc`,  `d`, `` )
       checkField( field, `value`, `v` )
 
-      if (typeof field.value === `function`) checkField( field, `masks`, `m` )
+      if (typeof field.value === `function`) checkField( field, `masks`, `m`, [] )
       else this.normalizeCommands( field.value )
     }
   }
@@ -141,16 +144,18 @@ class CommandProcessor {
   }
 
   checkAccessToStructure( roleTesterFunction ) {
+    this.#scopeFromCommand = this.#commandsStructure
+
     if (!this.err.type) while (this.nextPart()) {
       const { err, parts:{ part } } = this
 
       if (err.type) return
 
-      if (!(part in this.#commandsStructure)) {
+      if (!(part in this.#scopeFromCommand)) {
         return this.setError( 'noCommand', this.command )
       }
 
-      const structPart = this.#commandsStructure[ part ]
+      const structPart = this.#scopeFromCommand[ part ]
 
       if (!roleTesterFunction( structPart.roles )) {
         return this.setError( 'badRole' )
@@ -170,6 +175,16 @@ class CommandProcessor {
     if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
 
     const { masks } = this.#scopeFromCommand
+    const paramAdder = paramString => {
+      const isParamValueNumber = /\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?/.test( paramString )
+
+      console.log( `"${paramString}"` )
+
+      this.#parameters.push( isParamValueNumber
+        ? Number( paramString.replace( /_/g, `` ) )
+        : paramString
+      )
+    }
 
     let params = this.#parts.rest
 
@@ -189,12 +204,20 @@ class CommandProcessor {
 
       const paramValue = mask.exec( params )[ 0 ] || null
 
-      if (paramValue) params = params.substr( paramValue.length ).trimLeft()
+      if (paramValue){
+        params = params.substr( paramValue.length ).trimLeft()
 
-      const isParamValueNumber = /\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?/.test( paramValue )
-
-      this.#parameters.push( isParamValueNumber ? Number( paramValue ) : paramValue )
+        paramAdder( paramValue )
+      }
     }
+
+    params.split( ` ` ).forEach( paramAdder )
+  }
+
+  execute() {
+    if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
+
+    this.#scopeFromCommand.value( ...this.#parameters )
   }
 
   process( prefixSpace, roleTesterFunction ) {
@@ -203,16 +226,17 @@ class CommandProcessor {
     this.checkPrefix( prefixSpace )
     this.checkAccessToStructure( roleTesterFunction )
     this.validateParams()
+    this.execute()
   }
 
   static funcData( func ) {
     const reg = {
       funcParter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
-      params: /\w+ *= *.+?(?=, *|$)/g
+      params: /\w+ *(?:= *.+?)?(?=, *|$)/g
     }
 
     const { params } = reg.funcParter.exec( func.toString() ).groups
-    const paramNames = params.match( reg.params )
+    const paramNames = params.match( reg.params ) || []
 
     return paramNames
   }
@@ -294,7 +318,7 @@ export default class CactuDiscordBot {
 
     commandProcessor.process( prefixSpace, this.checkPermissions )
 
-    console.log( commandProcessor.err, commandProcessor.parameters )
+    console.log( commandProcessor.err )
   }
 
   onReady = () => {
