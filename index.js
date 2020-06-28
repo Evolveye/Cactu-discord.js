@@ -9,11 +9,38 @@ if (!fs.existsSync( `./guilds_modules/` )) fs.mkdirSync( `./guilds_modules/` )
 
 export const LoggerClass = Logger
 
-class GuildModule {
+/**
+ * @typedef {Object<string,string>} GuildModuleTranslation
+ */
+
+/**
+ * @typedef {Object<string,function>} GuildModuleFilters
+ */
+
+/**
+ * @typedef {Object} GuildModuleCommandsField
+ * @property {string|string[]} roles
+ * @property {string} desc
+ * @property {RegExp[]} masks
+ * @property {function|GuildModuleCommands} value
+ */
+
+/**
+ * @typedef {Object<string,GuildModuleCommandsField} GuildModuleCommands
+ */
+
+/**
+ * @typedef {Object} GuildModule
+ * @property {GuildModuleTranslation} translation
+ * @property {GuildModuleFilters} filters
+ * @property {GuildModuleCommands} commands
+ */
+
+class GuildModules {
   /**
-   * @property {object} translation
-   * @property {object} filters
-   * @property {object} commands
+   * @param {GuildModuleTranslation} translation
+   * @param {GuildModuleFilters} filters
+   * @param {GuildModuleCommands} commands
    */
   constructor( translation={}, filters={}, commands={} ) {
     this.translation = translation
@@ -21,6 +48,9 @@ class GuildModule {
     this.command = commands
   }
 
+  /**
+   * @param {GuildModule} param0
+   */
   include( { translation, filters, commands } ) {
     this.normalizeCommands( commands )
 
@@ -29,6 +59,9 @@ class GuildModule {
     this.filters = Object.assign( filters, this.filters )
   }
 
+  /**
+   * @param {GuildModuleCommands} commands
+   */
   normalizeCommands( commands ) {
     const checkField = (field, property, surrogate, defaultVal) => {
       if (surrogate in field) {
@@ -54,19 +87,32 @@ class GuildModule {
 }
 
 class CommandProcessor {
+  /** @type {string[]} */
   #parameters = []
 
+  /** @type {GuildModuleCommands} */
   #commandsStructure = {}
+  /** @type {GuildModuleCommands|GuildModuleCommandsField} */
   #scopeFromCommand = {}
 
   #command = ``
   #prefix = ``
   #parts = { prev:``, part:``, rest:`` }
   #path = ''
+
+  /**
+   * @typedef {Object} CommandError
+   * @property {string|null} type
+   * @property {*} value
+   * @property {RegExp|null} paramMask
+  */
+ /** @type {CommandError} */
   #err = { type:null, value:null, paramMask:null }
 
   /**
-   * @param {Discord.Message} message
+   * @param {string} prefix
+   * @param {string} message
+   * @param {GuildModuleCommands>} commandsStructure
    */
   constructor( prefix, message, commandsStructure ) {
     this.#commandsStructure = commandsStructure
@@ -101,9 +147,9 @@ class CommandProcessor {
   }
 
   /**
-   * @param {any} err
-   * @param {string} type
-   * @param {string} value
+   * @param {string} [type]
+   * @param {*} [value]
+   * @param {RegExp} [value]
    */
   setError( type=null, value=null, paramMask=null ) {
     this.#err.type = type
@@ -143,6 +189,9 @@ class CommandProcessor {
     }
   }
 
+  /**
+   * @param {function} roleTesterFunction
+   */
   checkAccessToStructure( roleTesterFunction ) {
     this.#scopeFromCommand = this.#commandsStructure
 
@@ -222,6 +271,10 @@ class CommandProcessor {
     this.#scopeFromCommand.value( ...this.#parameters )
   }
 
+  /**
+   * @param {boolean} prefixSpace
+   * @param {function} roleTesterFunction
+   */
   process( prefixSpace, roleTesterFunction ) {
     const { err } = this
 
@@ -231,6 +284,9 @@ class CommandProcessor {
     this.execute()
   }
 
+  /**
+   * @param {function} func
+   */
   static funcData( func ) {
     const reg = {
       funcParter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
@@ -247,10 +303,10 @@ class CommandProcessor {
 export default class CactuDiscordBot {
   discordClient = new Discord.Client()
   botOperatorRole = ``
-  loggedErrors = []
-  publicVariables = {}
+  /** @type {Object<string,string>} */
+  publicVars = {}
 
-  /** @type {Map<string,GuildModule>} */
+  /** @type {Map<string,GuildModules>} */
   guildsData = new Map()
 
   moduleLogger = new Logger( [
@@ -270,15 +326,23 @@ export default class CactuDiscordBot {
 
   prefix = `cc!`
   prefixSpace = true
-  evalVars = {}
-  spamConfig = {}
   signs = {}
 
+  /**
+   * @typedef {Object} CactuDiscordBotConfig
+   * @property {string} token
+   * @property {string} [prefix]
+   * @property {boolean} [prefixSpace]
+   * @property {Object<string,*>} [publicVars]
+   * @property {{ok:string,warn:string,error:string}} [signs]
+   */
+  /**
+   * @param {CactuDiscordBotConfig} config
+   */
   constructor( config ) {
     if ('prefix'      in config) this.prefix      = config.prefix
     if ('prefixSpace' in config) this.prefixSpace = config.prefixSpace
-    if ('spamConfig'  in config) this.spamConfig  = config.spamConfig
-    if ('evalVars'    in config) this.evalVars    = config.evalVars
+    if ('publicVars'  in config) this.publicVars  = config.publicVars
     if ('signs'       in config) this.signs       = config.signs
 
     const guilds = this.guildsData
@@ -286,11 +350,11 @@ export default class CactuDiscordBot {
     fs.readdirSync( `./guilds_modules` ).forEach( fileName => {
       const id = fileName.match( /(.*?)-(.*)/ )[ 1 ]
 
-      if (!guilds.has( id )) guilds.set( id, new GuildModule() )
+      if (!guilds.has( id )) guilds.set( id, new GuildModules() )
 
       import( `./guilds_modules/${fileName}` )
         .then( module => typeof module.default === `function`
-          ? module.default( { ...this.publicVariables } )
+          ? module.default( { ...this.publicVars } )
           : module.default
         )
         .then( moduleObject => guilds.get( id ).include( moduleObject ) )
@@ -311,6 +375,9 @@ export default class CactuDiscordBot {
     this.botLogger( 'Bot', ':', string )
   }
 
+  /**
+   * @param {string[]} roleNames
+   */
   checkPermissions( roleNames ) {
     return true
   }
