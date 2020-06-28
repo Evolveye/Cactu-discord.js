@@ -9,28 +9,16 @@ if (!fs.existsSync( `./guilds_modules/` )) fs.mkdirSync( `./guilds_modules/` )
 
 export const LoggerClass = Logger
 
-/**
- * @typedef {Object<string,string>} GuildModuleTranslation
- */
-
-/**
- * @typedef {Object<string,function>} GuildModuleFilters
- */
-
-/**
- * @typedef {Object} GuildModuleCommandsField
+/** @typedef {Object<string,string>} GuildModuleTranslation */
+/** @typedef {Object<string,function>} GuildModuleFilters */
+/** @typedef {Object} GuildModuleCommandsField
  * @property {string|string[]} roles
  * @property {string} desc
  * @property {RegExp[]} masks
  * @property {function|GuildModuleCommands} value
  */
-
-/**
- * @typedef {Object<string,GuildModuleCommandsField} GuildModuleCommands
- */
-
-/**
- * @typedef {Object} GuildModule
+/** @typedef {Object<string,GuildModuleCommandsField} GuildModuleCommands */
+/** @typedef {Object} GuildModule
  * @property {GuildModuleTranslation} translation
  * @property {GuildModuleFilters} filters
  * @property {GuildModuleCommands} commands
@@ -86,6 +74,13 @@ class GuildModules {
   }
 }
 
+/** @typedef {"badParam"|"noCommand"|"noParam"|"noPerms"|"noPrefix"} CommandErrorType */
+/** @typedef {Object} CommandError
+ * @property {CommandErrorType} type
+ * @property {*} value
+ * @property {RegExp|null} paramMask
+*/
+
 class CommandProcessor {
   /** @type {string[]} */
   #parameters = []
@@ -100,13 +95,7 @@ class CommandProcessor {
   #parts = { prev:``, part:``, rest:`` }
   #path = ''
 
-  /**
-   * @typedef {Object} CommandError
-   * @property {string|null} type
-   * @property {*} value
-   * @property {RegExp|null} paramMask
-  */
- /** @type {CommandError} */
+  /** @type {CommandError} */
   #err = { type:null, value:null, paramMask:null }
 
   /**
@@ -147,9 +136,9 @@ class CommandProcessor {
   }
 
   /**
-   * @param {string} [type]
+   * @param {CommandErrorType} [type]
    * @param {*} [value]
-   * @param {RegExp} [value]
+   * @param {RegExp} [paramMask]
    */
   setError( type=null, value=null, paramMask=null ) {
     this.#err.type = type
@@ -180,12 +169,12 @@ class CommandProcessor {
     const { command, prefix } = this
     const firstWord = command.split( ` ` )[ 0 ]
 
-    if (!command.startsWith( prefix )) this.setError( 'noPrefix' )
+    if (!command.startsWith( prefix )) this.setError( `noPrefix` )
 
     if (prefixSpace) {
-      if (firstWord !== prefix) return this.setError( 'noPrefix' )
+      if (firstWord !== prefix) return this.setError( `noPrefix` )
     } else {
-      if (firstWord !== command) return this.setError( 'noPrefix' )
+      if (firstWord !== command) return this.setError( `noPrefix` )
     }
   }
 
@@ -201,13 +190,13 @@ class CommandProcessor {
       if (err.type) return
 
       if (!(part in this.#scopeFromCommand)) {
-        return this.setError( 'noCommand', this.command )
+        return this.setError( `noCommand`, this.command )
       }
 
       const structPart = this.#scopeFromCommand[ part ]
 
       if (!roleTesterFunction( structPart.roles )) {
-        return this.setError( 'badRole' )
+        return this.setError( `noPerms` )
       }
 
       if (typeof structPart.value === `function`) {
@@ -274,14 +263,15 @@ class CommandProcessor {
   /**
    * @param {boolean} prefixSpace
    * @param {function} roleTesterFunction
+   * @param {function} [errorHandlerFunction]
    */
-  process( prefixSpace, roleTesterFunction ) {
-    const { err } = this
-
+  process( prefixSpace, roleTesterFunction, errorHandlerFunction=null ) {
     this.checkPrefix( prefixSpace )
     this.checkAccessToStructure( roleTesterFunction )
     this.validateParams()
     this.execute()
+
+    if (this.#err.type && errorHandlerFunction) errorHandlerFunction( this.err )
   }
 
   /**
@@ -378,8 +368,37 @@ export default class CactuDiscordBot {
   /**
    * @param {string[]} roleNames
    */
-  checkPermissions( roleNames ) {
+  checkPermissions = roleNames => {
     return true
+  }
+
+  /**
+   * @param {CommandError} param0
+   * @param {GuildModuleTranslation} translation
+   * @param {Discord.Message} message
+   */
+  handleError({ type, value, paramMask }, translation, message) {
+    let title = `Unknown error`
+    let description = ``
+
+    switch (type) {
+      case `badParam`:
+        title = `You passed wrong parameter!`
+        break
+      case `noCommand`:
+        title = `That command doesn't exists!`
+        break
+      case `noParam`:
+        title = `That command require parameter!`
+        break
+      case `noPerms`:
+        title = `You don't have required permissions!`
+        break
+      case `noPrefix`:
+        break
+    }
+
+    console.log( { title, description, value })
   }
 
   /** New message event handler
@@ -387,19 +406,21 @@ export default class CactuDiscordBot {
    */
   onMessage = message => {
     const { prefix, prefixSpace } = this
-    const { commands } = this.guildsData.get( message.guild.id )
+    const { commands, translation } = this.guildsData.get( message.guild.id )
     const commandProcessor = new CommandProcessor( prefix, message.content, commands )
 
-    commandProcessor.process( prefixSpace, this.checkPermissions )
-
-    console.log( commandProcessor.err )
+    commandProcessor.process(
+      prefixSpace,
+      this.checkPermissions,
+      err => this.handleError( err, translation, message )
+    )
   }
 
   onReady = () => {
     console.log()
-    this.log( 'I have been started' )
+    this.log( `I have been started` )
     console.log()
 
-    this.discordClient.user.setActivity( this.prefix, { type:'WATCHING' } )
+    this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
   }
 }
