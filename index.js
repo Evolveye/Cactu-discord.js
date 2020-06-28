@@ -11,8 +11,9 @@ export const LoggerClass = Logger
 
 /** @typedef {Object<string,string>} GuildModuleTranslation */
 /** @typedef {Object<string,function>} GuildModuleFilters */
+/** @typedef {("@nobody"|"@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} GuildModuleRoles */
 /** @typedef {Object} GuildModuleCommandsField
- * @property {string|string[]} roles
+ * @property {GuildModuleRoles} roles
  * @property {string} desc
  * @property {RegExp[]} masks
  * @property {function|GuildModuleCommands} value
@@ -30,21 +31,23 @@ class GuildModules {
    * @param {GuildModuleFilters} filters
    * @param {GuildModuleCommands} commands
    */
-  constructor( translation={}, filters={}, commands={} ) {
+  constructor( translation={}, filters={}, commands={}, botOperatorId=`` ) {
     this.translation = translation
     this.filters = filters
     this.command = commands
+    this.botOperatorId = botOperatorId
   }
 
   /**
    * @param {GuildModule} param0
    */
-  include( { translation, filters, commands } ) {
+  include( { translation={}, filters={}, commands={}, botOperatorId=`` } ) {
     this.normalizeCommands( commands )
 
     this.translation = Object.assign( translation, this.translation )
     this.commands = Object.assign( commands, this.commands )
     this.filters = Object.assign( filters, this.filters )
+    this.botOperatorId = botOperatorId
   }
 
   /**
@@ -53,7 +56,13 @@ class GuildModules {
   normalizeCommands( commands ) {
     const checkField = (field, property, surrogate, defaultVal) => {
       if (surrogate in field) {
-        field[ property ] = field[ surrogate ]
+        let value = field[ surrogate ]
+
+        if (Array.isArray( defaultVal ) && !Array.isArray( value )) {
+          value = [ `${value}` ]
+        }
+
+        field[ property ] = value
 
         delete field[ surrogate ]
       } else if (!(property in field)) {
@@ -64,7 +73,7 @@ class GuildModules {
     for (const property in commands) {
       const field = commands[ property ]
 
-      checkField( field, `roles`, `r`, [] )
+      checkField( field, `roles`, `r`, [ `@everyone` ] )
       checkField( field, `desc`,  `d`, `` )
       checkField( field, `value`, `v` )
 
@@ -94,6 +103,7 @@ class CommandProcessor {
   #prefix = ``
   #parts = { prev:``, part:``, rest:`` }
   #path = ''
+  #isDm = false
 
   /** @type {CommandError} */
   #err = { type:null, value:null, paramMask:null }
@@ -103,12 +113,13 @@ class CommandProcessor {
    * @param {string} message
    * @param {GuildModuleCommands>} commandsStructure
    */
-  constructor( prefix, message, commandsStructure ) {
+  constructor( isDm, prefix, message, commandsStructure ) {
     this.#commandsStructure = commandsStructure
 
     this.#command = message.trim()
     this.#parts = this.partCommand()
     this.#prefix = prefix
+    this.#isDm = isDm
 
     this.#parts.rest = message.slice( prefix.length ).trim()
   }
@@ -183,6 +194,14 @@ class CommandProcessor {
    */
   checkAccessToStructure( roleTesterFunction ) {
     this.#scopeFromCommand = this.#commandsStructure
+    /** @param {GuildModuleRoles} roles */
+    const checkAccess = roles => {
+      if (roles.includes( `@nobody` )) return false
+      if (this.#isDm) return roles.includes( `@dm` )
+      if (roles.includes( `@everyone` )) return true
+
+      return roleTesterFunction( roles )
+    }
 
     if (!this.err.type) while (this.nextPart()) {
       const { err, parts:{ part } } = this
@@ -195,7 +214,7 @@ class CommandProcessor {
 
       const structPart = this.#scopeFromCommand[ part ]
 
-      if (!roleTesterFunction( structPart.roles )) {
+      if (!checkAccess( structPart.roles )) {
         return this.setError( `noPerms` )
       }
 
@@ -292,7 +311,6 @@ class CommandProcessor {
 
 export default class CactuDiscordBot {
   discordClient = new Discord.Client()
-  botOperatorRole = ``
   /** @type {Object<string,string>} */
   publicVars = {}
 
@@ -366,10 +384,20 @@ export default class CactuDiscordBot {
   }
 
   /**
-   * @param {string[]} roleNames
+   * @param {GuildModuleRoles} roleNames
+   * @param {Discord.Snowflake} botOperatorId
+   * @param {Discord.Message} param2
    */
-  checkPermissions = roleNames => {
-    return true
+  checkPermissions( roleNames, botOperatorId, { author, member, guild } ) {
+    if (author.bot) return roleNames.includes( `@bot` )
+    if (author.id === guild.ownerID || member.roles.has( botOperatorId )) return true
+
+    for (const roleName of roleNames) {
+      const roleObject = guild.roles.find( r => r.name === roleName )
+      const havingARole = roleObject ? member.roles.has( roleObject.id ) : false
+
+      if (havingARole) return true
+    }
   }
 
   /**
@@ -401,19 +429,31 @@ export default class CactuDiscordBot {
     console.log( { title, description, value })
   }
 
-  /** New message event handler
+  /**
    * @param {Discord.Message} message
    */
   onMessage = message => {
+    const { guild, author, content } = message
+
+    const id = guild
+      ? guild.id
+      : author
+      ? author.client.guilds.find( ({ id }) => this.discordClient.guilds.has( id ) ).id
+      : null
+
+    if (!id) return
+
     const { prefix, prefixSpace } = this
-    const { commands, translation } = this.guildsData.get( message.guild.id )
-    const commandProcessor = new CommandProcessor( prefix, message.content, commands )
+    const { commands, translation, botOperatorId } = this.guildsData.get( id )
+    const commandProcessor = new CommandProcessor( !guild, prefix, content, commands )
 
     commandProcessor.process(
       prefixSpace,
-      this.checkPermissions,
+      roles => this.checkPermissions( roles, botOperatorId, message ),
       err => this.handleError( err, translation, message )
     )
+
+    // console.log( commands )
   }
 
   onReady = () => {
