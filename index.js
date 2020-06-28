@@ -176,6 +176,8 @@ class CommandProcessor {
 
     const { masks } = this.#scopeFromCommand
     const paramAdder = paramString => {
+      if (!paramString) return
+
       const isParamValueNumber = /\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?/.test( paramString )
 
       console.log( `"${paramString}"` )
@@ -246,6 +248,7 @@ export default class CactuDiscordBot {
   discordClient = new Discord.Client()
   botOperatorRole = ``
   loggedErrors = []
+  publicVariables = {}
 
   /** @type {Map<string,GuildModule>} */
   guildsData = new Map()
@@ -286,7 +289,11 @@ export default class CactuDiscordBot {
       if (!guilds.has( id )) guilds.set( id, new GuildModule() )
 
       import( `./guilds_modules/${fileName}` )
-        .then( module => guilds.get( id ).include( module.default ) )
+        .then( module => typeof module.default === `function`
+          ? module.default( { ...this.publicVariables } )
+          : module.default
+        )
+        .then( moduleObject => guilds.get( id ).include( moduleObject ) )
         .catch( console.log )
     } )
 
