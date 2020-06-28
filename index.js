@@ -50,35 +50,58 @@ class GuildModule {
   }
 }
 
-class CommandData {
+class CommandProcessor {
   #response = { code:[], params:[], values:[] }
+
+  #commandsStructure = {}
+  #scopeFromCommand = {}
+
   #command = ``
+  #prefix = ``
   #parts = { prev:``, part:``, rest:`` }
   #path = ''
   #err = { type:null, value:null, paramMask:null }
+
   /**
    * @param {Discord.Message} message
    */
-  constructor( message, prefix ) {
+  constructor( prefix, message, commandsStructure ) {
     const { content } = message
+
+    this.#commandsStructure = commandsStructure
 
     this.#command = content.trim()
     this.#parts = this.partCommand()
+    this.#prefix = prefix
 
     this.#parts.rest = content.slice( prefix.length ).trim()
   }
 
-  get command() { return this.#command }
-  get parts() { return { ...this.#parts } }
-  get path() { return this.#path }
-  get err() { return { ...this.#err } }
+  get commandsStructure() {
+    return this.#commandsStructure
+  }
+  get command() {
+    return this.#command
+  }
+  get prefix() {
+    return this.#prefix
+  }
+  get parts() {
+    return { ...this.#parts }
+  }
+  get path() {
+    return this.#path
+  }
+  get err() {
+    return { ...this.#err }
+  }
 
   /**
    * @param {any} err
    * @param {string} type
    * @param {string} value
    */
-  setError( type, value ) {
+  setError( type=null, value=null ) {
     this.#err.type = type
     this.#err.value = value
   }
@@ -100,6 +123,52 @@ class CommandData {
     const rest = groups.rest || ''
 
     return { prev, part, rest }
+  }
+
+  checkPrefix( prefixSpace=true ) {
+    const { command, prefix } = this
+    const firstWord = command.split( ` ` )[ 0 ]
+
+    if (!command.startsWith( prefix )) this.setError( 'noPrefix' )
+
+    if (prefixSpace) {
+      if (firstWord !== prefix) return this.setError( 'noPrefix' )
+    } else {
+      if (firstWord !== command) return this.setError( 'noPrefix' )
+    }
+  }
+
+  checkAccesToStructure( roleTesterFunction ) {
+    if (!this.err.type) while (this.nextPart()) {
+      const { err, parts:{ part } } = this
+
+      if (err.type) return
+
+      if (!(part in this.#commandsStructure)) {
+        return this.setError( 'noCommand', this.command )
+      }
+
+      const structPart = this.#commandsStructure[ part ]
+
+      if (!roleTesterFunction( structPart.roles )) {
+        return this.setError( 'badRole' )
+      }
+
+      if (typeof structPart.value === `funstion`) return
+
+      this.#scopeFromCommand = structPart.value
+    }
+  }
+
+  process( prefixSpace, roleTesterFunction ) {
+    const { err } = this
+
+    this.checkPrefix( prefixSpace )
+
+    if (!err.type) this.checkAccesToStructure( roleTesterFunction )
+    // if (!err.type) this.buildResponse( data )
+
+    // if (err.type) this.processErrors( data )
   }
 }
 
@@ -169,76 +238,17 @@ export default class CactuDiscordBot {
     return true
   }
 
-  /**
-   * @param {CommandData} commandData
-   */
-  checkPrefix( commandData ) {
-    const { prefix, prefixSpace } = this
-    const { command, parts } = commandData
-    const firstWord = command.split( ` ` )[ 0 ]
-
-    if (!command.startsWith( prefix )) return false
-
-    if (prefixSpace) {
-      if (firstWord !== prefix) return false
-    } else {
-      if (firstWord !== command) return false
-    }
-
-    return true
-  }
-
-  /**
-   * @param {CommandData} commandData
-   * @param {function(string[]): boolean} rolesTest
-   */
-  checkAccesToStructure( commandData, structure ) {
-    const { prefix, prefixSpace } = this
-
-    if (!commandData.err.type) while (commandData.nextPart()) {
-      const { err, parts:{ part } } = commandData
-
-      if (err.type) break
-
-      if (!(part in structure)) {
-        commandData.setError( 'noCommand', commandData.command )
-
-        break
-      }
-
-      const structPart = structure[ part ]
-
-      if (!this.checkPermissions( structPart.roles )) {
-        commandData.setError( err, 'badRole' )
-
-        break
-      }
-
-      if (typeof structPart.value === `funstion`) break
-
-      structure = structPart.value
-    }
-
-    return structure
-  }
-
   /** New message event handler
    * @param {Discord.Message} message
    */
   onMessage = message => {
+    const { prefix, prefixSpace } = this
     const { commands } = this.guildsData.get( message.guild.id )
-    const commandData = new CommandData( message, this.prefix )
-    const { err } = commandData
-    let scope = commands
+    const commandProcessor = new CommandProcessor( prefix, message, commands )
 
-    if (!this.checkPrefix( commandData )) return
+    commandProcessor.process( prefixSpace, this.checkPermissions )
 
-    if (!err.type) scope = this.checkAccesToStructure( commandData, commands )
-    // if (!err.type) this.buildResponse( data )
-
-    // if (err.type) this.processErrors( data )
-
-    console.log( scope )
+    console.log( commandProcessor.err )
   }
 
   onReady = () => {
