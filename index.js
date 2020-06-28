@@ -51,7 +51,7 @@ class GuildModule {
 }
 
 class CommandProcessor {
-  #response = { code:[], params:[], values:[] }
+  #parameters = []
 
   #commandsStructure = {}
   #scopeFromCommand = {}
@@ -66,19 +66,20 @@ class CommandProcessor {
    * @param {Discord.Message} message
    */
   constructor( prefix, message, commandsStructure ) {
-    const { content } = message
-
     this.#commandsStructure = commandsStructure
 
-    this.#command = content.trim()
+    this.#command = message.trim()
     this.#parts = this.partCommand()
     this.#prefix = prefix
 
-    this.#parts.rest = content.slice( prefix.length ).trim()
+    this.#parts.rest = message.slice( prefix.length ).trim()
   }
 
   get commandsStructure() {
     return this.#commandsStructure
+  }
+  get parameters() {
+    return this.#parameters
   }
   get command() {
     return this.#command
@@ -101,9 +102,10 @@ class CommandProcessor {
    * @param {string} type
    * @param {string} value
    */
-  setError( type=null, value=null ) {
+  setError( type=null, value=null, paramMask=null ) {
     this.#err.type = type
     this.#err.value = value
+    this.#err.paramMask = paramMask
   }
 
   nextPart() {
@@ -138,7 +140,7 @@ class CommandProcessor {
     }
   }
 
-  checkAccesToStructure( roleTesterFunction ) {
+  checkAccessToStructure( roleTesterFunction ) {
     if (!this.err.type) while (this.nextPart()) {
       const { err, parts:{ part } } = this
 
@@ -154,9 +156,44 @@ class CommandProcessor {
         return this.setError( 'badRole' )
       }
 
-      if (typeof structPart.value === `funstion`) return
+      if (typeof structPart.value === `function`) {
+        this.#scopeFromCommand = structPart
 
-      this.#scopeFromCommand = structPart.value
+        return
+      } else {
+        this.#scopeFromCommand = structPart.value
+      }
+    }
+  }
+
+  validateParams() {
+    if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
+
+    const { masks } = this.#scopeFromCommand
+
+    let params = this.#parts.rest
+
+    for (const mask of masks) {
+      if (!mask.test( params )) {
+        if (!params) {
+          const commandFunc = this.#scopeFromCommand.value
+          const paramNames = CommandProcessor.funcData( commandFunc )
+
+          this.setError( `noParam`, paramNames[ masks.indexOf( mask ) ], mask )
+        } else {
+          this.setError( `badParam`, params.split( ` ` )[ 0 ]  ||  ` 👈`, mask )
+        }
+
+        return
+      }
+
+      const paramValue = mask.exec( params )[ 0 ] || null
+
+      if (paramValue) params = params.substr( paramValue.length ).trimLeft()
+
+      const isParamValueNumber = /\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?/.test( paramValue )
+
+      this.#parameters.push( isParamValueNumber ? Number( paramValue ) : paramValue )
     }
   }
 
@@ -164,11 +201,20 @@ class CommandProcessor {
     const { err } = this
 
     this.checkPrefix( prefixSpace )
+    this.checkAccessToStructure( roleTesterFunction )
+    this.validateParams()
+  }
 
-    if (!err.type) this.checkAccesToStructure( roleTesterFunction )
-    // if (!err.type) this.buildResponse( data )
+  static funcData( func ) {
+    const reg = {
+      funcParter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
+      params: /\w+ *= *.+?(?=, *|$)/g
+    }
 
-    // if (err.type) this.processErrors( data )
+    const { params } = reg.funcParter.exec( func.toString() ).groups
+    const paramNames = params.match( reg.params )
+
+    return paramNames
   }
 }
 
@@ -244,11 +290,11 @@ export default class CactuDiscordBot {
   onMessage = message => {
     const { prefix, prefixSpace } = this
     const { commands } = this.guildsData.get( message.guild.id )
-    const commandProcessor = new CommandProcessor( prefix, message, commands )
+    const commandProcessor = new CommandProcessor( prefix, message.content, commands )
 
     commandProcessor.process( prefixSpace, this.checkPermissions )
 
-    console.log( commandProcessor.err )
+    console.log( commandProcessor.err, commandProcessor.parameters )
   }
 
   onReady = () => {
