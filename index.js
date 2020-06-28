@@ -22,9 +22,31 @@ class GuildModule {
   }
 
   include( { translation, filters, commands } ) {
+    this.normalizeCommands( commands )
+
     this.translation = Object.assign( translation, this.translation )
     this.commands = Object.assign( commands, this.commands )
     this.filters = Object.assign( filters, this.filters )
+  }
+
+  normalizeCommands( commands ) {
+    const checkField = (field, property, surrogate) => {
+      if (surrogate in field) {
+        field[ property ] = field[ surrogate ]
+
+        delete field[ surrogate ]
+      }
+    }
+    for (const property in commands) {
+      const field = commands[ property ]
+
+      checkField( field, `roles`, `r` )
+      checkField( field, `desc`, `d` )
+      checkField( field, `value`, `v` )
+
+      if (typeof field.value === `function`) checkField( field, `masks`, `m` )
+      else this.normalizeCommands( field.value )
+    }
   }
 }
 
@@ -41,7 +63,9 @@ class CommandData {
     const { content } = message
 
     this.#command = content.trim()
-    this.#parts = this.partCommand( this.#command.slice( prefix.length ).trim() )
+    this.#parts = this.partCommand()
+
+    this.#parts.rest = content.slice( prefix.length ).trim()
   }
 
   get command() { return this.#command }
@@ -65,11 +89,11 @@ class CommandData {
     return !!this.#parts.part
   }
 
-  partCommand( command ) {
+  partCommand( command='' ) {
     const { groups } = /^(?<part>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
 
     /** @type {string} */
-    const prev = this.#parts ? this.#parts.prev + this.#parts.part : ``
+    const prev = this.#parts ? `${this.#parts.prev} ${this.#parts.part}` : ``
     /** @type {string} */
     const part = groups.part || ''
     /** @type {string} */
@@ -141,6 +165,10 @@ export default class CactuDiscordBot {
     this.botLogger( 'Bot', ':', string )
   }
 
+  checkPermissions( roleNames ) {
+    return true
+  }
+
   /**
    * @param {CommandData} commandData
    */
@@ -167,40 +195,31 @@ export default class CactuDiscordBot {
   checkAccesToStructure( commandData, structure ) {
     const { prefix, prefixSpace } = this
 
-    if (commandData.err.type) return
+    if (!commandData.err.type) while (commandData.nextPart()) {
+      const { err, parts:{ part } } = commandData
 
-    console.log( commandData.command, commandData.parts )
-
-    while (commandData.nextPart()) {
-      const { prev, part, rest } = commandData.parts
-
-      console.log( part )
+      if (err.type) break
 
       if (!(part in structure)) {
         commandData.setError( 'noCommand', commandData.command )
+
         break
       }
 
-      command = rest || ''
-      path += ` ${part}`
-      structure = structure[ part ]
+      const structPart = structure[ part ]
 
-      if (structure[ '@code' ]) {
-        if (!rolesTest( structure[ '@roles' ] )) commandData.setError( err, 'badRole' )
-        break
-      } else if (!rolesTest( structure[ '@roles' ] )) {
+      if (!this.checkPermissions( structPart.roles )) {
         commandData.setError( err, 'badRole' )
+
         break
       }
+
+      if (typeof structPart.value === `funstion`) break
+
+      structure = structPart.value
     }
 
-    // if (prefixSpace) path = `${prefix}${path}`
-    // else path = `${prefix}${path.slice( 1 )}`
-
-    // commandData.command = command
-    // commandData.path = path
-    // commandData.parts = parts
-    // commandData.structure = structure
+    return structure
   }
 
   /** New message event handler
@@ -210,15 +229,16 @@ export default class CactuDiscordBot {
     const { commands } = this.guildsData.get( message.guild.id )
     const commandData = new CommandData( message, this.prefix )
     const { err } = commandData
+    let scope = commands
 
     if (!this.checkPrefix( commandData )) return
 
-    if (!err.type) this.checkAccesToStructure( commandData, commands )
+    if (!err.type) scope = this.checkAccesToStructure( commandData, commands )
     // if (!err.type) this.buildResponse( data )
 
     // if (err.type) this.processErrors( data )
 
-    console.log( commandData.parts )
+    console.log( scope )
   }
 
   onReady = () => {
