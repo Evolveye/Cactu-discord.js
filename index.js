@@ -29,39 +29,53 @@ class GuildModule {
 }
 
 class CommandData {
+  #response = { code:[], params:[], values:[] }
+  #command = ``
+  #parts = { prev:``, part:``, rest:`` }
+  #path = ''
+  #err = { type:null, value:null, paramMask:null }
   /**
    * @param {Discord.Message} message
    */
-  constructor( message ) {
+  constructor( message, prefix ) {
     const { content } = message
 
-    this.command = content.trim()
-    this.path = ''
-    this.parts = CommandData.partCommand( content )
-    this.response = { code:[], params:[], values:[] }
-    this.err = { type:null, value:null, paramMask:null }
+    this.#command = content.trim()
+    this.#parts = this.partCommand( this.#command.slice( prefix.length ).trim() )
   }
+
+  get command() { return this.#command }
+  get parts() { return { ...this.#parts } }
+  get path() { return this.#path }
+  get err() { return { ...this.#err } }
 
   /**
    * @param {any} err
    * @param {string} type
    * @param {string} value
    */
-  setError( err, type, value ) {
-    err.type = type
-    err.value = value
+  setError( type, value ) {
+    this.#err.type = type
+    this.#err.value = value
   }
 
-  /**
-   * @param {string} command
-   */
-  static partCommand( command ) {
+  nextPart() {
+    this.#parts = this.partCommand( this.#parts.rest )
+
+    return !!this.#parts.part
+  }
+
+  partCommand( command ) {
     const { groups } = /^(?<part>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
 
-    if (!groups.part) groups.part = ''
-    if (!groups.rest) groups.rest = ''
+    /** @type {string} */
+    const prev = this.#parts ? this.#parts.prev + this.#parts.part : ``
+    /** @type {string} */
+    const part = groups.part || ''
+    /** @type {string} */
+    const rest = groups.rest || ''
 
-    return groups
+    return { prev, part, rest }
   }
 }
 
@@ -133,17 +147,15 @@ export default class CactuDiscordBot {
   checkPrefix( commandData ) {
     const { prefix, prefixSpace } = this
     const { command, parts } = commandData
+    const firstWord = command.split( ` ` )[ 0 ]
 
     if (!command.startsWith( prefix )) return false
 
     if (prefixSpace) {
-      if (prefix !== parts.part) return false
+      if (firstWord !== prefix) return false
     } else {
-      if (parts.part === prefix && parts.rest !== '') return false
+      if (firstWord !== command) return false
     }
-
-    if (prefixSpace) commandData.command = parts.rest
-    else commandData.command = command.slice( prefix.length )
 
     return true
   }
@@ -154,17 +166,18 @@ export default class CactuDiscordBot {
    */
   checkAccesToStructure( commandData, structure ) {
     const { prefix, prefixSpace } = this
-    let { command, path, parts, err } = commandData
 
-    if (err.type) return
+    if (commandData.err.type) return
 
-    while ((parts = this.partCommand( command )).part !== '') {
-      if (!command) break
+    console.log( commandData.command, commandData.parts )
 
-      const { part, rest } = parts
+    while (commandData.nextPart()) {
+      const { prev, part, rest } = commandData.parts
+
+      console.log( part )
 
       if (!(part in structure)) {
-        this.setError( err, 'noCommand', part )
+        commandData.setError( 'noCommand', commandData.command )
         break
       }
 
@@ -181,30 +194,31 @@ export default class CactuDiscordBot {
       }
     }
 
-    if (prefixSpace) path = `${prefix}${path}`
-    else path = `${prefix}${path.slice( 1 )}`
+    // if (prefixSpace) path = `${prefix}${path}`
+    // else path = `${prefix}${path.slice( 1 )}`
 
-    commandData.command = command
-    commandData.path = path
-    commandData.parts = parts
-    commandData.structure = structure
+    // commandData.command = command
+    // commandData.path = path
+    // commandData.parts = parts
+    // commandData.structure = structure
   }
 
   /** New message event handler
    * @param {Discord.Message} message
    */
   onMessage = message => {
-    const guildData = this.guildsData.get( message.guild.id )
-    const commandData = new CommandData( message )
+    const { commands } = this.guildsData.get( message.guild.id )
+    const commandData = new CommandData( message, this.prefix )
+    const { err } = commandData
 
-    // if (!this.checkPrefix( commandData )) return
+    if (!this.checkPrefix( commandData )) return
 
-    // if (!err.type) this.checkAccesToStructure( commandData, structure )
+    if (!err.type) this.checkAccesToStructure( commandData, commands )
     // if (!err.type) this.buildResponse( data )
 
     // if (err.type) this.processErrors( data )
 
-    console.log( guildData )
+    console.log( commandData.parts )
   }
 
   onReady = () => {
