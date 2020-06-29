@@ -44,7 +44,7 @@ export default class CactuDiscordBot {
 
   prefix = `cc!`
   prefixSpace = true
-  signs = {}
+  signs = { error:'❌', warn:'⚠️', ok:'✅' }
 
   /**
    * @typedef {Object} CactuDiscordBotConfig
@@ -109,30 +109,69 @@ export default class CactuDiscordBot {
   /**
    * @param {CommandError} param0
    * @param {GuildModuleTranslation} translation
-   * @param {Discord.Message} message
+   * @param {Discord.Message} param2
    */
   handleError({ type, value, paramMask }, translation, message) {
+    const { error } = this.signs
     let title = `Unknown error`
     let description = ``
 
     switch (type) {
+      case `invalidCmd`:
+        title = `${error} ${translation.err_invalidCmd}`
+        description = `> \`${value.message}\` ::  ` + value.stack.split( `\n` )[ 1 ]
+          .split( /-/ )
+          .slice( -1 )[ 0 ]
+          .slice( 0, -1 )
+        break
+
       case `badParam`:
-        title = `You passed wrong parameter!`
+        title = `${error} ${translation.err_badParam}`
+        description = `> ${value}`
         break
-      case `noCommand`:
-        title = `That command doesn't exists!`
-        break
+
+      case `noCommand`: {
+        const fields = []
+        const scopes = []
+        const cmds = []
+
+        for (const part in value) {
+          const { type, desc, params } = value[ part ]
+
+          if (type == `scope`) {
+            scopes.push( { name:part, value:desc, inline:true } )
+          } else {
+            cmds.push( { name:part, value:desc } )
+          }
+        }
+
+        if (scopes.length) fields.push( ...scopes, { name:`\u200B`, desc:`\u200B` } )
+
+        fields.push( ...cmds )
+
+        title = `⚙️ ${translation.help_title}`
+      }; break
+
       case `noParam`:
-        title = `That command require parameter!`
+        title = `${error} ${translation.err_noParam}`
+        description = `> ${value} \`${paramMask}\``
         break
+
+      case `noPath`:
+        title = `${error} ${translation.err_noPath}`
+        description = `> ${value}`
+        break
+
       case `noPerms`:
-        title = `You don't have required permissions!`
+        title = `${error} ${translation.err_noPerms}`
+        description = `> ${value}`
         break
+
       case `noPrefix`:
-        break
+        return
     }
 
-    console.log( { title, description, value })
+    console.log( { title, description, type } )
   }
 
   /**

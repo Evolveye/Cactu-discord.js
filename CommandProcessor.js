@@ -1,4 +1,4 @@
-/** @typedef {"badParam"|"noCommand"|"noParam"|"noPerms"|"noPrefix"} CommandErrorType */
+/** @typedef {"badParam"|"noCommand"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandErrorType */
 /** @typedef {Object} CommandError
  * @property {CommandErrorType} type
  * @property {*} value
@@ -67,6 +67,23 @@ export default class CommandProcessor {
    * @param {RegExp} [paramMask]
    */
   setError( type=null, value=null, paramMask=null ) {
+    if (type === `noCommand`) {
+      value = { ...this.#scopeFromCommand }
+
+      Object.keys( value ).forEach( key => {
+        const scope = value[ key ]
+
+        if (typeof scope.value === `function`) {
+          scope.params = CommandProcessor.funcData( scope.value )
+          scope.type = `command`
+
+          delete scope.masks
+        } else scope.type = `scope`
+
+        delete scope.value
+      } )
+    }
+
     this.#err.type = type
     this.#err.value = value
     this.#err.paramMask = paramMask
@@ -108,7 +125,10 @@ export default class CommandProcessor {
    * @param {function} roleTesterFunction
    */
   checkAccessToStructure( roleTesterFunction ) {
+    if (this.err.type) return
+
     this.#scopeFromCommand = this.#commandsStructure
+
     /** @param {GuildModuleRoles} roles */
     const checkAccess = roles => {
       if (roles.includes( `@nobody` )) return false
@@ -118,13 +138,13 @@ export default class CommandProcessor {
       return roleTesterFunction( roles )
     }
 
-    if (!this.err.type) while (this.nextPart()) {
+    while (this.nextPart()) {
       const { err, parts:{ part } } = this
 
       if (err.type) return
 
       if (!(part in this.#scopeFromCommand)) {
-        return this.setError( `noCommand`, this.command )
+        return this.setError( `noPath`, this.command )
       }
 
       const structPart = this.#scopeFromCommand[ part ]
@@ -140,6 +160,10 @@ export default class CommandProcessor {
       } else {
         this.#scopeFromCommand = structPart.value
       }
+    }
+
+    if (typeof this.#scopeFromCommand.value != `function`) {
+      this.setError( `noCommand` )
     }
   }
 
@@ -189,7 +213,11 @@ export default class CommandProcessor {
   execute() {
     if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
 
-    this.#scopeFromCommand.value( ...this.#parameters )
+    try {
+      this.#scopeFromCommand.value( ...this.#parameters )
+    } catch (err) {
+      this.setError( `invalidCmd`, err )
+    }
   }
 
   /**

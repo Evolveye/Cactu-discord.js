@@ -1,4 +1,20 @@
-/** @typedef {Object<string,string>} GuildModuleTranslation */
+/** @typedef {Object} GuildModuleTranslation
+ * @property {string} err_badParam
+ * @property {string} err_noCommand
+ * @property {string} err_noParam
+ * @property {string} err_noPath
+ * @property {string} err_noPerms
+ * @property {string} err_noPrefix
+ * @property {string} err_invalidCmd
+ * @property {string} help_title
+ * @property {string} help_showMasks
+ * @property {string} help_params
+ * @property {string} help_masks
+ * @property {string} footer_yourCmds
+ * @property {string} footer_cmdInfo
+ * @property {string} system_loadSucc
+ * @property {string} system_loadFail
+ */
 /** @typedef {Object<string,function>} GuildModuleFilters */
 /** @typedef {("@nobody"|"@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} GuildModuleRoles */
 /** @typedef {Object} GuildModuleCommandsField
@@ -21,7 +37,23 @@
 
 export default class GuildModules {
   /** @type {GuildModuleTranslation} */
-  translation = {}
+  translation = {
+    err_badParam:     `Not valid parameter!`,
+    err_noCommand:    `This is scope, not a command!`,
+    err_noParam:      `Required parameters weren't passed!`,
+    err_noPath:       `Command doesn't exists`,
+    err_noPerms:      `You don't have permissions to use that!`,
+    err_noPrefix:     `You didn't pass the prefix`,
+    err_invalidCmd:   `That command have invalid code!`,
+    help_title:       `Help for a syntax of the specified command`,
+    help_showMasks:   `Send **!!** as first parameter of command to show description and params syntax`,
+    help_params:      `The X**?** means optional parameter and the **...**X means any string`,
+    help_masks:       `If you don't know what is going on, you can ask somebody from server stuff, or you can check "masks" on`,
+    footer_yourCmds:  `These are your personalized commands after sending:`,
+    footer_cmdInfo:   `Commands information`,
+    system_loadSucc:  `File has been loaded`,
+    system_loadFail:  `Wrong file data!`
+  }
   /** @type {GuildModuleFilters} */
   filters = {}
   /** @type {GuildModuleCommands} */
@@ -159,30 +191,12 @@ export default class GuildModules {
 }
 
 /** @param {UnsafeVariables} $ */
-GuildModules.predefinedCommands = $ => ({
-  translation: {
-    text: `translation`,
-  },
-  filters: {
-    [/filter mask 1/]() {
-      // code
-    },
-    [/filter mask 1/]() {
-      // code
-    },
-  },
-  commands: {
-    // d == desc
-    // r == roles
-    // m == masks
-    // v == value
+GuildModules.predefinedCommands = $ => ({ commands: {
+  $: { d:`Bot administration`, r:`@owner`, v:{
+    load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what ) {
+      const { message } = $
 
-    $: { d:`Bot administration`, r:`@owner`, v:{
-      load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what ) {
-        const { message } = $
-
-        console.log( what, message )
-      }},
+      console.log( what, message )
     }},
-  },
-})
+  }},
+} })
