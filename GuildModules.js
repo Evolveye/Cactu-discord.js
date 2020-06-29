@@ -13,7 +13,11 @@
  * @property {GuildModuleFilters} filters
  * @property {GuildModuleCommands} commands
  */
-/** @typedef {Object<string,string>} Variables */
+/** @typedef {import("discord.js").Message} SafeVariables */
+/** @typedef {Object} UnsafeVariables
+ * @property {import("discord.js").Message} message
+ * @property {import("./index.js").default} botInstance
+ */
 
 export default class GuildModules {
   /** @type {GuildModuleTranslation} */
@@ -22,10 +26,12 @@ export default class GuildModules {
   filters = {}
   /** @type {GuildModuleCommands} */
   commands = {}
-  /** @type {string} */
+  /** @type {Discord} */
   botOperatorId = ``
-  /** @type {Variables} */
-  variables = {}
+  /** @type {SafeVariables} */
+  unsafeVariables = {}
+  /** @type {UnsafeVariables} */
+  safeVariables = {}
 
   constructor() {
     this.include( GuildModules.predefinedCommands )
@@ -36,19 +42,15 @@ export default class GuildModules {
    */
   include( module ) {
     const { translation={}, commands={}, filters={}, botOperatorId={} } = typeof module === `function`
-      ? module( this.variables )
+      ? module( this.unsafeVariables )
       : module
 
     this.normalizeCommands( commands )
-
-    console.log( `\n######\n`, this.commands, commands )
 
     GuildModules.safeCommandsAssign( this.commands, commands )
     this.translation = Object.assign( translation, this.translation )
     this.filters = Object.assign( filters, this.filters )
     this.botOperatorId = botOperatorId
-
-    console.log( `####\n`, this.commands )
   }
 
   /**
@@ -83,6 +85,42 @@ export default class GuildModules {
     }
   }
 
+  /**
+   * @param {import("discord.js").Message} message
+   */
+  setSafeVariables( message ) {
+    if (!message) throw new Error( `All parameters are required!` )
+
+    delete message.application
+    GuildModules.deletePropertyGlobaly( message, `client`, 2 )
+
+    this.safeVariables.message = message
+  }
+
+  /**
+   * @param {import("discord.js").Message} message
+   * @param {import("./index.js").default} botInstance
+   */
+  setUnsafeVariables( message, botInstance ) {
+    if (!message || !botInstance) throw new Error( `All parameters are required!` )
+
+    this.unsafeVariables.message = message
+    this.unsafeVariables.botInstance = botInstance
+  }
+
+  /**
+   * @param {import("discord.js").Message} message
+   * @param {import("./index.js").default} botInstance
+   */
+  setVariables( message, botInstance ) {
+    this.setSafeVariables( message )
+    this.setUnsafeVariables( message, botInstance )
+  }
+
+  /**
+   * @param {Object<string,*>} target
+   * @param {Object<string,*>} object
+   */
   static safeCommandsAssign( target, object ) {
     Object.keys( object ).forEach( key => {
       switch (typeof object[ key ]) {
@@ -101,9 +139,26 @@ export default class GuildModules {
 
     return target
   }
+
+  /**
+   * @param {Object<string,*>} object
+   * @param {string} property
+   */
+  static deletePropertyGlobaly( object, property, maxDeep=Infinity ) {
+    const references = []
+    const deletePropG = (object, deep=0) => Object.keys( object ).forEach( key => {
+      const prop = object[ key ]
+
+      if ((deep === maxDeep && Object( prop ) !== prop) || key === property) delete object[ key ]
+      else if (typeof prop == `object` && !Array.isArray( prop ) && references.includes( prop )) {
+        references.push( prop )
+        deletePropG( prop, deep + 1 )
+      }
+    } )
+  }
 }
 
-/** @param {Variables} $ */
+/** @param {UnsafeVariables} $ */
 GuildModules.predefinedCommands = $ => ({
   translation: {
     text: `translation`,
@@ -126,7 +181,7 @@ GuildModules.predefinedCommands = $ => ({
       load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what ) {
         const { message } = $
 
-        console.log( what, message ? message.content : null )
+        console.log( what, message )
       }},
     }},
   },

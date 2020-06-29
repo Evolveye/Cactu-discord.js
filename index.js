@@ -18,7 +18,7 @@ export const LoggerClass = Logger
 /** @typedef {import("./GuildModules.js").GuildModuleCommandsField} GuildModuleCommandsField */
 /** @typedef {import("./GuildModules.js").GuildModuleCommands} GuildModuleCommands */
 /** @typedef {import("./GuildModules.js").GuildModule} GuildModule */
-/** @typedef {import("./GuildModules.js").Variables} GuildModule */
+/** @typedef {import("./GuildModules.js").UnsafeVariables} GuildModule */
 
 
 export default class CactuDiscordBot {
@@ -150,10 +150,11 @@ export default class CactuDiscordBot {
     if (!id) return
 
     const { prefix, prefixSpace } = this
-    const { commands, translation, botOperatorId, variables } = this.guildsData.get( id )
+    const guildData = this.guildsData.get( id )
+    const { commands, translation, botOperatorId } = guildData
     const commandProcessor = new CommandProcessor( !guild, prefix, content, commands )
 
-    variables.message = message
+    guildData.setVariables( message, this )
 
     commandProcessor.process(
       prefixSpace,
