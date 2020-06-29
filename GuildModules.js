@@ -13,30 +13,42 @@
  * @property {GuildModuleFilters} filters
  * @property {GuildModuleCommands} commands
  */
+/** @typedef {Object<string,string>} Variables */
 
 export default class GuildModules {
-  /**
-   * @param {GuildModuleTranslation} translation
-   * @param {GuildModuleFilters} filters
-   * @param {GuildModuleCommands} commands
-   */
-  constructor( translation={}, filters={}, commands={}, botOperatorId=`` ) {
-    this.translation = translation
-    this.filters = filters
-    this.command = commands
-    this.botOperatorId = botOperatorId
+  /** @type {GuildModuleTranslation} */
+  translation = {}
+  /** @type {GuildModuleFilters} */
+  filters = {}
+  /** @type {GuildModuleCommands} */
+  commands = {}
+  /** @type {string} */
+  botOperatorId = ``
+  /** @type {Variables} */
+  variables = {}
+
+  constructor() {
+    this.include( GuildModules.predefinedCommands )
   }
 
   /**
    * @param {GuildModule} param0
    */
-  include( { translation={}, filters={}, commands={}, botOperatorId=`` } ) {
+  include( module ) {
+    const { translation={}, commands={}, filters={}, botOperatorId={} } = typeof module === `function`
+      ? module( this.variables )
+      : module
+
     this.normalizeCommands( commands )
 
+    console.log( `\n######\n`, this.commands, commands )
+
+    GuildModules.safeCommandsAssign( this.commands, commands )
     this.translation = Object.assign( translation, this.translation )
-    this.commands = Object.assign( commands, this.commands )
     this.filters = Object.assign( filters, this.filters )
     this.botOperatorId = botOperatorId
+
+    console.log( `####\n`, this.commands )
   }
 
   /**
@@ -70,4 +82,52 @@ export default class GuildModules {
       else this.normalizeCommands( field.value )
     }
   }
+
+  static safeCommandsAssign( target, object ) {
+    Object.keys( object ).forEach( key => {
+      switch (typeof object[ key ]) {
+        case `object`:
+          if (Array.isArray( object[ key ] )) {
+            if (key != `masks` || !(key in target)) target[ key ] = object[ key ]
+          } else target[ key ] = this.safeCommandsAssign( target[ key ] || {}, object[ key ] )
+          break
+
+        case `function`:
+          if (key in target) break
+
+        default: target[ key ] = object[ key ]
+      }
+    } )
+
+    return target
+  }
 }
+
+/** @param {Variables} $ */
+GuildModules.predefinedCommands = $ => ({
+  translation: {
+    text: `translation`,
+  },
+  filters: {
+    [/filter mask 1/]() {
+      // code
+    },
+    [/filter mask 1/]() {
+      // code
+    },
+  },
+  commands: {
+    // d == desc
+    // r == roles
+    // m == masks
+    // v == value
+
+    $: { d:`Bot administration`, r:`@owner`, v:{
+      load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what ) {
+        const { message } = $
+
+        console.log( what, message ? message.content : null )
+      }},
+    }},
+  },
+})

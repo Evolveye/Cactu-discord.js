@@ -152,8 +152,6 @@ export default class CommandProcessor {
 
       const isParamValueNumber = /\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?/.test( paramString )
 
-      console.log( `"${paramString}"` )
-
       this.#parameters.push( isParamValueNumber
         ? Number( paramString.replace( /_/g, `` ) )
         : paramString
@@ -221,97 +219,5 @@ export default class CommandProcessor {
     const paramNames = params.match( reg.params ) || []
 
     return paramNames
-  }
-}
-
-Commands.predefinedCommands = {
-  $: {
-    load( r='Owner', p={ what:/c|commands|f|filters/ }, d='Load commands/filters from attached file' ) {
-      const attachment = $.message.attachments.first() || {}
-      const guildId = $.message.guild.id
-      let reg
-
-      if ([ 'c', 'commands' ].includes( what )) {
-        what = 'commands'
-        reg = /^.*?(\( *{[\s\S]*structure *: *{[\s\S]*} *\))$/s
-      } else {
-        what = 'filters'
-        reg = /^.*?(\[[ \r\n]*{[\s\S]+}[ \r\n]*])$/s
-      }
-
-      if (attachment.url && !attachment.width) {
-        const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || 'mjs'
-        const fileName = `${fs.realpathSync( '.' )}/guilds_config/${guildId}-${what}.${extension}`
-        const file = fs.createWriteStream( fileName )
-
-        https.get( attachment.url, res => {
-          res.pipe( file ).on( 'finish', () => {
-            file.close()
-
-            const { guildData } = $
-            const cmdsInstance = guildData.commands
-
-            let object = fs.readFileSync( fileName, 'utf8' )
-
-            try {
-              if (!reg.test( object )) throw ''
-
-              object = eval( object.match( reg )[ 1 ] )
-
-              if (what === 'commands') {
-
-                cmdsInstance.structure = Commands.build( Commands.cloneObjects( object.structure, Commands.predefinedCommands ) )
-                cmdsInstance.setLang( object.myLang )
-
-                Object.keys( object )
-                  .filter( key => key.startsWith( 'on' ) )
-                  .forEach( key => this.events[ key.charAt( 2 ).toLowerCase() + key.slice( 3 ) ] = configObject[ key ] )
-              } else guildData.filters.setFilters( object )
-
-              $.sendStatus( cmdsInstance.lang.$_loadSucces )
-            } catch (err) {
-              $.sendStatus( `${cmdsInstance.lang.$_loadFail}\n\n${err}`, 'error' )
-              fs.unlink( fileName, () => {} )
-            }
-          } )
-        } )
-      }
-    },
-    botOperator( r='Owner', p={ roleName:'???' }, d='Set the role which will have owner permissions for bot' ) {
-      if (!roleName) return $.bot.botOperatorId = null
-
-      const role = $.message.guild.roles.find( r => r.name === role )
-
-      if (role) {
-        $.bot.botOperatorId = role.id
-        $.sendStatus( 'Bot operator has been setted successfully' )
-      } else throw "That role doesn't exists"
-    },
-    getConfigFile( r=`Owner`, p={ what:/c|commands|f|filters/ }, d=`Get file with commands or filters` ) {
-      let configFileName = `${fs.realpathSync( '.' )}/guilds_config/${m.guild.id}-${/c|commands/.test( what ) ? 'commands' : 'filters'}`
-
-      if (fs.existsSync( `${configFileName}.js` )) configFileName += '.js'
-      else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += '.mjs'
-      else throw "That guild doesn't have the config file"
-
-      m.channel.send( { files:[ configFileName ] } )
-    },
-    upload( r='Owner', d='Upload attached file' ) {
-      const attachment = $.message.attachments.first() || {}
-      const guildId = $.message.guild.id
-
-      if (!attachment.url) throw `No attached file`
-
-      const fileName = `${fs.realpathSync( '.' )}/guilds_config/${guildId}-${fileName}`
-      const file = fs.createWriteStream( fileName )
-
-      https.get( attachment.url, res => {
-        res.pipe( file ).on( 'finish', () => {
-          file.close()
-
-          $.sendStatus( `Done` )
-        } )
-      } )
-    },
   }
 }

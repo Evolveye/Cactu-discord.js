@@ -18,11 +18,11 @@ export const LoggerClass = Logger
 /** @typedef {import("./GuildModules.js").GuildModuleCommandsField} GuildModuleCommandsField */
 /** @typedef {import("./GuildModules.js").GuildModuleCommands} GuildModuleCommands */
 /** @typedef {import("./GuildModules.js").GuildModule} GuildModule */
+/** @typedef {import("./GuildModules.js").Variables} GuildModule */
+
 
 export default class CactuDiscordBot {
   discordClient = new Discord.Client()
-  /** @type {Object<string,string>} */
-  publicVars = {}
 
   /** @type {Map<string,GuildModules>} */
   guildsData = new Map()
@@ -71,11 +71,7 @@ export default class CactuDiscordBot {
       if (!guilds.has( id )) guilds.set( id, new GuildModules() )
 
       import( `./guilds_modules/${fileName}` )
-        .then( module => typeof module.default === `function`
-          ? module.default( { ...this.publicVars } )
-          : module.default
-        )
-        .then( moduleObject => guilds.get( id ).include( moduleObject ) )
+        .then( module => guilds.get( id ).include( module.default ) )
         .catch( console.log )
     } )
 
@@ -154,16 +150,16 @@ export default class CactuDiscordBot {
     if (!id) return
 
     const { prefix, prefixSpace } = this
-    const { commands, translation, botOperatorId } = this.guildsData.get( id )
+    const { commands, translation, botOperatorId, variables } = this.guildsData.get( id )
     const commandProcessor = new CommandProcessor( !guild, prefix, content, commands )
+
+    variables.message = message
 
     commandProcessor.process(
       prefixSpace,
       roles => this.checkPermissions( roles, botOperatorId, message ),
-      err => this.handleError( err, translation, message )
+      err => this.handleError( err, translation, message ),
     )
-
-    // console.log( commands )
   }
 
   onReady = () => {
