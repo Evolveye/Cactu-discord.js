@@ -1,3 +1,5 @@
+import CommandProcessor from "./CommandProcessor.js"
+
 /** @typedef {Object} GuildModuleTranslation
  * @property {string} err_badParam
  * @property {string} err_noCommand
@@ -10,25 +12,25 @@
  * @property {string} help_showMasks
  * @property {string} help_params
  * @property {string} help_masks
+ * @property {string} help_cmds
+ * @property {string} help_scopes
  * @property {string} footer_yourCmds
  * @property {string} footer_cmdInfo
  * @property {string} system_loadSucc
  * @property {string} system_loadFail
  */
+
 /** @typedef {Object<string,function>} GuildModuleFilters */
-/** @typedef {("@nobody"|"@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} GuildModuleRoles */
-/** @typedef {Object} GuildModuleCommandsField
- * @property {GuildModuleRoles} roles
- * @property {string} desc
- * @property {RegExp[]} masks
- * @property {function|GuildModuleCommands} value
- */
-/** @typedef {Object<string,GuildModuleCommandsField} GuildModuleCommands */
+
+/** @typedef {import("./CommandProcessor.js").Commands} GuildModuleCommands */
+/** @typedef {import("./CommandProcessor.js").CommandsField} GuildModuleCommandsField */
+
 /** @typedef {Object} GuildModule
  * @property {GuildModuleTranslation} translation
  * @property {GuildModuleFilters} filters
  * @property {GuildModuleCommands} commands
  */
+
 /** @typedef {import("discord.js").Message} SafeVariables */
 /** @typedef {Object} UnsafeVariables
  * @property {import("discord.js").Message} message
@@ -49,6 +51,8 @@ export default class GuildModules {
     help_showMasks:   `Send **!!** as first parameter of command to show description and params syntax`,
     help_params:      `The X**?** means optional parameter and the **...**X means any string`,
     help_masks:       `If you don't know what is going on, you can ask somebody from server stuff, or you can check "masks" on`,
+    help_cmds:        `Commands`,
+    help_scopes:      `Scopes`,
     footer_yourCmds:  `These are your personalized commands after sending:`,
     footer_cmdInfo:   `Commands information`,
     system_loadSucc:  `File has been loaded`,
@@ -77,44 +81,12 @@ export default class GuildModules {
       ? module( this.unsafeVariables )
       : module
 
-    this.normalizeCommands( commands )
+    CommandProcessor.normalizeCommands( commands )
 
     GuildModules.safeCommandsAssign( this.commands, commands )
     this.translation = Object.assign( translation, this.translation )
     this.filters = Object.assign( filters, this.filters )
     this.botOperatorId = botOperatorId
-  }
-
-  /**
-   * @param {GuildModuleCommands} commands
-   */
-  normalizeCommands( commands ) {
-    const checkField = (field, property, surrogate, defaultVal) => {
-      if (surrogate in field) {
-        let value = field[ surrogate ]
-
-        if (Array.isArray( defaultVal ) && !Array.isArray( value )) {
-          value = [ `${value}` ]
-        }
-
-        field[ property ] = value
-
-        delete field[ surrogate ]
-      } else if (!(property in field)) {
-        field[ property ] = defaultVal
-      }
-    }
-
-    for (const property in commands) {
-      const field = commands[ property ]
-
-      checkField( field, `roles`, `r`, [ `@everyone` ] )
-      checkField( field, `desc`,  `d`, `` )
-      checkField( field, `value`, `v` )
-
-      if (typeof field.value === `function`) checkField( field, `masks`, `m`, [] )
-      else this.normalizeCommands( field.value )
-    }
   }
 
   /**
@@ -193,7 +165,7 @@ export default class GuildModules {
 /** @param {UnsafeVariables} $ */
 GuildModules.predefinedCommands = $ => ({ commands: {
   $: { d:`Bot administration`, r:`@owner`, v:{
-    load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what ) {
+    load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what=/1/ ) {
       const { message } = $
 
       console.log( what, message )

@@ -5,13 +5,27 @@
  * @property {RegExp|null} paramMask
 */
 
+/** @typedef {("@nobody"|"@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
+/** @typedef {Object} Parameter
+ * @property {string} name
+ * @property {RegExp} mask
+ * @property {boolean} optional
+ */
+/** @typedef {Object} CommandsField
+ * @property {Role[]} roles
+ * @property {string} desc
+ * @property {Parameter[]} params
+ * @property {function|Commands} value
+ */
+/** @typedef {Object<string,CommandsField} Commands */
+
 export default class CommandProcessor {
   /** @type {string[]} */
   #parameters = []
 
-  /** @type {GuildModuleCommands} */
+  /** @type {Commands} */
   #commandsStructure = {}
-  /** @type {GuildModuleCommands|GuildModuleCommandsField} */
+  /** @type {Commands|CommandsField} */
   #scopeFromCommand = {}
 
   #command = ``
@@ -26,7 +40,7 @@ export default class CommandProcessor {
   /**
    * @param {string} prefix
    * @param {string} message
-   * @param {GuildModuleCommands>} commandsStructure
+   * @param {Commands>} commandsStructure
    */
   constructor( isDm, prefix, message, commandsStructure ) {
     this.#commandsStructure = commandsStructure
@@ -67,23 +81,6 @@ export default class CommandProcessor {
    * @param {RegExp} [paramMask]
    */
   setError( type=null, value=null, paramMask=null ) {
-    if (type === `noCommand`) {
-      value = { ...this.#scopeFromCommand }
-
-      Object.keys( value ).forEach( key => {
-        const scope = value[ key ]
-
-        if (typeof scope.value === `function`) {
-          scope.params = CommandProcessor.funcData( scope.value )
-          scope.type = `command`
-
-          delete scope.masks
-        } else scope.type = `scope`
-
-        delete scope.value
-      } )
-    }
-
     this.#err.type = type
     this.#err.value = value
     this.#err.paramMask = paramMask
@@ -129,7 +126,7 @@ export default class CommandProcessor {
 
     this.#scopeFromCommand = this.#commandsStructure
 
-    /** @param {GuildModuleRoles} roles */
+    /** @param {Role[]} roles */
     const checkAccess = roles => {
       if (roles.includes( `@nobody` )) return false
       if (this.#isDm) return roles.includes( `@dm` )
@@ -147,6 +144,8 @@ export default class CommandProcessor {
         return this.setError( `noPath`, this.command )
       }
 
+      console.log( part, Object.keys( this.#scopeFromCommand[ part ] ) )
+
       const structPart = this.#scopeFromCommand[ part ]
 
       if (!checkAccess( structPart.roles )) {
@@ -163,14 +162,34 @@ export default class CommandProcessor {
     }
 
     if (typeof this.#scopeFromCommand.value != `function`) {
-      this.setError( `noCommand` )
+      const value = {
+        command: this.#command,
+        structure: { ...this.#scopeFromCommand },
+      }
+
+      Object.keys( value.structure )
+        .forEach( key => {
+          value.structure[ key ] = { ...this.#scopeFromCommand[ key ] }
+
+          /** @type {Role[]} */
+          const scope = value.structure[ key ]
+
+          if (!checkAccess( scope.roles )) delete value.structure[ key ]
+          else {
+            scope.type = typeof scope.value === `function` ? `command` : `scope`
+
+            delete scope.value
+          }
+        } )
+
+      this.setError( `noCommand`, value )
     }
   }
 
   validateParams() {
     if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
 
-    const { masks } = this.#scopeFromCommand
+    const { params } = this.#scopeFromCommand
     const paramAdder = paramString => {
       if (!paramString) return
 
@@ -182,32 +201,23 @@ export default class CommandProcessor {
       )
     }
 
-    let params = this.#parts.rest
+    let pasedParams = this.#parts.rest
 
-    for (const mask of masks) {
-      if (!mask.test( params )) {
-        if (!params) {
-          const commandFunc = this.#scopeFromCommand.value
-          const paramNames = CommandProcessor.funcData( commandFunc )
+    for (const { name, mask } of params) {
+      if (!mask.test( pasedParams )) return pasedParams
+        ? this.setError( `badParam`, pasedParams.split( ` ` )[ 0 ], mask )
+        : this.setError( `noParam`, name, mask )
 
-          this.setError( `noParam`, paramNames[ masks.indexOf( mask ) ], mask )
-        } else {
-          this.setError( `badParam`, params.split( ` ` )[ 0 ]  ||  ` 👈`, mask )
-        }
-
-        return
-      }
-
-      const paramValue = mask.exec( params )[ 0 ] || null
+      const paramValue = mask.exec( pasedParams )[ 0 ] || null
 
       if (paramValue){
-        params = params.substr( paramValue.length ).trimLeft()
+        pasedParams = pasedParams.substr( paramValue.length ).trimLeft()
 
         paramAdder( paramValue )
       }
     }
 
-    params.split( ` ` ).forEach( paramAdder )
+    pasedParams.split( ` ` ).forEach( paramAdder )
   }
 
   execute() {
@@ -235,17 +245,67 @@ export default class CommandProcessor {
   }
 
   /**
+   * @param {Commands} commands
+   */
+  static normalizeCommands( commands ) {
+    const allAcceptableParams = [ `roles`, `desc`, `value`, `params` ]
+    const checkField = (field, property, surrogate, defaultVal) => {
+      if (surrogate in field) {
+        let value = field[ surrogate ]
+
+        if (Array.isArray( defaultVal ) && !Array.isArray( value )) {
+          value = [ `${value}` ]
+        }
+
+        field[ property ] = value
+
+        delete field[ surrogate ]
+      } else if (!(property in field)) {
+        field[ property ] = defaultVal
+      }
+    }
+
+    for (const property in commands) {
+      const field = commands[ property ]
+
+      checkField( field, `roles`, `r`, [ `@everyone` ] )
+      checkField( field, `desc`,  `d`, `` )
+      checkField( field, `value`, `v` )
+
+      if (typeof field.value === `function`) {
+        checkField( field, `params`, `p`, this.funcData( field.value ) )
+      } else this.normalizeCommands( field.value )
+
+      Object.keys( field )
+        .filter( key => !allAcceptableParams.includes( key ) )
+        .forEach( key => delete field[ key ] )
+    }
+  }
+
+  /**
    * @param {function} func
    */
   static funcData( func ) {
     const reg = {
       funcParter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
-      params: /\w+ *(?:= *.+?)?(?=, *|$)/g
+      params: / *,?(?<paramName>\w+) *= *\/(?<paramMask>.*?)\/(?<paramMaskFlags>\w*)?(?= *, *|$)/y,
     }
 
-    const { params } = reg.funcParter.exec( func.toString() ).groups
-    const paramNames = params.match( reg.params ) || []
+    const paramString = reg.funcParter.exec( func.toString() ).groups.params
+    const params = []
 
-    return paramNames
+    let paramData
+    while (paramData = reg.params.exec( paramString )) {
+      const { paramName, paramMask, paramMaskFlagsStr } = paramData.groups
+
+      params.push( {
+        param: paramName,
+        mask: new RegExp( paramMask ),
+        optional: /g/.test( paramMaskFlagsStr ) || /^\.\*?$/.test( paramMask ),
+        rest: /^\.(?:\+|\*)?$/.test( paramMask ),
+      } )
+    }
+
+    return params
   }
 }

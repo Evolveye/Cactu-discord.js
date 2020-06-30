@@ -111,7 +111,7 @@ export default class CactuDiscordBot {
    * @param {GuildModuleTranslation} translation
    * @param {Discord.Message} param2
    */
-  handleError({ type, value, paramMask }, translation, message) {
+  handleError({ type, value, paramMask }, translation, { author, channel }) {
     const { error } = this.signs
     let title = `Unknown error`
     let description = ``
@@ -135,21 +135,49 @@ export default class CactuDiscordBot {
         const scopes = []
         const cmds = []
 
-        for (const part in value) {
-          const { type, desc, params } = value[ part ]
+        for (const part in value.structure) {
+          const { type, desc, params } = value.structure[ part ]
 
           if (type == `scope`) {
-            scopes.push( { name:part, value:desc, inline:true } )
+            scopes.push( { name:`${part}...`, value:desc, inline:true } )
           } else {
-            cmds.push( { name:part, value:desc } )
+            let paramsString = ``
+
+            for (const { param, rest, optional } of params) {
+              const rest = params.rest ? `...` : ``
+              const optional = params.optional ? `?` : ``
+
+              paramsString += `   ${rest}${param}${optional}`
+            }
+
+            cmds.push( { name:(part + paramsString), value:desc } )
           }
         }
 
-        if (scopes.length) fields.push( ...scopes, { name:`\u200B`, desc:`\u200B` } )
+        if (scopes.length) {
+          description = `${translation.help_scopes}:`
+          fields.push( ...scopes, { name:`\u200B`, value:`${translation.help_cmds}:` } )
+        } else description = `${translation.help_cmds}:`
 
         fields.push( ...cmds )
 
         title = `⚙️ ${translation.help_title}`
+
+        console.log( fields )
+
+        // channel.send( { embed: { title, description, fields,
+        //   color: 0x18d818,
+        //   author: {
+        //     name: `CodeCactu`,
+        //     icon_url: this.discordClient.user.displayAvatarURL,
+        //     url: `https://codecactu.github.io/`
+        //   },
+        //   footer: {
+        //     text: `${translation.footer_yourCmds} ${value.command}`,
+        //     icon_url: author.displayAvatarURL
+        //   },
+        //   timestamp: new Date(),
+        // } } )
       }; break
 
       case `noParam`:
@@ -171,7 +199,7 @@ export default class CactuDiscordBot {
         return
     }
 
-    console.log( { title, description, type } )
+    // console.log( { title, description, type, value, paramMask } )
   }
 
   /**
