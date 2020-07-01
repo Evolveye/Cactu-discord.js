@@ -165,7 +165,7 @@ export default class GuildModules {
 /** @param {UnsafeVariables} $ */
 GuildModules.predefinedCommands = $ => ({ commands: {
   $: { d:`Bot administration`, r:`@owner`, v:{
-    load: { d:`Load commands/filters from attached file`, m:[ /c|commands|f|filters/ ], v( what=/1/ ) {
+    load: { d:`Load module from attached file`, v( what=/c|commands|f|filters/ ) {
       const { message } = $
 
       console.log( what, message )

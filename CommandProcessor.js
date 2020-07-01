@@ -7,7 +7,7 @@
 
 /** @typedef {("@nobody"|"@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
 /** @typedef {Object} Parameter
- * @property {string} name
+ * @property {string} param
  * @property {RegExp} mask
  * @property {boolean} optional
  */
@@ -144,12 +144,10 @@ export default class CommandProcessor {
         return this.setError( `noPath`, this.command )
       }
 
-      console.log( part, Object.keys( this.#scopeFromCommand[ part ] ) )
-
       const structPart = this.#scopeFromCommand[ part ]
 
       if (!checkAccess( structPart.roles )) {
-        return this.setError( `noPerms` )
+        return this.setError( `noPerms`, this.#command )
       }
 
       if (typeof structPart.value === `function`) {
@@ -203,10 +201,10 @@ export default class CommandProcessor {
 
     let pasedParams = this.#parts.rest
 
-    for (const { name, mask } of params) {
+    for (const { param, mask } of params) {
       if (!mask.test( pasedParams )) return pasedParams
         ? this.setError( `badParam`, pasedParams.split( ` ` )[ 0 ], mask )
-        : this.setError( `noParam`, name, mask )
+        : this.setError( `noParam`, param, mask )
 
       const paramValue = mask.exec( pasedParams )[ 0 ] || null
 

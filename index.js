@@ -119,7 +119,7 @@ export default class CactuDiscordBot {
     switch (type) {
       case `invalidCmd`:
         title = `${error} ${translation.err_invalidCmd}`
-        description = `> \`${value.message}\` ::  ` + value.stack.split( `\n` )[ 1 ]
+        description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
           .split( /-/ )
           .slice( -1 )[ 0 ]
           .slice( 0, -1 )
@@ -127,7 +127,7 @@ export default class CactuDiscordBot {
 
       case `badParam`:
         title = `${error} ${translation.err_badParam}`
-        description = `> ${value}`
+        description = `> ${value}  \`${paramMask}\``
         break
 
       case `noCommand`: {
@@ -141,16 +141,23 @@ export default class CactuDiscordBot {
           if (type == `scope`) {
             scopes.push( { name:`${part}...`, value:desc, inline:true } )
           } else {
-            let paramsString = ``
+            const paramsStrings = []
 
             for (const { param, rest, optional } of params) {
               const rest = params.rest ? `...` : ``
               const optional = params.optional ? `?` : ``
 
-              paramsString += `   ${rest}${param}${optional}`
+              paramsStrings.push( `${rest}${param}${optional}` )
             }
 
-            cmds.push( { name:(part + paramsString), value:desc } )
+            const paramsString = paramsStrings.length
+              ? `  \` ${paramsStrings.join( `   ` )} \``
+              : ``
+
+            cmds.push( {
+              name: `${part}${paramsString}`,
+              value: desc || `-  -  -`
+            } )
           }
         }
 
@@ -163,26 +170,26 @@ export default class CactuDiscordBot {
 
         title = `⚙️ ${translation.help_title}`
 
-        console.log( fields )
+        channel.send( { embed: { title, description, fields,
+          color: 0x18d818,
+          author: {
+            name: `CodeCactu`,
+            icon_url: this.discordClient.user.displayAvatarURL,
+            url: `https://codecactu.github.io/`
+          },
+          footer: {
+            text: `${translation.footer_yourCmds} ${value.command}`,
+            icon_url: author.displayAvatarURL
+          },
+          timestamp: new Date(),
+        } } )
 
-        // channel.send( { embed: { title, description, fields,
-        //   color: 0x18d818,
-        //   author: {
-        //     name: `CodeCactu`,
-        //     icon_url: this.discordClient.user.displayAvatarURL,
-        //     url: `https://codecactu.github.io/`
-        //   },
-        //   footer: {
-        //     text: `${translation.footer_yourCmds} ${value.command}`,
-        //     icon_url: author.displayAvatarURL
-        //   },
-        //   timestamp: new Date(),
-        // } } )
-      }; break
+        return
+      }
 
       case `noParam`:
         title = `${error} ${translation.err_noParam}`
-        description = `> ${value} \`${paramMask}\``
+        description = `> ${value}  \`${paramMask}\``
         break
 
       case `noPath`:
@@ -199,7 +206,14 @@ export default class CactuDiscordBot {
         return
     }
 
-    // console.log( { title, description, type, value, paramMask } )
+    channel.send( { embed: { title, description,
+      color: 0x18d818,
+      footer: {
+        text: translation.footer_cmdInfo,
+        icon_url: author.displayAvatarURL
+      },
+      timestamp: new Date(),
+    } } )
   }
 
   /**
