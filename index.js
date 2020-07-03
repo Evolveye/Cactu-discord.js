@@ -26,12 +26,12 @@ export default class CactuDiscordBot {
   guildsData = new Map()
 
   moduleLogger = new Logger( [
-    { align:'right',  color:'fgMagenta', length:30 }, // /(Filter|Command)/
-    { align:'center', color:'bright',    length:6 },  // /(Filter|Command)/
+    { align:'right',  color:'fgMagenta', length:30 }, // Guild name
+    { align:'center', color:'bright',    length:6 },  // "  ::  "
     { align:'right',  color:'fgBlue',    length:10 }, // /(Filter|Command)/
-    { length:3 },                                     // /:  /
-    { align:'right',  color:'fgYellow',  length:15 }, // /displayName/
-    { length:3 },                                     // /:  /
+    { length:3 },                                     // ":  "
+    { align:'right',  color:'fgYellow',  length:15 }, // member displayName
+    { length:3 },                                     // ":  "
     { splitLen:200, splitFLLen:150 },                 // /.*/
   ] )
   botLogger = new Logger( [
@@ -273,6 +273,7 @@ export default class CactuDiscordBot {
     this.discordClient.guilds.forEach( ({ id }) => this.guildsData.set( id, new GuildModules(
       this.prefix,
       this.prefixSpace,
+      this.moduleLogger,
       (event, litener) => this.discordClient.on( event, litener ) )
     ) )
 

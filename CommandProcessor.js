@@ -45,7 +45,6 @@ export default class CommandProcessor {
    */
   constructor( isDm, prefix, prefixSpace, message, commandsStructure ) {
     this.#commandsStructure = commandsStructure
-
     this.#prefixSpace = prefixSpace
     this.#command = message.trim()
     this.#prefix = prefix
@@ -246,8 +245,11 @@ export default class CommandProcessor {
    * @param {function} roleTesterFunction
    * @param {function} [errorHandlerFunction]
    */
-  process( roleTesterFunction, errorHandlerFunction=null ) {
+  process( roleTesterFunction, errorHandlerFunction=null, onPrefixSuccess=()=>{} ) {
     this.checkPrefix()
+
+    if (!this.#err.type) onPrefixSuccess()
+
     this.checkAccessToStructure( roleTesterFunction )
     this.validateParams()
     this.execute()

@@ -97,7 +97,7 @@ import https from "https"
  * @property {function(string,TextChannel?):Promise<Message>} send
  * @property {function(string,TextChannel?):Promise<Message>} sendOk
  * @property {function(string,Message):void} evalCmd
- * @property {function(boolean):void} setFiltering
+ * @property {function(string,*):void} setSharedData
  */
 /** @typedef {SafeVariables & {botInstance:BotInstance,guildModules:GuildModules}} UnsafeVariables */
 
@@ -117,22 +117,20 @@ export default class GuildModules {
 
   variablesSharedData = {
     filtering: true,
+    filterMatch: false,
   }
 
   /** @type {Object<string,function[]>} */
   events = {}
 
-  prefix = `cc!`
-  prefixSpace = true
-  eventBinder = () => {}
-
   /**
-   *
    * @param {string} prefix
    * @param {string} prefixSpace
+   * @param {import("./Logger.js")} logger
    * @param {function(string,function)} eventBinder
    */
-  constructor( prefix, prefixSpace, eventBinder ) {
+  constructor( prefix, prefixSpace, logger, eventBinder ) {
+    this.logger = logger
     this.prefix = prefix
     this.prefixSpace = prefixSpace
     this.eventBinder = eventBinder
@@ -207,6 +205,7 @@ export default class GuildModules {
     const vars = this.variablesSharedData
 
     vars.filtering = true
+    vars.filterMatch = false
   }
 
   /**
@@ -219,7 +218,8 @@ export default class GuildModules {
     for (const variables of [ this.safeVariables, this.unsafeVariables ]) {
       variables.send = (data, channel=message.channel) => channel.send( data )
       variables.sendOk = (data, channel=message.channel) => channel.send( `${botInstance.signs.ok} ${data}` )
-      variables.setFiltering = boolState => this.variablesSharedData.filtering = boolState
+      variables.setSharedData = (property, value) =>
+        property in this.variablesSharedData ? (this.variablesSharedData[ property ] = value) : false
       variables.evalCmd = (commandWithoutPrefix, msg=message) => {
         const command = `${this.prefix}${this.prefixSpace ? ` ` : ``}${commandWithoutPrefix}`
 
@@ -247,24 +247,31 @@ export default class GuildModules {
   process( message, botInstance, { filters=true, commands=true }={} ) {
     const { guild, content } = message
     const varsData = this.variablesSharedData
+    const log = type => this.logger( guild.name, `::`, type, `:`, message.member.displayName, `:`, content )
 
     this.restoreVariablecSharedData()
     this.setVariables( message, botInstance )
 
-    if (filters) for (const filterScope of this.filters) {
-      for (const { regExp, func } of filterScope) if (regExp.test( content )) {
-        func()
+    if (filters) {
+      for (const filterScope of this.filters) {
+        for (const { regExp, func } of filterScope) if (regExp.test( content )) {
+          varsData.filterMatch = true
+          func()
 
-        break
+          break
+        }
+
+        if (!varsData.filtering) break
       }
 
-      if (!varsData.filtering) break
+      if (varsData.filterMatch) log( `Filter` )
     }
 
     if (commands) new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
-      roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
-      err => botInstance.handleError( err, this.translation, message ),
-    )
+        roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
+        err => botInstance.handleError( err, this.translation, message ),
+        () => log( `Command` ),
+      )
   }
 
   /**
