@@ -27,8 +27,61 @@ import https from "https"
 /** @typedef {import("./CommandProcessor.js").Commands} GuildModuleCommands */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildModuleCommandsField */
 
+/** @typedef {Object} Events For details look at Events on https://discord.js.org/#/docs/main/stable/class/Client
+ * @property {function} [channelCreate]
+ * @property {function} [channelDelete]
+ * @property {function} [channelPinsUpdate]
+ * @property {function} [channelUpdate]
+ * @property {function} [clientUserGuildSettingsUpdate]
+ * @property {function} [clientUserSettingsUpdate]
+ * @property {function} [debug]
+ * @property {function} [disconnect]
+ * @property {function} [emojiCreate]
+ * @property {function} [emojiDelete]
+ * @property {function} [emojiUpdate]
+ * @property {function} [error]
+ * @property {function} [guildBanAdd]
+ * @property {function} [guildBanRemove]
+ * @property {function} [guildCreate]
+ * @property {function} [guildDelete]
+ * @property {function} [guildMemberAdd]
+ * @property {function} [guildMemberAvailable]
+ * @property {function} [guildMemberRemove]
+ * @property {function} [guildMembersChunk]
+ * @property {function} [guildMemberSpeaking]
+ * @property {function} [guildMemberUpdate]
+ * @property {function} [guildUnavailable]
+ * @property {function} [guildUpdate]
+ * @property {function} [guildIntegrationsUpdate]
+ * @property {function} [inviteCreate]
+ * @property {function} [message]
+ * @property {function} [messageDelete]
+ * @property {function} [messageDeleteBulk]
+ * @property {function} [messageReactionAdd]
+ * @property {function} [messageReactionRemove]
+ * @property {function} [messageReactionRemoveEmoji]
+ * @property {function} [messageReactionRemoveAll]
+ * @property {function} [messageUpdate]
+ * @property {function} [presenceUpdate]
+ * @property {function} [rateLimit]
+ * @property {function} [ready]
+ * @property {function} [reconnecting]
+ * @property {function} [resume]
+ * @property {function} [roleCreate]
+ * @property {function} [roleDelete]
+ * @property {function} [roleUpdate]
+ * @property {function} [typingStart]
+ * @property {function} [typingStop]
+ * @property {function} [userNoteUpdate]
+ * @property {function} [userUpdate]
+ * @property {function} [voiceStateUpdate]
+ * @property {function} [warn]
+ * @property {function} [webhookUpdate]
+*/
+
 /** @typedef {Object} GuildModule
  * @property {GuildModuleTranslation} translation
+ * @property {Events} events
  * @property {GuildModuleFilters} filters
  * @property {GuildModuleCommands} commands
  */
@@ -82,12 +135,23 @@ export default class GuildModules {
     filtering: true,
   }
 
+  /** @type {Object<string,function[]>} */
+  events = {}
+
   prefix = `cc!`
   prefixSpace = true
+  eventBinder = () => {}
 
-  constructor( prefix, prefixSpace ) {
+  /**
+   *
+   * @param {string} prefix
+   * @param {string} prefixSpace
+   * @param {function(string,function)} eventBinder
+   */
+  constructor( prefix, prefixSpace, eventBinder ) {
     this.prefix = prefix
     this.prefixSpace = prefixSpace
+    this.eventBinder = eventBinder
 
     this.include( GuildModules.predefinedCommands )
   }
@@ -96,9 +160,19 @@ export default class GuildModules {
    * @param {GuildModule} param0
    */
   include( module ) {
-    const { translation={}, commands={}, filters=[], botOperatorId=`` } = typeof module === `function`
+    const { translation={}, events={}, commands={}, filters=[], botOperatorId=`` } = typeof module === `function`
       ? module( this.unsafeVariables )
       : module
+
+    for (const event in events) {
+      if (!(event in this.events)) {
+        this.events[ event ] = []
+
+        this.eventBinder( event, (...data) => this.events[ event ].forEach( f => f( ...data ) ) )
+      }
+
+      this.events[ event ].push( events[ event ] )
+    }
 
     this.filters = filters.map( filterScope => Object.entries( filterScope ) )
       .map( filterScope => filterScope.map( ([ regExp, func ]) => {

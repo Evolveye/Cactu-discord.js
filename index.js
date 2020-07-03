@@ -255,9 +255,11 @@ export default class CactuDiscordBot {
     this.log( `I have been started` )
     console.log()
 
-    this.discordClient.guilds.forEach( ({ id }) => {
-      this.guildsData.set( id, new GuildModules( this.prefix, this.prefixSpace ) )
-    } )
+    this.discordClient.guilds.forEach( ({ id }) => this.guildsData.set( id, new GuildModules(
+      this.prefix,
+      this.prefixSpace,
+      (event, litener) => this.discordClient.on( event, litener ) )
+    ) )
 
     fs.readdirSync( `./guilds_modules` ).forEach( this.loadModule )
 
