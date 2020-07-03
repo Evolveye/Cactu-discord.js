@@ -158,12 +158,14 @@ export default class GuildModules {
    * @param {Message} message
    * @param {BotInstance} botInstance
    */
-  process( message, botInstance ) {
+  process( message, botInstance, { filters=true, commands=true }={} ) {
     const { guild, content } = message
     const varsData = this.variablesSharedData
+
+    this.restoreVariablecSharedData()
     this.setVariables( message, botInstance )
 
-    for (const filterScope of this.filters) {
+    if (filters) for (const filterScope of this.filters) {
       for (const { regExp, func } of filterScope) if (regExp.test( content )) {
         func()
 
@@ -173,9 +175,8 @@ export default class GuildModules {
       if (!varsData.filtering) break
     }
 
-    this.restoreVariablecSharedData()
 
-    new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
+    if (commands) new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
       roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
       err => botInstance.handleError( err, this.translation, message ),
     )

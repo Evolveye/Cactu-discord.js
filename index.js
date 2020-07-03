@@ -65,6 +65,7 @@ export default class CactuDiscordBot {
     this.discordClient
       .on( `message`, this.onMessage )
       .on( `ready`, this.onReady )
+      .on( `messageUpdate`, this.onMessageUpdate )
       .login( config.token || `` )
       .catch( () => this.log( `I can't login in` ) )
   }
@@ -216,7 +217,7 @@ export default class CactuDiscordBot {
   /**
    * @param {Discord.Message} message
    */
-  onMessage = message => {
+  getGuildData( message ) {
     const { guild, author } = message
 
     const id = guild
@@ -227,9 +228,26 @@ export default class CactuDiscordBot {
 
     if ((author.bot && author.id === this.discordClient.user.id) || !id) return
 
-    const guildData = this.guildsData.get( id )
+    return this.guildsData.get( id )
+  }
+
+  /**
+   * @param {Discord.Message} message
+   */
+  onMessage = message => {
+    const guildData = this.getGuildData( message )
 
     if (guildData) guildData.process( message, this )
+  }
+
+  /**
+   * @param {Discord.Message} oldMessage
+   * @param {Discord.Message} newMessage
+   */
+  onMessageUpdate = (oldMessage, newMessage) => {
+    const guildData = this.getGuildData( newMessage )
+
+    if (guildData) guildData.process( newMessage, this, { commands:false } )
   }
 
   onReady = () => {
