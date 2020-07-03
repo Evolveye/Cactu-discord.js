@@ -19,7 +19,6 @@ export const LoggerClass = Logger
 /** @typedef {import("./GuildModules.js").GuildModule} GuildModule */
 /** @typedef {import("./GuildModules.js").UnsafeVariables} GuildModule */
 
-
 export default class CactuDiscordBot {
   discordClient = new Discord.Client()
 
