@@ -1,7 +1,7 @@
-import Discord from 'discord.js'
-import fs from 'fs'
+import Discord from "discord.js"
+import fs from "fs"
 
-import GuildModules from './GuildModules.js'
+import GuildModules from "./GuildModules.js"
 import Logger from "./Logger.js"
 
 if (!fs.existsSync( `./guilds_modules/` )) fs.mkdirSync( `./guilds_modules/` )
@@ -43,7 +43,7 @@ export default class CactuDiscordBot {
 
   prefix = `cc!`
   prefixSpace = true
-  signs = { error:'❌', warn:'⚠️', ok:'✅' }
+  signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
 
   /**
    * @typedef {Object} CactuDiscordBotConfig
@@ -57,14 +57,14 @@ export default class CactuDiscordBot {
    * @param {CactuDiscordBotConfig} config
    */
   constructor( config ) {
-    if ('prefix'      in config) this.prefix      = config.prefix
-    if ('prefixSpace' in config) this.prefixSpace = config.prefixSpace
-    if ('publicVars'  in config) this.publicVars  = config.publicVars
-    if ('signs'       in config) this.signs       = config.signs
+    if (`prefix`      in config) this.prefix      = config.prefix
+    if (`prefixSpace` in config) this.prefixSpace = config.prefixSpace
+    if (`publicVars`  in config) this.publicVars  = config.publicVars
+    if (`signs`       in config) this.signs       = config.signs
 
     this.discordClient
-      .on( 'message', this.onMessage )
-      .on( 'ready', this.onReady )
+      .on( `message`, this.onMessage )
+      .on( `ready`, this.onReady )
       .login( config.token || `` )
       .catch( () => this.log( `I can't login in` ) )
   }
@@ -84,7 +84,7 @@ export default class CactuDiscordBot {
    * @param {string} string
    */
   log( string ) {
-    this.botLogger( 'Bot', ':', string )
+    this.botLogger( `Bot`, `:`, string )
   }
 
   /**

@@ -135,7 +135,7 @@ export default class GuildModules {
       variables.sendOk = (data, channel=message.channel) => channel.send( `${botInstance.signs.ok} ${data}` )
       variables.setFiltering = boolState => this.variablesSharedData.filtering = boolState
       variables.evalCmd = (commandWithoutPrefix, msg=message) => {
-        const command = `${this.prefix}${this.prefixSpace ? ' ' : ''}${commandWithoutPrefix}`
+        const command = `${this.prefix}${this.prefixSpace ? ` ` : ``}${commandWithoutPrefix}`
 
         new CommandProcessor( false, this.prefix, this.prefixSpace, command, this.commands ).process(
           roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
@@ -233,12 +233,12 @@ export default class GuildModules {
         const guildId = message.guild.id
 
         if (attachment && attachment.url && !attachment.width) {
-          const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || 'mjs'
+          const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
           const fileName = `${guildId}-module.${extension}`
-          const path = `${fs.realpathSync( '.' )}/guilds_modules/${fileName}`
+          const path = `${fs.realpathSync( `.` )}/guilds_modules/${fileName}`
           const file = fs.createWriteStream( path )
 
-          https.get( attachment.url, res => res.pipe( file ).on( 'finish', () => {
+          https.get( attachment.url, res => res.pipe( file ).on( `finish`, () => {
             file.close()
 
             botInstance.loadModule( fileName )
@@ -249,11 +249,11 @@ export default class GuildModules {
         $.guildModules.botOperatorId = id
       }},
       getModule: { d:`Get the module config file`, v() {
-        let configFileName = `${fs.realpathSync( '.' )}/guilds_modules/${$.message.guild.id}-module`
+        let configFileName = `${fs.realpathSync( `.` )}/guilds_modules/${$.message.guild.id}-module`
 
-        if (fs.existsSync( `${configFileName}.js` )) configFileName += '.js'
-        else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += '.mjs'
-        else throw "That guild doesn't have the config file"
+        if (fs.existsSync( `${configFileName}.js` )) configFileName += `.js`
+        else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += `.mjs`
+        else throw `That guild doesn't have the config file`
 
         $.send( { files:[ configFileName ] } )
       }}

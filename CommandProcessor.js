@@ -32,7 +32,7 @@ export default class CommandProcessor {
   #command = ``
   #prefix = ``
   #parts = { prev:``, part:``, rest:`` }
-  #path = ''
+  #path = ``
   #isDm = false
 
   /** @type {CommandError} */
@@ -97,15 +97,15 @@ export default class CommandProcessor {
     return !!this.#parts.part
   }
 
-  partCommand( command='' ) {
+  partCommand( command=`` ) {
     const { groups } = /^(?<part>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
 
     /** @type {string} */
     const prev = this.#parts ? `${this.#parts.prev} ${this.#parts.part}` : ``
     /** @type {string} */
-    const part = groups.part || ''
+    const part = groups.part || ``
     /** @type {string} */
-    const rest = groups.rest || ''
+    const rest = groups.rest || ``
 
     return { prev, part, rest }
   }
