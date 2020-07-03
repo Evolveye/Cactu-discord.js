@@ -327,7 +327,6 @@ export default class GuildModules {
 
         if (!attachment) throw translation.err_attachFile
         if (attachment.url && !attachment.width) {
-          botInstance.clearGuildModules( guildId )
 
           const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
           const fileName = `${guildId}-${Date.now()}-module.${extension}`
@@ -337,6 +336,11 @@ export default class GuildModules {
           https.get( attachment.url, res => res.pipe( file ).on( `finish`, () => {
             file.close()
 
+            if ($.message.author.id !== `263736841025355777` && /eval|(?<!\/\*\* @typedef {)import/gi.test( fs.readFileSync( path ) )) {
+              throw translation.system_loadFail
+            }
+
+            botInstance.clearGuildModules( guildId, fileName )
             botInstance.loadModule( fileName )
 
             $.sendOk( translation.system_loadSucc )

@@ -81,12 +81,12 @@ export default class CactuDiscordBot {
       .catch( () => this.log( `I can't load module` ) )
   }
 
-  clearGuildModules( guildIdToRemove ) {
+  clearGuildModules( guildIdToRemove, ...excludeNames ) {
     fs.readdirSync( `./guilds_modules` ).forEach( filename => {
       const [ guildId ] = filename.split( `-` )
 
       try {
-        if (guildId === guildIdToRemove) fs.unlinkSync( `./guilds_modules/${filename}` )
+        if (!excludeNames.includes( filename ) && guildId === guildIdToRemove) fs.unlinkSync( `./guilds_modules/${filename}` )
       } catch {
         this.log( `I can't remove module file (${filename})` )
       }
