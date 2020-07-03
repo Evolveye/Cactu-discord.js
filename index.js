@@ -119,8 +119,10 @@ export default class CactuDiscordBot {
       case `invalidCmd`:
         title = `${error} ${translation.err_invalidCmd}`
 
-        if (typeof value === `string`) description = `> \`${value}\` `
-        else description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
+        if (typeof value === `string`) {
+          title = `${error} ${translation.err_error}`
+          description = `> \`${value}\` `
+        } else description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
           .split( /-/ )
           .slice( -1 )[ 0 ]
           .slice( 0, -1 )

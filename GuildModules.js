@@ -10,6 +10,8 @@ import https from "https"
  * @property {string} err_noPerms
  * @property {string} err_noPrefix
  * @property {string} err_invalidCmd
+ * @property {string} err_error
+ * @property {string} err_attachFile
  * @property {string} help_title
  * @property {string} help_showMasks
  * @property {string} help_params
@@ -109,6 +111,8 @@ export default class GuildModules {
     err_noPerms:      `You don't have permissions to use that!`,
     err_noPrefix:     `You didn't pass the prefix`,
     err_invalidCmd:   `That command have invalid code!`,
+    err_error:        `Error!`,
+    err_attachFile:   `You should attach module file!`,
     help_title:       `Help for a syntax of the specified command`,
     help_showMasks:   `Send **!!** as first parameter of command to show description and params syntax`,
     help_params:      `The X**?** means optional parameter and the **...**X means any string`,
@@ -249,7 +253,6 @@ export default class GuildModules {
       if (!varsData.filtering) break
     }
 
-
     if (commands) new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
       roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
       err => botInstance.handleError( err, this.translation, message ),
@@ -263,16 +266,20 @@ export default class GuildModules {
   static safeCommandsAssign( target, object ) {
     Object.keys( object ).forEach( key => {
       switch (typeof object[ key ]) {
+        case `undefined`:
+          break
+
         case `object`:
           if (Array.isArray( object[ key ] )) {
-            if (key != `masks` || !(key in target)) target[ key ] = object[ key ]
+            if (!(key in target)) target[ key ] = object[ key ]
           } else target[ key ] = this.safeCommandsAssign( target[ key ] || {}, object[ key ] )
           break
 
         case `function`:
           if (key in target) break
 
-        default: target[ key ] = object[ key ]
+        default:
+          target[ key ] = object[ key ]
       }
     } )
 
@@ -306,10 +313,14 @@ export default class GuildModules {
         const { message, botInstance } = $
         const attachment = message.attachments.first()
         const guildId = message.guild.id
+        const { translation } = $.guildModules
 
-        if (attachment && attachment.url && !attachment.width) {
+        message.delete()
+
+        if (!attachment) throw translation.err_attachFile
+        if (attachment.url && !attachment.width) {
           const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
-          const fileName = `${guildId}-module.${extension}`
+          const fileName = `${guildId}-${Date.now()}-module.${extension}`
           const path = `${fs.realpathSync( `.` )}/guilds_modules/${fileName}`
           const file = fs.createWriteStream( path )
 
@@ -317,6 +328,8 @@ export default class GuildModules {
             file.close()
 
             botInstance.loadModule( fileName )
+
+            $.sendOk( translation.system_loadSucc )
           } ) )
         }
       }},
