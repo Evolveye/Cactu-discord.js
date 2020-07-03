@@ -1,4 +1,6 @@
 import CommandProcessor from "./CommandProcessor.js"
+import fs from "fs"
+import https from "https"
 
 /** @typedef {Object} GuildModuleTranslation
  * @property {string} err_badParam
@@ -20,7 +22,7 @@ import CommandProcessor from "./CommandProcessor.js"
  * @property {string} system_loadFail
  */
 
-/** @typedef {Object<string,function>} GuildModuleFilters */
+/** @typedef {{regExp:RegExp,func:function}[][]} GuildModuleFilters */
 
 /** @typedef {import("./CommandProcessor.js").Commands} GuildModuleCommands */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildModuleCommandsField */
@@ -31,11 +33,18 @@ import CommandProcessor from "./CommandProcessor.js"
  * @property {GuildModuleCommands} commands
  */
 
-/** @typedef {import("discord.js").Message} SafeVariables */
-/** @typedef {Object} UnsafeVariables
- * @property {import("discord.js").Message} message
- * @property {import("./index.js").default} botInstance
+/** @typedef {import("discord.js").Message} Message */
+/** @typedef {import("discord.js").TextChannel} TextChannel */
+/** @typedef {import("./index.js").default} BotInstance */
+
+/** @typedef {Object} SafeVariables
+ * @property {Message} message
+ * @property {function(string,TextChannel?):Promise<Message>} send
+ * @property {function(string,TextChannel?):Promise<Message>} sendOk
+ * @property {function(string,Message):void} evalCmd
+ * @property {function(boolean):void} setFiltering
  */
+/** @typedef {SafeVariables & {botInstance:BotInstance,guildModules:GuildModules}} UnsafeVariables */
 
 export default class GuildModules {
   /** @type {GuildModuleTranslation} */
@@ -59,17 +68,27 @@ export default class GuildModules {
     system_loadFail:  `Wrong file data!`
   }
   /** @type {GuildModuleFilters} */
-  filters = {}
+  filters = new Map()
   /** @type {GuildModuleCommands} */
   commands = {}
-  /** @type {Discord} */
+  /** @type {string} */
   botOperatorId = ``
-  /** @type {SafeVariables} */
-  unsafeVariables = {}
   /** @type {UnsafeVariables} */
+  unsafeVariables = {}
+  /** @type {SafeVariables} */
   safeVariables = {}
 
-  constructor() {
+  variablesSharedData = {
+    filtering: true,
+  }
+
+  prefix = `cc!`
+  prefixSpace = true
+
+  constructor( prefix, prefixSpace ) {
+    this.prefix = prefix
+    this.prefixSpace = prefixSpace
+
     this.include( GuildModules.predefinedCommands )
   }
 
@@ -77,48 +96,89 @@ export default class GuildModules {
    * @param {GuildModule} param0
    */
   include( module ) {
-    const { translation={}, commands={}, filters={}, botOperatorId={} } = typeof module === `function`
+    const { translation={}, commands={}, filters=[], botOperatorId=`` } = typeof module === `function`
       ? module( this.unsafeVariables )
       : module
+
+    this.filters = filters.map( filterScope => Object.entries( filterScope ) )
+      .map( filterScope => filterScope.map( ([ regExp, func ]) => {
+        const [ regSource, regFlags ] = regExp.split( /\/$|\/(?=[gmiyus]+$)/ )
+
+        return {
+          regExp: new RegExp( regSource.slice( 1 ), regFlags ),
+          func,
+        }
+      } ) )
 
     CommandProcessor.normalizeCommands( commands )
 
     GuildModules.safeCommandsAssign( this.commands, commands )
     this.translation = Object.assign( translation, this.translation )
-    this.filters = Object.assign( filters, this.filters )
     this.botOperatorId = botOperatorId
   }
 
-  /**
-   * @param {import("discord.js").Message} message
-   */
-  setSafeVariables( message ) {
-    if (!message) throw new Error( `All parameters are required!` )
+  restoreVariablecSharedData() {
+    const vars = this.variablesSharedData
 
-    delete message.application
-    GuildModules.deletePropertyGlobaly( message, `client`, 2 )
-
-    this.safeVariables.message = message
+    vars.filtering = true
   }
 
   /**
-   * @param {import("discord.js").Message} message
-   * @param {import("./index.js").default} botInstance
-   */
-  setUnsafeVariables( message, botInstance ) {
-    if (!message || !botInstance) throw new Error( `All parameters are required!` )
-
-    this.unsafeVariables.message = message
-    this.unsafeVariables.botInstance = botInstance
-  }
-
-  /**
-   * @param {import("discord.js").Message} message
-   * @param {import("./index.js").default} botInstance
+   * @param {Message} message
+   * @param {BotInstance} botInstance
    */
   setVariables( message, botInstance ) {
-    this.setSafeVariables( message )
-    this.setUnsafeVariables( message, botInstance )
+    if (!message || !botInstance) throw new Error( `All parameters are required!` )
+
+    for (const variables of [ this.safeVariables, this.unsafeVariables ]) {
+      variables.send = (data, channel=message.channel) => channel.send( data )
+      variables.sendOk = (data, channel=message.channel) => channel.send( `${botInstance.signs.ok} ${data}` )
+      variables.setFiltering = boolState => this.variablesSharedData.filtering = boolState
+      variables.evalCmd = (commandWithoutPrefix, msg=message) => {
+        const command = `${this.prefix}${this.prefixSpace ? ' ' : ''}${commandWithoutPrefix}`
+
+        new CommandProcessor( false, this.prefix, this.prefixSpace, command, this.commands ).process(
+          roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
+          err => botInstance.handleError( err, this.translation, msg ),
+        )
+      }
+    }
+
+    this.unsafeVariables.botInstance = botInstance
+    this.unsafeVariables.guildModules = this
+    this.unsafeVariables.message = message
+    this.safeVariables.message = { ...message }
+    this.safeVariables.message.guild = { ...message.guild }
+
+    GuildModules.deletePropertyGlobaly( this.safeVariables.message, `client`, 2 )
+    GuildModules.deletePropertyGlobaly( this.safeVariables.message.guild, `client`, 1 )
+  }
+
+  /**
+   * @param {Message} message
+   * @param {BotInstance} botInstance
+   */
+  process( message, botInstance ) {
+    const { guild, content } = message
+    const varsData = this.variablesSharedData
+    this.setVariables( message, botInstance )
+
+    for (const filterScope of this.filters) {
+      for (const { regExp, func } of filterScope) if (regExp.test( content )) {
+        func()
+
+        break
+      }
+
+      if (!varsData.filtering) break
+    }
+
+    this.restoreVariablecSharedData()
+
+    new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
+      roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
+      err => botInstance.handleError( err, this.translation, message ),
+    )
   }
 
   /**
@@ -153,22 +213,50 @@ export default class GuildModules {
     const deletePropG = (object, deep=0) => Object.keys( object ).forEach( key => {
       const prop = object[ key ]
 
-      if ((deep === maxDeep && Object( prop ) !== prop) || key === property) delete object[ key ]
-      else if (typeof prop == `object` && !Array.isArray( prop ) && references.includes( prop )) {
-        references.push( prop )
-        deletePropG( prop, deep + 1 )
+      if ((deep === maxDeep && Object( prop ) === prop) || key === property) delete object[ key ]
+      else if (prop && typeof prop === `object` && !Array.isArray( prop ) && !references.includes( prop )) {
+        object[ key ] = { ...prop }
+
+        deletePropG( object[ key ], deep + 1 )
       }
     } )
+
+    deletePropG( object )
   }
-}
 
-/** @param {UnsafeVariables} $ */
-GuildModules.predefinedCommands = $ => ({ commands: {
-  $: { d:`Bot administration`, r:`@owner`, v:{
-    load: { d:`Load module from attached file`, v( what=/c|commands|f|filters/ ) {
-      const { message } = $
+  /** @param {UnsafeVariables} $ */
+  static predefinedCommands = $ => ({ commands: {
+    $: { d:`Bot administration`, r:`@owner`, v:{
+      load: { d:`Load module from attached file`, v() {
+        const { message, botInstance } = $
+        const attachment = message.attachments.first()
+        const guildId = message.guild.id
 
-      console.log( what, message )
+        if (attachment && attachment.url && !attachment.width) {
+          const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || 'mjs'
+          const fileName = `${guildId}-module.${extension}`
+          const path = `${fs.realpathSync( '.' )}/guilds_modules/${fileName}`
+          const file = fs.createWriteStream( path )
+
+          https.get( attachment.url, res => res.pipe( file ).on( 'finish', () => {
+            file.close()
+
+            botInstance.loadModule( fileName )
+          } ) )
+        }
+      }},
+      setBotOperator: { d:`Set the ID of bot operator`, v( id=/\d{18}/) {
+        $.guildModules.botOperatorId = id
+      }},
+      getModule: { d:`Get the module config file`, v() {
+        let configFileName = `${fs.realpathSync( '.' )}/guilds_modules/${$.message.guild.id}-module`
+
+        if (fs.existsSync( `${configFileName}.js` )) configFileName += '.js'
+        else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += '.mjs'
+        else throw "That guild doesn't have the config file"
+
+        $.send( { files:[ configFileName ] } )
+      }}
     }},
-  }},
-} })
+  } })
+}

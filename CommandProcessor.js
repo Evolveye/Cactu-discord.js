@@ -28,6 +28,7 @@ export default class CommandProcessor {
   /** @type {Commands|CommandsField} */
   #scopeFromCommand = {}
 
+  #prefixSpace = false
   #command = ``
   #prefix = ``
   #parts = { prev:``, part:``, rest:`` }
@@ -42,12 +43,13 @@ export default class CommandProcessor {
    * @param {string} message
    * @param {Commands>} commandsStructure
    */
-  constructor( isDm, prefix, message, commandsStructure ) {
+  constructor( isDm, prefix, prefixSpace, message, commandsStructure ) {
     this.#commandsStructure = commandsStructure
 
+    this.#prefixSpace = prefixSpace
     this.#command = message.trim()
-    this.#parts = this.partCommand()
     this.#prefix = prefix
+    this.#parts = this.partCommand()
     this.#isDm = isDm
 
     this.#parts.rest = message.slice( prefix.length ).trim()
@@ -55,6 +57,9 @@ export default class CommandProcessor {
 
   get commandsStructure() {
     return this.#commandsStructure
+  }
+  get prefixSpace() {
+    return this.#prefixSpace
   }
   get parameters() {
     return this.#parameters
@@ -105,8 +110,8 @@ export default class CommandProcessor {
     return { prev, part, rest }
   }
 
-  checkPrefix( prefixSpace=true ) {
-    const { command, prefix } = this
+  checkPrefix() {
+    const { command, prefix, prefixSpace } = this
     const firstWord = command.split( ` ` )[ 0 ]
 
     if (!command.startsWith( prefix )) this.setError( `noPrefix` )
@@ -189,9 +194,11 @@ export default class CommandProcessor {
 
     const { params } = this.#scopeFromCommand
     const paramAdder = paramString => {
-      if (!paramString) return
+      if (paramString === ``) return
 
-      const isParamValueNumber = /\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?/.test( paramString )
+      const isParamValueNumber = paramString
+        ? paramString.length < 10 && /^\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?$/.test( paramString )
+        : false
 
       this.#parameters.push( isParamValueNumber
         ? Number( paramString.replace( /_/g, `` ) )
@@ -201,14 +208,20 @@ export default class CommandProcessor {
 
     let pasedParams = this.#parts.rest
 
-    for (const { param, mask } of params) {
-      if (!mask.test( pasedParams )) return pasedParams
-        ? this.setError( `badParam`, pasedParams.split( ` ` )[ 0 ], mask )
-        : this.setError( `noParam`, param, mask )
+    for (const { param, mask, optional } of params) {
+      if (!mask.test( pasedParams )) {
+        if (optional) {
+          paramAdder( null )
+          continue
+        }
+        return pasedParams
+          ? this.setError( `badParam`, pasedParams.split( ` ` )[ 0 ], mask )
+          : this.setError( `noParam`, param, mask )
+      }
 
       const paramValue = mask.exec( pasedParams )[ 0 ] || null
 
-      if (paramValue){
+      if (paramValue) {
         pasedParams = pasedParams.substr( paramValue.length ).trimLeft()
 
         paramAdder( paramValue )
@@ -233,8 +246,8 @@ export default class CommandProcessor {
    * @param {function} roleTesterFunction
    * @param {function} [errorHandlerFunction]
    */
-  process( prefixSpace, roleTesterFunction, errorHandlerFunction=null ) {
-    this.checkPrefix( prefixSpace )
+  process( roleTesterFunction, errorHandlerFunction=null ) {
+    this.checkPrefix()
     this.checkAccessToStructure( roleTesterFunction )
     this.validateParams()
     this.execute()
@@ -286,7 +299,7 @@ export default class CommandProcessor {
   static funcData( func ) {
     const reg = {
       funcParter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
-      params: / *,?(?<paramName>\w+) *= *\/(?<paramMask>.*?)\/(?<paramMaskFlags>\w*)?(?= *, *|$)/y,
+      params: / *,? *(?<paramName>\w+) *= *\/(?<paramMask>.*?)\/(?<paramMaskFlags>\w*)?(?= *, *|$)/y,
     }
 
     const paramString = reg.funcParter.exec( func.toString() ).groups.params
@@ -294,12 +307,12 @@ export default class CommandProcessor {
 
     let paramData
     while (paramData = reg.params.exec( paramString )) {
-      const { paramName, paramMask, paramMaskFlagsStr } = paramData.groups
+      const { paramName, paramMask, paramMaskFlags } = paramData.groups
 
       params.push( {
         param: paramName,
-        mask: new RegExp( paramMask ),
-        optional: /g/.test( paramMaskFlagsStr ) || /^\.\*?$/.test( paramMask ),
+        mask: new RegExp( `^${paramMask}`, `s` ),
+        optional: /g/.test( paramMaskFlags ) || /^\.\*?$/.test( paramMask ),
         rest: /^\.(?:\+|\*)?$/.test( paramMask ),
       } )
     }

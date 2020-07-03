@@ -1,7 +1,6 @@
 import Discord from 'discord.js'
 import fs from 'fs'
 
-import CommandProcessor from './CommandProcessor.js'
 import GuildModules from './GuildModules.js'
 import Logger from "./Logger.js"
 
@@ -63,23 +62,22 @@ export default class CactuDiscordBot {
     if ('publicVars'  in config) this.publicVars  = config.publicVars
     if ('signs'       in config) this.signs       = config.signs
 
-    const guilds = this.guildsData
-
-    fs.readdirSync( `./guilds_modules` ).forEach( fileName => {
-      const id = fileName.match( /(.*?)-(.*)/ )[ 1 ]
-
-      if (!guilds.has( id )) guilds.set( id, new GuildModules() )
-
-      import( `./guilds_modules/${fileName}` )
-        .then( module => guilds.get( id ).include( module.default ) )
-        .catch( console.log )
-    } )
-
     this.discordClient
       .on( 'message', this.onMessage )
       .on( 'ready', this.onReady )
       .login( config.token || `` )
       .catch( () => this.log( `I can't login in` ) )
+  }
+
+  loadModule = moduleName => {
+    if (!moduleName) return
+
+    const guilds = this.guildsData
+    const id = moduleName.match( /(.*?)-(.*)/ )[ 1 ]
+
+    import( `./guilds_modules/${moduleName}` )
+      .then( module => guilds.get( id ).include( module.default ) )
+      .catch( console.log )
   }
 
   /**
@@ -119,7 +117,9 @@ export default class CactuDiscordBot {
     switch (type) {
       case `invalidCmd`:
         title = `${error} ${translation.err_invalidCmd}`
-        description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
+
+        if (typeof value === `string`) description = `> \`${value}\` `
+        else description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
           .split( /-/ )
           .slice( -1 )[ 0 ]
           .slice( 0, -1 )
@@ -144,10 +144,7 @@ export default class CactuDiscordBot {
             const paramsStrings = []
 
             for (const { param, rest, optional } of params) {
-              const rest = params.rest ? `...` : ``
-              const optional = params.optional ? `?` : ``
-
-              paramsStrings.push( `${rest}${param}${optional}` )
+              paramsStrings.push( `${rest ? `...` : ``}${param}${optional ? `?` : ``}` )
             }
 
             const paramsString = paramsStrings.length
@@ -220,7 +217,7 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} message
    */
   onMessage = message => {
-    const { guild, author, content } = message
+    const { guild, author } = message
 
     const id = guild
       ? guild.id
@@ -228,26 +225,23 @@ export default class CactuDiscordBot {
       ? author.client.guilds.find( ({ id }) => this.discordClient.guilds.has( id ) ).id
       : null
 
-    if (!id) return
+    if ((author.bot && author.id === this.discordClient.user.id) || !id) return
 
-    const { prefix, prefixSpace } = this
     const guildData = this.guildsData.get( id )
-    const { commands, translation, botOperatorId } = guildData
-    const commandProcessor = new CommandProcessor( !guild, prefix, content, commands )
 
-    guildData.setVariables( message, this )
-
-    commandProcessor.process(
-      prefixSpace,
-      roles => this.checkPermissions( roles, botOperatorId, message ),
-      err => this.handleError( err, translation, message ),
-    )
+    if (guildData) guildData.process( message, this )
   }
 
   onReady = () => {
     console.log()
     this.log( `I have been started` )
     console.log()
+
+    this.discordClient.guilds.forEach( ({ id }) => {
+      this.guildsData.set( id, new GuildModules( this.prefix, this.prefixSpace ) )
+    } )
+
+    fs.readdirSync( `./guilds_modules` ).forEach( this.loadModule )
 
     this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
   }
