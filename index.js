@@ -78,7 +78,21 @@ export default class CactuDiscordBot {
 
     import( `./guilds_modules/${moduleName}` )
       .then( module => guilds.get( id ).include( module.default ) )
-      .catch( console.log )
+      .catch( () => this.log( `I can't load module` ) )
+  }
+
+  clearGuildModules( guildIdToRemove ) {
+    fs.readdirSync( `./guilds_modules` ).forEach( filename => {
+      const [ guildId ] = filename.split( `-` )
+
+      try {
+        if (guildId === guildIdToRemove) fs.unlinkSync( `./guilds_modules/${filename}` )
+      } catch {
+        this.log( `I can't remove module file (${filename})` )
+      }
+    } )
+
+    this.guildsData.get( guildIdToRemove ).clear()
   }
 
   /**

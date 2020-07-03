@@ -103,27 +103,7 @@ import https from "https"
 
 export default class GuildModules {
   /** @type {GuildModuleTranslation} */
-  translation = {
-    err_badParam:     `Not valid parameter!`,
-    err_noCommand:    `This is scope, not a command!`,
-    err_noParam:      `Required parameters weren't passed!`,
-    err_noPath:       `Command doesn't exists`,
-    err_noPerms:      `You don't have permissions to use that!`,
-    err_noPrefix:     `You didn't pass the prefix`,
-    err_invalidCmd:   `That command have invalid code!`,
-    err_error:        `Error!`,
-    err_attachFile:   `You should attach module file!`,
-    help_title:       `Help for a syntax of the specified command`,
-    help_showMasks:   `Send **!!** as first parameter of command to show description and params syntax`,
-    help_params:      `The X**?** means optional parameter and the **...**X means any string`,
-    help_masks:       `If you don't know what is going on, you can ask somebody from server stuff, or you can check "masks" on`,
-    help_cmds:        `Commands`,
-    help_scopes:      `Scopes`,
-    footer_yourCmds:  `These are your personalized commands after sending:`,
-    footer_cmdInfo:   `Commands information`,
-    system_loadSucc:  `File has been loaded`,
-    system_loadFail:  `Wrong file data!`
-  }
+  translation = {}
   /** @type {GuildModuleFilters} */
   filters = new Map()
   /** @type {GuildModuleCommands} */
@@ -157,7 +137,7 @@ export default class GuildModules {
     this.prefixSpace = prefixSpace
     this.eventBinder = eventBinder
 
-    this.include( GuildModules.predefinedCommands )
+    this.clear()
   }
 
   /**
@@ -193,6 +173,34 @@ export default class GuildModules {
     GuildModules.safeCommandsAssign( this.commands, commands )
     this.translation = Object.assign( translation, this.translation )
     this.botOperatorId = botOperatorId
+  }
+
+  clear() {
+    this.filters = new Map()
+    this.commands = {}
+    this.translation = {
+      err_badParam:     `Not valid parameter!`,
+      err_noCommand:    `This is scope, not a command!`,
+      err_noParam:      `Required parameters weren't passed!`,
+      err_noPath:       `Command doesn't exists`,
+      err_noPerms:      `You don't have permissions to use that!`,
+      err_noPrefix:     `You didn't pass the prefix`,
+      err_invalidCmd:   `That command have invalid code!`,
+      err_error:        `Error!`,
+      err_attachFile:   `You should attach module file!`,
+      help_title:       `Help for a syntax of the specified command`,
+      help_showMasks:   `Send **!!** as first parameter of command to show description and params syntax`,
+      help_params:      `The X**?** means optional parameter and the **...**X means any string`,
+      help_masks:       `If you don't know what is going on, you can ask somebody from server stuff, or you can check "masks" on`,
+      help_cmds:        `Commands`,
+      help_scopes:      `Scopes`,
+      footer_yourCmds:  `These are your personalized commands after sending:`,
+      footer_cmdInfo:   `Commands information`,
+      system_loadSucc:  `File has been loaded`,
+      system_loadFail:  `Wrong file data!`
+    }
+
+    this.include( GuildModules.predefinedCommands )
   }
 
   restoreVariablecSharedData() {
@@ -309,7 +317,7 @@ export default class GuildModules {
   /** @param {UnsafeVariables} $ */
   static predefinedCommands = $ => ({ commands: {
     $: { d:`Bot administration`, r:`@owner`, v:{
-      load: { d:`Load module from attached file`, v() {
+      load: { d:`Clear all modules data and load new module from attached file`, v() {
         const { message, botInstance } = $
         const attachment = message.attachments.first()
         const guildId = message.guild.id
@@ -319,6 +327,8 @@ export default class GuildModules {
 
         if (!attachment) throw translation.err_attachFile
         if (attachment.url && !attachment.width) {
+          botInstance.clearGuildModules( guildId )
+
           const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
           const fileName = `${guildId}-${Date.now()}-module.${extension}`
           const path = `${fs.realpathSync( `.` )}/guilds_modules/${fileName}`
