@@ -169,7 +169,7 @@ export default class GuildModules {
     CommandProcessor.normalizeCommands( commands )
 
     GuildModules.safeCommandsAssign( this.commands, commands )
-    this.translation = Object.assign( translation, this.translation )
+    this.translation = Object.assign( this.translation, translation )
     this.botOperatorId = botOperatorId
   }
 
