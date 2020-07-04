@@ -28,16 +28,16 @@ export default class CactuDiscordBot {
   moduleLogger = new Logger( [
     { align:'right',  color:'fgMagenta', length:30 }, // Guild name
     { align:'center', color:'bright',    length:6 },  // "  ::  "
-    { align:'right',  color:'fgBlue',    length:7 }, // /(Filter|Command)/
+    { align:'right',  color:'fgBlue',    length:7 },  // /(Filter|Command)/
     { length:3 },                                     // ":  "
     { align:'right',  color:'fgYellow',  length:15 }, // member displayName
     { length:3 },                                     // ":  "
-    { splitLen:200, splitFLLen:150 },                 // /.*/
+    { splitLen:175, splitFLLen:125 },                 // /.*/
   ] )
   botLogger = new Logger( [
-    { align:'right', color:'fgMagenta', length:5 },  // /Bot/
-    { length:3 },                                    // /:  /
-    { splitLen:90, splitFLLen:65 },                  // /.*/
+    { align:'right', color:'fgMagenta', length:5 },   // /Bot/
+    { length:3 },                                     // /:  /
+    { splitLen:175, splitFLLen:125 },                 // /.*/
   ] )
 
   prefix = `cc!`
@@ -66,7 +66,7 @@ export default class CactuDiscordBot {
       .on( `ready`, this.onReady )
       .on( `messageUpdate`, this.onMessageUpdate )
       .login( config.token || `` )
-      .catch( () => this.log( `I can't login in` ) )
+      .catch( err => this.log( `I can't login in.\n${err}` ) )
   }
 
   loadModule = moduleName => {
@@ -75,17 +75,19 @@ export default class CactuDiscordBot {
     const guilds = this.guildsData
     const id = moduleName.match( /(.*?)-(.*)/ )[ 1 ]
 
-    import( `./guilds_modules/${moduleName}` )
+    import( `file:///${fs.realpathSync( `.` )}/guilds_modules/${moduleName}` )
       .then( module => guilds.get( id ).include( module.default ) )
-      .catch( () => this.log( `I can't load module` ) )
+      .catch( err => this.log( `I can't load module.\n${err}` ) )
   }
 
   clearGuildModules( guildIdToRemove, ...excludeNames ) {
-    fs.readdirSync( `./guilds_modules` ).forEach( filename => {
+    const dotPath = `${fs.realpathSync( `.` )}`
+
+    fs.readdirSync( `${dotPath}/guilds_modules` ).forEach( filename => {
       const [ guildId ] = filename.split( `-` )
 
       try {
-        if (!excludeNames.includes( filename ) && guildId === guildIdToRemove) fs.unlinkSync( `./guilds_modules/${filename}` )
+        if (!excludeNames.includes( filename ) && guildId === guildIdToRemove) fs.unlinkSync( `file:///${dotPath}/guilds_modules/${filename}` )
       } catch {
         this.log( `I can't remove module file (${filename})` )
       }
@@ -277,7 +279,7 @@ export default class CactuDiscordBot {
       (event, litener) => this.discordClient.on( event, litener ) )
     ) )
 
-    fs.readdirSync( `./guilds_modules` ).forEach( this.loadModule )
+    fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
 
     this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
   }

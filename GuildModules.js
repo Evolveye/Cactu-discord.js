@@ -337,7 +337,7 @@ export default class GuildModules {
 
           const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
           const fileName = `${guildId}-${Date.now()}-module.${extension}`
-          const path = `${fs.realpathSync( `.` )}/guilds_modules/${fileName}`
+          const path = `file:///${fs.realpathSync( `.` )}/guilds_modules/${fileName}`
           const file = fs.createWriteStream( path )
 
           https.get( attachment.url, res => res.pipe( file ).on( `finish`, () => {
@@ -357,14 +357,18 @@ export default class GuildModules {
       setBotOperator: { d:`Set the ID of bot operator`, v( id=/\d{18}/) {
         $.guildModules.botOperatorId = id
       }},
-      getModule: { d:`Get the module config file`, v() {
-        let configFileName = `${fs.realpathSync( `.` )}/guilds_modules/${$.message.guild.id}-module`
+      getModules: { d:`Get the guild module config files`, v() {
+        const pathToModules = `${fs.realpathSync( `.` )}/guilds_modules`
+        const guildId = $.message.guild.id
+        const urls = []
 
-        if (fs.existsSync( `${configFileName}.js` )) configFileName += `.js`
-        else if (fs.existsSync( `${configFileName}.mjs` )) configFileName += `.mjs`
-        else throw `That guild doesn't have the config file`
+        fs.readdirSync( pathToModules ).forEach( filename => {
+          if (filename.split( /-/g )[ 0 ] === guildId) urls.push( `guilds_modules/${filename}` )
+        } )
 
-        $.send( { files:[ configFileName ] } )
+        if (urls.length === 0) throw `That guild doesn't have the config file`
+
+        $.message.channel.send( { files:urls } )
       }}
     }},
   } })
