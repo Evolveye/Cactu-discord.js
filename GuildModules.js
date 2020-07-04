@@ -330,8 +330,6 @@ export default class GuildModules {
         const guildId = message.guild.id
         const { translation } = $.guildModules
 
-        message.delete()
-
         if (!attachment) throw translation.err_attachFile
         if (attachment.url && !attachment.width) {
           const extension = attachment.name.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
@@ -348,6 +346,8 @@ export default class GuildModules {
 
             botInstance.clearGuildModules( guildId, fileName )
             botInstance.loadModule( fileName )
+
+            message.delete()
 
             $.sendOk( translation.system_loadSucc )
           } ) )

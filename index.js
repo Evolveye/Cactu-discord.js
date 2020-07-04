@@ -87,9 +87,9 @@ export default class CactuDiscordBot {
       const [ guildId ] = filename.split( `-` )
 
       try {
-        if (!excludeNames.includes( filename ) && guildId === guildIdToRemove) fs.unlinkSync( `file:///${dotPath}/guilds_modules/${filename}` )
-      } catch {
-        this.log( `I can't remove module file (${filename})` )
+        if (!excludeNames.includes( filename ) && guildId === guildIdToRemove) fs.unlinkSync( `${dotPath}/guilds_modules/${filename}` )
+      } catch (err) {
+        this.log( `I can't remove module file (${filename}).` )
       }
     } )
 
@@ -109,12 +109,14 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} param2
    */
   checkPermissions( roleNames, botOperatorId, { author, member, guild } ) {
+    const memberRoles = member.roles.cache
+
     if (author.bot) return roleNames.includes( `@bot` )
-    if (author.id === guild.ownerID || member.roles.has( botOperatorId )) return true
+    if (author.id === guild.ownerID || memberRoles.has( botOperatorId )) return true
 
     for (const roleName of roleNames) {
-      const roleObject = guild.roles.find( r => r.name === roleName )
-      const havingARole = roleObject ? member.roles.has( roleObject.id ) : false
+      const roleObject = guild.roles.cache.find( r => r.name === roleName )
+      const havingARole = roleObject ? memberRoles.has( roleObject.id ) : false
 
       if (havingARole) return true
     }
