@@ -21,6 +21,6 @@
   "repository": "https://github.com/Evolveye/Cactu-discord.js",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^11.6.4"
+    "discord.js": "^12.2.0"
   }
 }
