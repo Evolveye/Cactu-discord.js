@@ -191,12 +191,12 @@ export default class CactuDiscordBot {
           color: 0x18d818,
           author: {
             name: `CodeCactu`,
-            icon_url: this.discordClient.user.displayAvatarURL,
+            icon_url: this.discordClient.user.displayAvatarURL(),
             url: `https://codecactu.github.io/`
           },
           footer: {
             text: `${translation.footer_yourCmds} ${value.command}`,
-            icon_url: author.displayAvatarURL
+            icon_url: author.displayAvatarURL()
           },
           timestamp: new Date(),
         } } )
@@ -225,9 +225,14 @@ export default class CactuDiscordBot {
 
     channel.send( { embed: { title, description,
       color: 0x18d818,
+      author: {
+        name: `CodeCactu`,
+        icon_url: this.discordClient.user.displayAvatarURL(),
+        url: `https://codecactu.github.io/`
+      },
       footer: {
         text: translation.footer_cmdInfo,
-        icon_url: author.displayAvatarURL
+        icon_url: author.displayAvatarURL()
       },
       timestamp: new Date(),
     } } )
