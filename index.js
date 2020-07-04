@@ -272,7 +272,7 @@ export default class CactuDiscordBot {
     this.log( `I have been started` )
     console.log()
 
-    this.discordClient.guilds.forEach( ({ id }) => this.guildsData.set( id, new GuildModules(
+    this.discordClient.guilds.cache.forEach( ({ id }) => this.guildsData.set( id, new GuildModules(
       this.prefix,
       this.prefixSpace,
       this.moduleLogger,

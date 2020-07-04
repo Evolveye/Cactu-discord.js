@@ -334,10 +334,9 @@ export default class GuildModules {
 
         if (!attachment) throw translation.err_attachFile
         if (attachment.url && !attachment.width) {
-
-          const extension = attachment.filename.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
+          const extension = attachment.name.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
           const fileName = `${guildId}-${Date.now()}-module.${extension}`
-          const path = `file:///${fs.realpathSync( `.` )}/guilds_modules/${fileName}`
+          const path = `./guilds_modules/${fileName}`
           const file = fs.createWriteStream( path )
 
           https.get( attachment.url, res => res.pipe( file ).on( `finish`, () => {
