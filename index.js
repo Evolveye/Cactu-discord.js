@@ -56,28 +56,39 @@ export default class CactuDiscordBot {
    * @param {CactuDiscordBotConfig} config
    */
   constructor( config ) {
-    if (`prefix`      in config) this.prefix      = config.prefix
-    if (`prefixSpace` in config) this.prefixSpace = config.prefixSpace
-    if (`publicVars`  in config) this.publicVars  = config.publicVars
-    if (`signs`       in config) this.signs       = config.signs
+    if (`prefix`          in config) this.prefix          = config.prefix
+    if (`prefixSpace`     in config) this.prefixSpace     = config.prefixSpace
+    if (`publicVars`      in config) this.publicVars      = config.publicVars
+    if (`modulesCopying`  in config) this.modulesCopying  = config.modulesCopying
+    if (`signs`           in config) this.signs           = config.signs
 
     this.discordClient
       .on( `message`, this.onMessage )
       .on( `ready`, this.onReady )
       .on( `messageUpdate`, this.onMessageUpdate )
+      .on( `guildCreate`, this.onGuildCreate )
       .login( config.token || `` )
       .catch( err => this.log( `I can't login in.\n${err}` ) )
   }
 
+  /**
+   * @param {string} moduleName
+   */
   loadModule = moduleName => {
     if (!moduleName) return
 
-    const guilds = this.guildsData
     const id = moduleName.match( /(.*?)-(.*)/ )[ 1 ]
+    const guildsData = this.guildsData.get( id )
+    const dotPath = fs.realpathSync( `.` )
 
-    import( `file:///${fs.realpathSync( `.` )}/guilds_modules/${moduleName}` )
-      .then( module => guilds.get( id ).include( module.default ) )
+    if (guildsData) import( `file:///${dotPath}/guilds_modules/${moduleName}` )
+      .then( module => guildsData.include( module.default ) )
       .catch( err => this.log( `I can't load module.\n${err}` ) )
+    else try {
+      fs.unlinkSync( `${dotPath}/guilds_modules/${moduleName}` )
+    } catch {
+      this.log( `I can't remove module file (${moduleName}).` )
+    }
   }
 
   clearGuildModules( guildIdToRemove, ...excludeNames ) {
@@ -279,15 +290,36 @@ export default class CactuDiscordBot {
     this.log( `I have been started` )
     console.log()
 
-    this.discordClient.guilds.cache.forEach( ({ id }) => this.guildsData.set( id, new GuildModules(
-      this.prefix,
-      this.prefixSpace,
-      this.moduleLogger,
-      (event, litener) => this.discordClient.on( event, litener ) )
-    ) )
+    this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild, true ) )
 
     fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
 
     this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
+  }
+
+  /**
+   * @param {Discord.Guild} guild
+   */
+  onGuildCreate = ({ id }, onReady=false) => {
+    this.guildsData.set( id, new GuildModules(
+      this.prefix,
+      this.prefixSpace,
+      this.moduleLogger,
+      (event, litener) => this.discordClient.on( event, litener ) )
+    )
+
+    if (!onReady && this.modulesCopying && this.modulesCopying != id) {
+      const path = `${fs.realpathSync( `.` )}/guilds_modules`
+
+      this.clearGuildModules( id )
+
+      fs.readdirSync( path )
+        .filter( filename => filename.split( /-/ )[ 0 ] ===  this.modulesCopying )
+        .map( filename => filename.split( /-/ ).slice( 1 ).join( `-` ) )
+        .forEach( filename => {
+          fs.copyFileSync( `${path}/${this.modulesCopying}-${filename}`, `${path}/${id}-${filename}` )
+          this.loadModule( `${id}-${filename}` )
+         } )
+    }
   }
 }
