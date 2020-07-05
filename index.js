@@ -67,6 +67,7 @@ export default class CactuDiscordBot {
       .on( `ready`, this.onReady )
       .on( `messageUpdate`, this.onMessageUpdate )
       .on( `guildCreate`, this.onGuildCreate )
+      .on( `guildDelete`, ({ name }) => this.log( `I left from guild named [fgYellow]${name}[]`) )
       .login( config.token || `` )
       .catch( err => this.log( `I can't login in.\n${err}` ) )
   }
@@ -287,7 +288,7 @@ export default class CactuDiscordBot {
 
   onReady = () => {
     console.log()
-    this.log( `I have been started` )
+    this.log( `Start initialized!` )
     console.log()
 
     this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild, true ) )
@@ -295,18 +296,24 @@ export default class CactuDiscordBot {
     fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
 
     this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
+
+    console.log()
+    this.log( `I have been started!`)
+    console.log()
   }
 
   /**
    * @param {Discord.Guild} guild
    */
-  onGuildCreate = ({ id }, onReady=false) => {
+  onGuildCreate = ({ id, name }, onReady=false) => {
     this.guildsData.set( id, new GuildModules(
       this.prefix,
       this.prefixSpace,
       this.moduleLogger,
       (event, litener) => this.discordClient.on( event, litener ) )
     )
+
+    this.log( `I have joined to guild named [fgYellow]${name}[]`)
 
     if (!onReady && this.modulesCopying && this.modulesCopying != id) {
       const path = `${fs.realpathSync( `.` )}/guilds_modules`

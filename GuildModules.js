@@ -248,16 +248,20 @@ export default class GuildModules {
     const { guild, content } = message
     const varsData = this.variablesSharedData
     const username = message.member ? message.member.displayName : message.author.username
-    const log = type => this.logger( guild.name, `::`, type, `:`, username, `:`, content )
+    const log = (type, log=content) => this.logger( guild.name, `::`, type, `:`, username, `:`, log )
 
     this.restoreVariablecSharedData()
     this.setVariables( message, botInstance )
 
     if (filters) {
+      let filteringContent = content
+
       for (const filterScope of this.filters) {
         for (const { regExp, func } of filterScope) if (regExp.test( content )) {
           varsData.filterMatch = true
           func()
+
+          if (varsData.filterMatch) filteringContent = filteringContent.replace( regExp, match => `[fgRed]${match}[]` )
 
           break
         }
@@ -265,7 +269,7 @@ export default class GuildModules {
         if (!varsData.filtering) break
       }
 
-      if (varsData.filterMatch) log( `Filter` )
+      if (varsData.filterMatch) log( `Filter`, filteringContent )
     }
 
     if (commands) new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
