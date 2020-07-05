@@ -247,7 +247,8 @@ export default class GuildModules {
   process( message, botInstance, { filters=true, commands=true }={} ) {
     const { guild, content } = message
     const varsData = this.variablesSharedData
-    const log = type => this.logger( guild.name, `::`, type, `:`, message.member.displayName, `:`, content )
+    const username = message.member ? message.member.displayName : message.author.username
+    const log = type => this.logger( guild.name, `::`, type, `:`, username, `:`, content )
 
     this.restoreVariablecSharedData()
     this.setVariables( message, botInstance )
