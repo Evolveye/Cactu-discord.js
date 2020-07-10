@@ -26,7 +26,7 @@ export default class Logger {
     bgCyan: `\x1b[46m`,
     bgWhite: `\x1b[47m`
   }
-  static colorsReg = new RegExp( `\\[(?<color>${Object.keys( this.colors ).join( `|` )})](?<data>.*?)\\[]`, `g` )
+  static colorsReg = new RegExp( `\\[(?<color>${Object.keys( this.colors ).join( `|` )})](?<data>.*?)\\[]`, `gs` )
   static defaultColor = `fgWhite`
 
   /**
@@ -46,11 +46,15 @@ export default class Logger {
 
         if (!part) break
 
-        const { align=`left`, length=10, splitLen, splitFLLen } = part
-        let len = length - items[ i ].length
+        const { align=`left`, length=10, splitLen, splitFLLen, color, maxLen } = part
+        const mainColor = color || Logger.defaultColor
         let item = items[ i ]
+        let len = length - item.length
 
+        // console.log( maxLen, item.length, item )
         if (len < 0) len = 0
+        if (maxLen && item.length > maxLen) item = `${item.slice( 0 , maxLen - 3 )}...`
+        // console.log( item )
 
         switch (align) {
           case `left`:
@@ -72,10 +76,10 @@ export default class Logger {
 
         items[ i ] = item.replace( /\n/g, `\n     | ` )
           .replace( Logger.colorsReg, (...match) => {
-            const mainColor = part.color || Logger.defaultColor
             const { color, data } = match[ match.length - 1 ]
+            const text = data.replace( /\n     \| /g, `\n     ${Logger.colors[ mainColor ]}| ${Logger.colors[ color ]}` )
 
-            return `${Logger.colors[ color ]}${data}${Logger.colors[ mainColor ]}`
+            return `${Logger.colors[ color ]}${text}${Logger.colors[ mainColor ]}`
           } )
       }
 

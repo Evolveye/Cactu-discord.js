@@ -26,7 +26,7 @@ export default class CactuDiscordBot {
   guildsData = new Map()
 
   moduleLogger = new Logger( [
-    { align:'right',  color:'fgMagenta', length:30 }, // Guild name
+    { align:'right',  color:'fgMagenta', length:30, maxLen:30 }, // Guild name
     { align:'center', color:'bright',    length:6 },  // "  ::  "
     { align:'right',  color:'fgBlue',    length:7 },  // /(Filter|Command)/
     { length:3 },                                     // ":  "
