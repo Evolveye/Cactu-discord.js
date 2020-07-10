@@ -176,6 +176,7 @@ export default class GuildModules {
   clear() {
     this.filters = new Map()
     this.commands = {}
+    this.events = {}
     this.translation = {
       err_badParam:     `Not valid parameter!`,
       err_noCommand:    `This is scope, not a command!`,
