@@ -5,7 +5,7 @@
  * @property {RegExp|null} paramMask
 */
 
-/** @typedef {("@nobody"|"@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
+/** @typedef {("@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
 /** @typedef {Object} Parameter
  * @property {string} param
  * @property {RegExp} mask
@@ -132,7 +132,6 @@ export default class CommandProcessor {
 
     /** @param {Role[]} roles */
     const checkAccess = roles => {
-      if (roles.includes( `@nobody` )) return false
       if (this.#isDm) return roles.includes( `@dm` )
       if (roles.includes( `@everyone` )) return true
 
