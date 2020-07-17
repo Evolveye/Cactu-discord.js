@@ -137,35 +137,50 @@ export default class CactuDiscordBot {
   /**
    * @param {CommandError} param0
    * @param {GuildModuleTranslation} translation
-   * @param {Discord.Message} param2
+   * @param {Discord.Message} message
    */
-  handleError({ type, value, paramMask }, translation, { author, channel }) {
+  handleError({ type, value, paramMask }, translation, message) {
+    const { author, channel } = message
     const { error } = this.signs
     let title = `Unknown error`
     let description = ``
+    let footerTxt = translation.footer_cmdInfo
 
     switch (type) {
-      case `invalidCmd`:
-        title = `${error} ${translation.err_invalidCmd}`
-
-        if (typeof value === `string`) {
-          title = `${error} ${translation.err_error}`
-          description = `> \`${value}\` `
-        } else description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
-          .split( /-/ )
-          .slice( -1 )[ 0 ]
-          .slice( 0, -1 )
-        break
-
       case `badParam`:
         title = `${error} ${translation.err_badParam}`
         description = `> ${value}  \`${paramMask}\``
+        break
+
+      case `details`:
+        title = `⚙️ ${translation.help_title}`
+        description = value.description
+        footerTxt = `${translation.footer_cmdInfo}: ${value.command}`
+
+        if (!value.params.length) break
+
+        description += "```js"
+
+        for (const { param, mask, optional, rest } of value.params) {
+          const beforEqual = `${rest ? `...` : ``}${param}${optional ? `?` : ` `}`
+          const field = beforEqual.padStart( 29, ` ` ) + ` = ${mask}`
+
+          description += `\n` + field.padEnd( 60, ` ` )
+        }
+
+        message.delete()
+
+        description += `\n\`\`\`\n${translation.help_masks} https://regexr.com/`
         break
 
       case `noCommand`: {
         const fields = []
         const scopes = []
         const cmds = []
+
+        description = value.command === this.prefix
+          ? `${translation.help_showMasks}\n${translation.help_params}\n\n`
+          : `\n\n`
 
         for (const part in value.structure) {
           const { type, desc, params } = value.structure[ part ]
@@ -191,9 +206,11 @@ export default class CactuDiscordBot {
         }
 
         if (scopes.length) {
-          description = `${translation.help_scopes}:`
+          description += `${translation.help_scopes}:`
           fields.push( ...scopes, { name:`\u200B`, value:`${translation.help_cmds}:` } )
-        } else description = `${translation.help_cmds}:`
+        } else description += `${translation.help_cmds}:`
+
+        message.delete()
 
         fields.push( ...cmds )
 
@@ -233,6 +250,18 @@ export default class CactuDiscordBot {
 
       case `noPrefix`:
         return
+
+      case `invalidCmd`:
+        title = `${error} ${translation.err_invalidCmd}`
+
+        if (typeof value === `string`) {
+          title = `${error} ${translation.err_error}`
+          description = `> \`${value}\` `
+        } else description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
+          .split( /-/ )
+          .slice( -1 )[ 0 ]
+          .slice( 0, -1 )
+        break
     }
 
     channel.send( { embed: { title, description,
@@ -243,7 +272,7 @@ export default class CactuDiscordBot {
         url: `https://codecactu.github.io/`
       },
       footer: {
-        text: translation.footer_cmdInfo,
+        text: footerTxt,
         icon_url: author.displayAvatarURL()
       },
       timestamp: new Date(),

@@ -1,4 +1,4 @@
-/** @typedef {"badParam"|"noCommand"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandErrorType */
+/** @typedef {"badParam"|"details"|"noCommand"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandErrorType */
 /** @typedef {Object} CommandError
  * @property {CommandErrorType} type
  * @property {*} value
@@ -206,12 +206,21 @@ export default class CommandProcessor {
 
     let pasedParams = this.#parts.rest
 
-    for (const { param, mask, optional } of params) {
+    if (pasedParams == `??` || pasedParams.startsWith( `?? ` )) {
+      const cmd = this.#scopeFromCommand
+
+      return this.setError( `details`, {
+        command: this.#command,
+        description: cmd.desc,
+        params: cmd.params,
+      } )
+    } else for (const { param, mask, optional } of params) {
       if (!mask.test( pasedParams )) {
         if (optional) {
           paramAdder( null )
           continue
         }
+
         return pasedParams
           ? this.setError( `badParam`, pasedParams.split( ` ` )[ 0 ], mask )
           : this.setError( `noParam`, param, mask )

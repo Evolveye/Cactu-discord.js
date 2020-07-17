@@ -188,7 +188,7 @@ export default class GuildModules {
       err_error:        `Error!`,
       err_attachFile:   `You should attach module file!`,
       help_title:       `Help for a syntax of the specified command`,
-      help_showMasks:   `Send **!!** as first parameter of command to show description and params syntax`,
+      help_showMasks:   `Send **??** as first parameter of command to show description and params syntax`,
       help_params:      `The X**?** means optional parameter and the **...**X means any string`,
       help_masks:       `If you don't know what is going on, you can ask somebody from server stuff, or you can check "masks" on`,
       help_cmds:        `Commands`,
