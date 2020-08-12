@@ -177,16 +177,18 @@ export default class CactuDiscordBot {
         const fields = []
         const scopes = []
         const cmds = []
+        const fieldNameStart = value.command + (value.command === this.prefix && !this.prefixSpace ? `` : ` `)
 
         description = value.command === this.prefix
           ? `${translation.help_showMasks}\n${translation.help_params}\n\n`
           : `\n\n`
 
+
         for (const part in value.structure) {
           const { type, desc, params } = value.structure[ part ]
 
           if (type == `scope`) {
-            scopes.push( { name:`${part}...`, value:desc, inline:true } )
+            scopes.push( { name:`${fieldNameStart}***${part}***...`, value:desc, inline:true } )
           } else {
             const paramsStrings = []
 
@@ -199,7 +201,7 @@ export default class CactuDiscordBot {
               : ``
 
             cmds.push( {
-              name: `${part}${paramsString}`,
+              name: `${fieldNameStart}***${part}***${paramsString}`,
               value: desc || `-  -  -`
             } )
           }
