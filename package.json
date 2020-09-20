@@ -1,6 +1,6 @@
 {
   "name": "cactu-discord.js",
-  "version": "3.0.0-9",
+  "version": "3.0.0-10",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
   "type": "module",
@@ -21,6 +21,9 @@
   "repository": "https://github.com/Evolveye/Cactu-discord.js",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^12.2.0"
+    "canvas": "^2.6.1",
+    "discord.js": "^12.2.0",
+    "formidable": "^1.2.2",
+    "node-fetch": "^2.6.0"
   }
 }

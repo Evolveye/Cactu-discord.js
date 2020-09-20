@@ -20,7 +20,7 @@ export const LoggerClass = Logger
 /** @typedef {import("./GuildModules.js").UnsafeVariables} GuildModule */
 
 export default class CactuDiscordBot {
-  discordClient = new Discord.Client()
+  discordClient = new Discord.Client( { partials: [ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] } )
 
   /** @type {Map<string,GuildModules>} */
   guildsData = new Map()
@@ -293,7 +293,7 @@ export default class CactuDiscordBot {
       ? author.client.guilds.cache.find( ({ id }) => this.discordClient.guilds.cache.has( id ) ).id
       : null
 
-    if ((author.bot && author.id === this.discordClient.user.id) || !id) return
+    if (!id || (author.bot && author.id === this.discordClient.user.id)) return
 
     return this.guildsData.get( id )
   }
@@ -338,9 +338,11 @@ export default class CactuDiscordBot {
    */
   onGuildCreate = ({ id, name }, onReady=false) => {
     this.guildsData.set( id, new GuildModules(
+      id,
       this.prefix,
       this.prefixSpace,
       this.moduleLogger,
+      this.discordClient,
       (event, litener) => this.discordClient.on( event, litener ) )
     )
 

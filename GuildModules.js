@@ -124,15 +124,19 @@ export default class GuildModules {
   events = {}
 
   /**
+   * @param {string} id
    * @param {string} prefix
    * @param {string} prefixSpace
    * @param {import("./Logger.js")} logger
+   * @param {import("discord.js").Client} discordClient
    * @param {function(string,function)} eventBinder
    */
-  constructor( prefix, prefixSpace, logger, eventBinder ) {
+  constructor( guildId, prefix, prefixSpace, logger, discordClient, eventBinder ) {
+    this.guildId = guildId
     this.logger = logger
     this.prefix = prefix
     this.prefixSpace = prefixSpace
+    this.discordClient = discordClient
     this.eventBinder = eventBinder
 
     this.clear()
@@ -142,7 +146,7 @@ export default class GuildModules {
    * @param {GuildModule} param0
    */
   include( module ) {
-    const { translation={}, events={}, commands={}, filters=[], botOperatorId=`` } = typeof module === `function`
+    const { translation={}, events={}, commands={}, filters=[], botOperatorId=``, importantMessages } = typeof module === `function`
       ? module( this.unsafeVariables )
       : module
 
@@ -150,7 +154,17 @@ export default class GuildModules {
       if (!(event in this.events)) {
         this.events[ event ] = []
 
-        this.eventBinder( event, (...data) => this.events[ event ].forEach( f => f( ...data ) ) )
+        this.eventBinder( event, (...data) => {
+          const { guild, message } = data[ 0 ]
+
+          if (guild) {
+            if (guild.id != this.guildId) return
+          } else if (message) {
+            if (message.guild.id != this.guildId) return
+          } else return
+
+          this.events[ event ].forEach( f => f( ...data ) )
+        } )
       }
 
       this.events[ event ].push( events[ event ] )
