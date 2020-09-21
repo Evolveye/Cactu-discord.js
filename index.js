@@ -293,7 +293,7 @@ export default class CactuDiscordBot {
       ? author.client.guilds.cache.find( ({ id }) => this.discordClient.guilds.cache.has( id ) ).id
       : null
 
-    if (!id || (author.bot && author.id === this.discordClient.user.id)) return
+    if (!id || !author || (author.bot && author.id === this.discordClient.user.id)) return
 
     return this.guildsData.get( id )
   }
