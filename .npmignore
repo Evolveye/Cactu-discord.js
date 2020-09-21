@@ -1,5 +1,9 @@
-example_config
-img
+example_config/
+img/
 
-guilds_config
+guilds_config/
+guilds_modules/
+files/
+
+priv-*
 app.js
