@@ -263,7 +263,18 @@ export default class GuildModules {
     const { guild, content } = message
     const varsData = this.variablesSharedData
     const username = message.member ? message.member.displayName : message.author.username
-    const log = (type, log=content) => this.logger( guild.name, `::`, type, `:`, username, `:`, log )
+    const log = (type, log=content) => this.logger(
+      `[${getDate( `hh:mm` )}]`,
+      guild.name,
+      `::`,
+      message.channel.name,
+      `::`,
+      type,
+      `:`,
+      username,
+      `:`,
+      log
+    )
 
     this.restoreVariablecSharedData()
     this.setVariables( message, botInstance )
@@ -288,10 +299,10 @@ export default class GuildModules {
     }
 
     if (commands) new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
-        roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
-        err => botInstance.handleError( err, this.translation, message ),
-        () => log( `Command` ),
-      )
+      roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
+      err => botInstance.handleError( err, this.translation, message ),
+      () => log( `Command` ),
+    )
   }
 
   /**
@@ -391,4 +402,18 @@ export default class GuildModules {
       }}
     }},
   } })
+}
+
+function getDate( format, date=Date.now() ) {
+  const options = { year:`numeric`, month:'2-digit', day: '2-digit', hour:`2-digit`, minute:`2-digit` }
+  const [ { value:DD },,{ value:MM },,{ value:YYYY },,{ value:hh },,{ value:mm } ] = new Intl.DateTimeFormat( `pl`, options )
+    .formatToParts( date )
+
+  return format
+    .replace( /YYYY/, YYYY )
+    .replace( /YY/, YYYY.slice( -2 ) )
+    .replace( /MM/, MM )
+    .replace( /DD/, DD )
+    .replace( /hh/, hh )
+    .replace( /mm/, mm )
 }
