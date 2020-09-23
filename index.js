@@ -183,12 +183,11 @@ export default class CactuDiscordBot {
           ? `${translation.help_showMasks}\n${translation.help_params}\n\n`
           : `\n\n`
 
-
         for (const part in value.structure) {
           const { type, desc, params } = value.structure[ part ]
 
           if (type == `scope`) {
-            scopes.push( { name:`${fieldNameStart}***${part}***...`, value:desc, inline:true } )
+            scopes.push( { name:`${fieldNameStart}***${part}***...`, value:(desc || `-  -  -`), inline:true } )
           } else {
             const paramsStrings = []
 
