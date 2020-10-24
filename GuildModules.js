@@ -163,7 +163,8 @@ export default class GuildModules {
             if (message.guild.id != this.guildId) return
           } else return
 
-          this.events[ event ].forEach( f => f( ...data ) )
+          if (event in this.events) this.events[ event ].forEach( f => f( ...data ) )
+          else console.log( `Something went wrong with event emmiter!`, event, this.events )
         } )
       }
 
