@@ -1,10 +1,10 @@
 import Discord from "discord.js"
 import fs from "fs"
 
-import GuildModules from "./GuildModules.js"
-import Logger from "./Logger.js"
+import GuildModules from "./src/GuildModules.js"
+import Logger from "./src/Logger.js"
 
-if (!fs.existsSync( `./guilds_modules/` )) fs.mkdirSync( `./guilds_modules/` )
+if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
 export const LoggerClass = Logger
 
