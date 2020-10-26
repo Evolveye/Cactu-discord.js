@@ -1,7 +1,7 @@
 import Discord from "discord.js"
 import fs from "fs"
 
-import GuildModules from "./src/GuildModules.js"
+import GuildDataset from "./src/GuildDataset.js"
 import Logger, { logUnderControl } from "./src/Logger.js"
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
@@ -11,20 +11,20 @@ export const LoggerClass = Logger
 /** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
 /** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
 
-/** @typedef {import("./GuildModules.js").GuildModuleTranslation} GuildModuleTranslation */
-/** @typedef {import("./GuildModules.js").GuildModuleFilters} GuildModuleFilters */
-/** @typedef {import("./GuildModules.js").GuildModuleRoles} GuildModuleRoles */
-/** @typedef {import("./GuildModules.js").GuildModuleCommandsField} GuildModuleCommandsField */
-/** @typedef {import("./GuildModules.js").GuildModuleCommands} GuildModuleCommands */
-/** @typedef {import("./GuildModules.js").GuildModule} GuildModule */
-/** @typedef {import("./GuildModules.js").UnsafeVariables} GuildModule */
+/** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
+/** @typedef {import("./GuildDataset.js").GuildModuleFilters} GuildModuleFilters */
+/** @typedef {import("./GuildDataset.js").GuildModuleRoles} GuildModuleRoles */
+/** @typedef {import("./GuildDataset.js").GuildModuleCommandsField} GuildModuleCommandsField */
+/** @typedef {import("./GuildDataset.js").GuildModuleCommands} GuildModuleCommands */
+/** @typedef {import("./GuildDataset.js").GuildModule} GuildModule */
+/** @typedef {import("./GuildDataset.js").UnsafeVariables} GuildModule */
 
 export default class CactuDiscordBot {
   discordClient = new Discord.Client(
     { partials: [ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] }
   )
 
-  /** @type {Map<string,GuildModules>} */
+  /** @type {Map<string,GuildDataset>} */
   guildDatasets = new Map()
   initialized = false
 
@@ -149,7 +149,7 @@ export default class CactuDiscordBot {
       case `info`:
         logger = this.loggers.info
         break
-        
+
       case `system`:
       default:
         logger = this.loggers.system
@@ -373,7 +373,7 @@ export default class CactuDiscordBot {
     this.log( `Initialization started!` )
     console.log()
 
-    this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild, true ) )
+    this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild ) )
 
     // fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
 
@@ -387,15 +387,10 @@ export default class CactuDiscordBot {
   /**
    * @param {Discord.Guild} guild
    */
-  onGuildCreate = ({ id, name }, onReady=false) => {
-    // this.guildsData.set( id, new GuildModules(
-    //   id,
-    //   this.prefix,
-    //   this.prefixSpace,
-    //   this.moduleLogger,
-    //   this.discordClient,
-    //   (event, litener) => this.discordClient.on( event, litener ) )
-    // )
+  onGuildCreate = guild => {
+    const { id, name } = guild
+
+    this.guildDatasets.set( id, new GuildDataset( guild, this.loggers.guild ) )
 
     if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
     else this.log( `I'm on guild named [fgYellow]${name}[]` )

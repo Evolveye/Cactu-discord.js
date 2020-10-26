@@ -2,7 +2,17 @@ import CommandProcessor from "./CommandProcessor.js"
 import fs from "fs"
 import https from "https"
 
-/** @typedef {Object} GuildModuleTranslation
+/** @typedef {import("discord.js").Client} Client */
+/** @typedef {import("discord.js").Guild} Guild */
+/** @typedef {import("discord.js").Message} Message */
+/** @typedef {import("discord.js").TextChannel} TextChannel */
+
+/** @typedef {import("../index.js").default} BotInstance */
+/** @typedef {import("./Logger.js").default} Logger */
+/** @typedef {import("./CommandProcessor.js").Commands} GuildCommands */
+/** @typedef {import("./CommandProcessor.js").CommandsField} GuildCommandsField */
+
+/** @typedef {Object} GuildTranslation
  * @property {string} err_badParam
  * @property {string} err_noCommand
  * @property {string} err_noParam
@@ -24,10 +34,8 @@ import https from "https"
  * @property {string} system_loadFail
  */
 
-/** @typedef {{regExp:RegExp,func:function}[][]} GuildModuleFilters */
+/** @typedef {{regExp:RegExp,func:function}[][]} GuildFilters */
 
-/** @typedef {import("./CommandProcessor.js").Commands} GuildModuleCommands */
-/** @typedef {import("./CommandProcessor.js").CommandsField} GuildModuleCommandsField */
 
 /** @typedef {Object} Events For details look at Events on https://discord.js.org/#/docs/main/stable/class/Client
  * @property {function} [channelCreate]
@@ -88,9 +96,6 @@ import https from "https"
  * @property {GuildModuleCommands} commands
  */
 
-/** @typedef {import("discord.js").Message} Message */
-/** @typedef {import("discord.js").TextChannel} TextChannel */
-/** @typedef {import("./index.js").default} BotInstance */
 
 /** @typedef {Object} SafeVariables
  * @property {Message} message
@@ -101,43 +106,26 @@ import https from "https"
  */
 /** @typedef {SafeVariables & {botInstance:BotInstance,guildModules:GuildModules}} UnsafeVariables */
 
-export default class GuildModules {
-  /** @type {GuildModuleTranslation} */
+export default class GuildDataset {
+  /** @type {GuildTranslation} */
   translation = {}
-  /** @type {GuildModuleFilters} */
+  /** @type {GuildFilters} */
   filters = new Map()
-  /** @type {GuildModuleCommands} */
+  /** @type {GuildCommands} */
   commands = {}
-  /** @type {string} */
-  botOperatorId = ``
-  /** @type {UnsafeVariables} */
-  unsafeVariables = {}
-  /** @type {SafeVariables} */
-  safeVariables = {}
-
-  variablesSharedData = {
-    filtering: true,
-    filterMatch: false,
-  }
-
   /** @type {Object<string,function[]>} */
   events = {}
+  /** @type {string} */
+  botOperatorRoleId = ``
 
   /**
-   * @param {string} id
-   * @param {string} prefix
-   * @param {string} prefixSpace
-   * @param {import("./Logger.js")} logger
-   * @param {import("discord.js").Client} discordClient
+   * @param {Guild} guild
+   * @param {Logger} logger
    * @param {function(string,function)} eventBinder
    */
-  constructor( guildId, prefix, prefixSpace, logger, discordClient, eventBinder ) {
-    this.guildId = guildId
+  constructor( guild, logger ) {
+    this.guild = guild
     this.logger = logger
-    this.prefix = prefix
-    this.prefixSpace = prefixSpace
-    this.discordClient = discordClient
-    this.eventBinder = eventBinder
 
     this.clear()
   }
@@ -183,7 +171,7 @@ export default class GuildModules {
 
     CommandProcessor.normalizeCommands( commands )
 
-    GuildModules.safeCommandsAssign( this.commands, commands )
+    GuildDataset.safeCommandsAssign( this.commands, commands )
     this.translation = Object.assign( this.translation, translation )
     this.botOperatorId = botOperatorId
   }
@@ -214,7 +202,7 @@ export default class GuildModules {
       system_loadFail:  `Wrong file data!`
     }
 
-    this.include( GuildModules.predefinedCommands )
+    this.include( GuildDataset.predefinedCommands )
   }
 
   restoreVariablecSharedData() {
@@ -252,8 +240,8 @@ export default class GuildModules {
     this.safeVariables.message = { ...message }
     this.safeVariables.message.guild = { ...message.guild }
 
-    GuildModules.deletePropertyGlobaly( this.safeVariables.message, `client`, 2 )
-    GuildModules.deletePropertyGlobaly( this.safeVariables.message.guild, `client`, 1 )
+    GuildDataset.deletePropertyGlobaly( this.safeVariables.message, `client`, 2 )
+    GuildDataset.deletePropertyGlobaly( this.safeVariables.message.guild, `client`, 1 )
   }
 
   /**
