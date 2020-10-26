@@ -20,27 +20,43 @@ export const LoggerClass = Logger
 /** @typedef {import("./GuildModules.js").UnsafeVariables} GuildModule */
 
 export default class CactuDiscordBot {
-  discordClient = new Discord.Client( { partials: [ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] } )
+  discordClient = new Discord.Client(
+    { partials: [ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] }
+  )
 
   /** @type {Map<string,GuildModules>} */
-  guildsData = new Map()
+  guildDatasets = new Map()
 
-  moduleLogger = new Logger( [
-    { align:'left',   color:'fgWhite',   length:8 },  // [hh:mm]
-    { align:'right',  color:'fgMagenta', length:30, maxLen:30 }, // Guild name
-    { align:'center', color:'bright',    length:4 },  // "::"
-    { align:'left',   color:'fgMagenta', length:20, maxLen:20 }, // Guild name
-    { align:'center', color:'bright',    length:6 },  // "  ::  "
-    { align:'right',  color:'fgBlue',    length:7 },  // /(Filter|Command)/
-    { length:3 },                                     // ":  "
-    { align:'right',  color:'fgYellow',  length:15 }, // member displayName
-    { length:3 },                                     // ":  "
-    { splitLen:175, splitFLLen:125 },                 // /.*/
-  ] )
-  botLogger = new Logger( [
-    { align:'right', color:'fgMagenta', length:5 },   // /Bot/
-    { length:3 },                                     // /:  /
-    { splitLen:175, splitFLLen:125 },                 // /.*/
+  loggers = {
+    guild: new Logger( [
+      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },             // "[hh:mm:ss] "
+      { color:`magenta`, align:`right`, length:20, maxLen:20 },   // Guild name
+      { color:`bright`,  value:` :: ` },                          // " :: "
+      { color:`magenta`, align:`left`,  length:20, maxLen:20 },   // Channel name
+      { color:`bright`,  value:` :: ` },                          // " :: "
+      { color:`blue`,    align:`right`, length:7 },               // /(Filter|Command)/
+      { color:`white`,   value:`: ` },                            // ": "
+      { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
+      { color:`white`,   value:`: ` },                            // ": "
+      { color:`white`,   splitLen:200,  splitFLLen:130 },         // Message
+    ] ),
+    info: new Logger( [
+      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },     // "[hh:mm:ss] "
+      { color:`blue`,    value:`i`, background:`white` }, // "i"
+      { color:`white`,   value:` ` },                     // " "
+      { color:`white`,   splitLen:200, splitFLLen:190 },  // Message
+    ] ),
+    botSystem: new Logger( [
+      { color:`magenta`, value:`  Bot` },                 // "Bot"
+      { color:`white`,   value:`: ` },                    // ": "
+      { color:`white`,   splitLen:200, splitFLLen:190 },  // Message
+    ], { separated:true } ),
+  }
+
+  botSystemLogger = new Logger( [
+    { color:`magenta`, value:`  Bot` },                 // "Bot"
+    { color:`white`,   value:`: ` },                    // ": "
+    { color:`white`,   splitLen:200, splitFLLen:190 },  // Message
   ] )
 
   prefix = `cc!`
