@@ -46,8 +46,14 @@ export default class Logger {
     bgCyan: `\x1b[46m`,
     bgWhite: `\x1b[47m`
   }
+
+  /** @type {Color} */
+  static defaultColor = `white`
+  static defaultBackground = ``
   static colorsReg = new RegExp( `\\[(?<color>${Object.keys( this.colors ).join( `|` )})](?<data>.*?)\\[]`, `gs` )
-  static defaultColor = `fgWhite`
+
+  /** @type {(items:string[]) => void} */
+  #logger = null
 
   /**
    * @param {LoggerPart[]} parts
@@ -56,56 +62,72 @@ export default class Logger {
   constructor( parts, options={} ) {
     let pattern = ``
 
-    for ( const { color=Logger.defaultColor } of parts ) pattern += ``
-      + (Logger.colors[ color ] || ``)
+    for (const { color=Logger.defaultColor, background=Logger.defaultBackground } of parts) pattern += ``
+      + (Logger.colors[ `bg` + background.charAt( 0 ).toUpperCase() + background.slice( 1 ) ] || ``)
+      + (Logger.colors[ `fg` + color.charAt( 0 ).toUpperCase() + color.slice( 1 ) ] || ``)
       + `%s`
       + Logger.colors.reset
 
-    return (...items) => {
-      for (let i = 0; i < items.length; i++) {
-        const part = parts[ i ]
+    const nonStaticPartsCount = parts.filter( ({ value }) => !value ).length
 
-        if (!part) break
+    this.#logger = items => {
+      if (items.length != nonStaticPartsCount) {
+        throw new Error( `Wrong count of passed items. Expected ${nonStaticPartsCount}, found ${items.length}` )
+      }
 
-        const { align=`left`, length=10, splitLen, splitFLLen, color, maxLen } = part
+      const preparedItems = []
+
+      for (const part of parts) {
+        const {
+          color,
+          align = `left`,
+          value = items.shift(),
+          length,
+          maxLen,
+          splitLen,
+          firstSplitLen
+        } = part
+
         const mainColor = color || Logger.defaultColor
-        let item = items[ i ]
-        let len = length - item.length
-
-        // console.log( maxLen, item.length, item )
-        if (len < 0) len = 0
-        if (maxLen && item.length > maxLen) item = `${item.slice( 0 , maxLen - 3 )}...`
-        // console.log( item )
+        let fieldLength = Math.max( length - value.length, 0 )
+        let fieldValue = maxLen && fieldValue.length > maxLen
+          ? `${value.slice( 0 , maxLen - 3 )}...`
+          : value
 
         switch (align) {
           case `left`:
-            item += ` `.repeat( len )
+            fieldValue += ` `.repeat( fieldLength )
             break
 
           case `right`:
-            item = `${` `.repeat( len )}${item}`
+            fieldValue = ` `.repeat( fieldLength ) + fieldValue
             break
 
           case `center`:
-            for (let j = len; j; j--)
-              if (j % 2) item += ` `
-              else item = ` ${item}`
+            for (let i = fieldLength; i; i--)
+              if (i % 2) fieldValue += ` `
+              else fieldValue = ` ` + fieldValue
             break
         }
 
-        if (splitLen) item = Logger.split( item, splitLen, splitFLLen || splitLen )
+        if (splitLen) fieldValue = Logger.split( fieldValue, splitLen, firstSplitLen )
 
-        items[ i ] = item.replace( /\n/g, `\n     | ` )
+        preparedItems.push( fieldValue.replace( /\n/g, `\n     | ` )
           .replace( Logger.colorsReg, (...match) => {
             const { color, data } = match[ match.length - 1 ]
             const text = data.replace( /\n     \| /g, `\n     ${Logger.colors[ mainColor ]}| ${Logger.colors[ color ]}` )
 
             return `${Logger.colors[ color ]}${text}${Logger.colors[ mainColor ]}`
           } )
+        )
       }
 
-      console.log( pattern, ...items )
+      console.log( pattern, ...preparedItems )
     }
+  }
+
+  log( ...items ) {
+    this.#logger( items )
   }
 
   /** Split the long one line to several shorter lines

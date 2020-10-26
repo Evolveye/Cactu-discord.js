@@ -131,7 +131,7 @@ export default class CactuDiscordBot {
    * @param {string} string
    */
   log( string ) {
-    this.botLogger( `Bot`, `:`, string )
+    this.loggers.botSystem.log( string )
   }
 
   /**
@@ -320,9 +320,9 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} message
    */
   onMessage = message => {
-    const guildData = this.getGuildData( message )
+    // const guildData = this.getGuildData( message )
 
-    if (guildData) guildData.process( message, this )
+    // if (guildData) guildData.process( message, this )
   }
 
   /**
@@ -342,9 +342,9 @@ export default class CactuDiscordBot {
 
     this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild, true ) )
 
-    fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
+    // fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
 
-    this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
+    // this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
 
     console.log()
     this.log( `I have been started!`)
@@ -355,29 +355,29 @@ export default class CactuDiscordBot {
    * @param {Discord.Guild} guild
    */
   onGuildCreate = ({ id, name }, onReady=false) => {
-    this.guildsData.set( id, new GuildModules(
-      id,
-      this.prefix,
-      this.prefixSpace,
-      this.moduleLogger,
-      this.discordClient,
-      (event, litener) => this.discordClient.on( event, litener ) )
-    )
+    // this.guildsData.set( id, new GuildModules(
+    //   id,
+    //   this.prefix,
+    //   this.prefixSpace,
+    //   this.moduleLogger,
+    //   this.discordClient,
+    //   (event, litener) => this.discordClient.on( event, litener ) )
+    // )
 
     this.log( `I have joined to guild named [fgYellow]${name}[]`)
 
-    if (!onReady && this.modulesCopying && this.modulesCopying != id) {
-      const path = `${fs.realpathSync( `.` )}/guilds_modules`
+    // if (!onReady && this.modulesCopying && this.modulesCopying != id) {
+    //   const path = `${fs.realpathSync( `.` )}/guilds_modules`
 
-      this.clearGuildModules( id )
+    //   this.clearGuildModules( id )
 
-      fs.readdirSync( path )
-        .filter( filename => filename.split( /-/ )[ 0 ] ===  this.modulesCopying )
-        .map( filename => filename.split( /-/ ).slice( 1 ).join( `-` ) )
-        .forEach( filename => {
-          fs.copyFileSync( `${path}/${this.modulesCopying}-${filename}`, `${path}/${id}-${filename}` )
-          this.loadModule( `${id}-${filename}` )
-         } )
-    }
+    //   fs.readdirSync( path )
+    //     .filter( filename => filename.split( /-/ )[ 0 ] ===  this.modulesCopying )
+    //     .map( filename => filename.split( /-/ ).slice( 1 ).join( `-` ) )
+    //     .forEach( filename => {
+    //       fs.copyFileSync( `${path}/${this.modulesCopying}-${filename}`, `${path}/${id}-${filename}` )
+    //       this.loadModule( `${id}-${filename}` )
+    //      } )
+    // }
   }
 }
