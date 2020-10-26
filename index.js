@@ -2,7 +2,7 @@ import Discord from "discord.js"
 import fs from "fs"
 
 import GuildModules from "./src/GuildModules.js"
-import Logger from "./src/Logger.js"
+import Logger, { logUnderControl } from "./src/Logger.js"
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
@@ -41,10 +41,10 @@ export default class CactuDiscordBot {
       { color:`white`,   splitLen:200,  firstSplitLen:130 },         // Message
     ] ),
     info: new Logger( [
-      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },       // "[hh:mm:ss] "
-      { color:`blue`,    value:`i`, background:`white` },   // "i"
-      { color:`white`,   value:` ` },                       // " "
-      { color:`white`,   splitLen:200, firstSplitLen:190 }, // Message
+      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },                   // "[hh:mm:ss] "
+      { color:`blue`,    value:` i `, background:`white`, bold:true },  // " i "
+      { color:`white`,   value:` ` },                                   // " "
+      { color:`white`,   splitLen:200, firstSplitLen:190 },             // Message
     ] ),
     botSystem: new Logger( [
       { color:`magenta`, value:`  Bot` },                   // "Bot"
@@ -131,7 +131,7 @@ export default class CactuDiscordBot {
    * @param {string} string
    */
   log( string ) {
-    this.loggers.botSystem.log( string )
+    logUnderControl( this.loggers.botSystem, string )
   }
 
   /**
@@ -320,6 +320,13 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} message
    */
   onMessage = message => {
+    if (message.content === `.`) {
+      logUnderControl( this.loggers.guild, `server`, `channel`, `type`, `member name`, `message` )
+    } else if (message.content === `,`) {
+      logUnderControl( this.loggers.info, `information` )
+    } else if (message.content === `;`) {
+      logUnderControl( this.loggers.botSystem, `system message` )
+    }
     // const guildData = this.getGuildData( message )
 
     // if (guildData) guildData.process( message, this )
@@ -330,9 +337,9 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} newMessage
    */
   onMessageUpdate = (oldMessage, newMessage) => {
-    const guildData = this.getGuildData( newMessage )
+    // const guildData = this.getGuildData( newMessage )
 
-    if (guildData) guildData.process( newMessage, this, { commands:false } )
+    // if (guildData) guildData.process( newMessage, this, { commands:false } )
   }
 
   onReady = () => {

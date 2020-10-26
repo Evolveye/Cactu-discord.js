@@ -11,6 +11,7 @@
  * @property {number?} maxLen Max length
  * @property {number?} splitLen Length after which log will be splited
  * @property {number?} firstSplitLen Length after which log first line will be splited
+ * @property {boolean?} bold is log bolded?
  */
 
 /**
@@ -62,14 +63,16 @@ export default class Logger {
   constructor( parts, options={} ) {
     let pattern = ``
 
-    for (const { color=Logger.defaultColor, background=Logger.defaultBackground } of parts) pattern += ``
+    for (const { color=Logger.defaultColor, background=Logger.defaultBackground, bold=false } of parts) pattern += ``
       + (Logger.colors[ `bg` + background.charAt( 0 ).toUpperCase() + background.slice( 1 ) ] || ``)
       + (Logger.colors[ `fg` + color.charAt( 0 ).toUpperCase() + color.slice( 1 ) ] || ``)
+      + (bold ? Logger.colors.bright : ``)
       + `%s`
       + Logger.colors.reset
 
     const nonStaticPartsCount = parts.filter( ({ value }) => !value ).length
 
+    this.isSeparated = options.separated
     this.#logger = items => {
       if (items.length != nonStaticPartsCount) {
         throw new Error( `Wrong count of passed items. Expected ${nonStaticPartsCount}, found ${items.length}` )
@@ -88,9 +91,11 @@ export default class Logger {
           firstSplitLen
         } = part
 
-        const mainColor = color || Logger.defaultColor
+        const mainColor = color
+          ? `fg` + color.charAt( 0 ).toUpperCase() + color.slice( 1 )
+          : Logger.defaultColor
         let fieldLength = Math.max( length - value.length, 0 )
-        let fieldValue = maxLen && fieldValue.length > maxLen
+        let fieldValue = maxLen && value.length > maxLen
           ? `${value.slice( 0 , maxLen - 3 )}...`
           : value
 
@@ -171,4 +176,20 @@ export default class Logger {
 
     return string
   }
+}
+
+/** @type {Logger|null} */
+let lastLogger = null
+
+/**
+ * @param {Logger} logger
+ * @param {string[]} data
+ */
+export function logUnderControl( logger, ...data ) {
+  if (lastLogger && lastLogger !== logger && (lastLogger.isSeparated || logger.isSeparated)) {
+    console.log( `` )
+  }
+
+  lastLogger = logger
+  logger.log( ...data )
 }
