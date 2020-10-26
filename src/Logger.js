@@ -158,7 +158,7 @@ export default class Logger {
     for (let i = 0; chrsFrStart < string.length - (cLL = i == 0 ? fL : l); i++) {
       let retreat = 0
 
-      while (retreat < 15 && !lBrReg.test( string[ chrsFrStart + cLL - retreat ] )) retreat++
+      while (retreat < 20 && !lBrReg.test( string[ chrsFrStart + cLL - retreat ] )) retreat++
 
       chrsFrStart = chrsFrStart + cLL - retreat
 
@@ -176,6 +176,7 @@ export default class Logger {
           break
 
         case `.`:
+        default:
           string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart )}`
           break
       }
