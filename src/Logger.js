@@ -1,3 +1,23 @@
+/** @typedef {"black"|"red"|"green"|"yellow"|"blue"|"magenta"|"cyan"|"white"} Color */
+/** @typedef {"left"|"center"|"right"} Align */
+
+/**
+ * @typedef {Object} LoggerPart
+ * @property {Color?} color Color
+ * @property {Color?} background Background color
+ * @property {Align?} align
+ * @property {string?} value Static value
+ * @property {number?} length Initial length
+ * @property {number?} maxLen Max length
+ * @property {number?} splitLen Length after which log will be splited
+ * @property {number?} firstSplitLen Length after which log first line will be splited
+ */
+
+/**
+ * @typedef {Object} Options
+ * @property {boolean} separated Do log should be separated from others?
+ */
+
 export default class Logger {
   static colors = {
     reset: `\x1b[0m`,
@@ -30,9 +50,10 @@ export default class Logger {
   static defaultColor = `fgWhite`
 
   /**
-   * @param {{ align?:"left"|"center"|"right", color?:String, length?:Number }[]} parts Color is a console color name
+   * @param {LoggerPart[]} parts
+   * @param {Options?} options
    */
-  constructor( parts ) {
+  constructor( parts, options={} ) {
     let pattern = ``
 
     for ( const { color=Logger.defaultColor } of parts ) pattern += ``

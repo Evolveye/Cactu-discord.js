@@ -38,25 +38,25 @@ export default class CactuDiscordBot {
       { color:`white`,   value:`: ` },                            // ": "
       { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
       { color:`white`,   value:`: ` },                            // ": "
-      { color:`white`,   splitLen:200,  splitFLLen:130 },         // Message
+      { color:`white`,   splitLen:200,  firstSplitLen:130 },         // Message
     ] ),
     info: new Logger( [
-      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },     // "[hh:mm:ss] "
-      { color:`blue`,    value:`i`, background:`white` }, // "i"
-      { color:`white`,   value:` ` },                     // " "
-      { color:`white`,   splitLen:200, splitFLLen:190 },  // Message
+      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },       // "[hh:mm:ss] "
+      { color:`blue`,    value:`i`, background:`white` },   // "i"
+      { color:`white`,   value:` ` },                       // " "
+      { color:`white`,   splitLen:200, firstSplitLen:190 }, // Message
     ] ),
     botSystem: new Logger( [
-      { color:`magenta`, value:`  Bot` },                 // "Bot"
-      { color:`white`,   value:`: ` },                    // ": "
-      { color:`white`,   splitLen:200, splitFLLen:190 },  // Message
+      { color:`magenta`, value:`  Bot` },                   // "Bot"
+      { color:`white`,   value:`: ` },                      // ": "
+      { color:`white`,   splitLen:200, firstSplitLen:190 }, // Message
     ], { separated:true } ),
   }
 
   botSystemLogger = new Logger( [
-    { color:`magenta`, value:`  Bot` },                 // "Bot"
-    { color:`white`,   value:`: ` },                    // ": "
-    { color:`white`,   splitLen:200, splitFLLen:190 },  // Message
+    { color:`magenta`, value:`  Bot` },                   // "Bot"
+    { color:`white`,   value:`: ` },                      // ": "
+    { color:`white`,   splitLen:200, firstSplitLen:190 }, // Message
   ] )
 
   prefix = `cc!`
