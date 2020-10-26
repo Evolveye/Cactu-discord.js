@@ -29,7 +29,7 @@ export default class CactuDiscordBot {
 
   loggers = {
     guild: new Logger( [
-      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },             // "[hh:mm:ss] "
+      { color:`white`,   value:`[{hh}:{mm}:{ss}]` },              // "[hh:mm:ss] "
       { color:`magenta`, align:`right`, length:20, maxLen:20 },   // Guild name
       { color:`bright`,  value:` :: ` },                          // " :: "
       { color:`magenta`, align:`left`,  length:20, maxLen:20 },   // Channel name
@@ -38,18 +38,18 @@ export default class CactuDiscordBot {
       { color:`white`,   value:`: ` },                            // ": "
       { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
       { color:`white`,   value:`: ` },                            // ": "
-      { color:`white`,   splitLen:200,  firstSplitLen:130 },         // Message
+      { color:`white`,   splitLen:170,  firstSplitLen:100 },      // Message
     ] ),
     info: new Logger( [
-      { color:`white`,   value:`[%h%h:%m%m:%s%s] ` },                   // "[hh:mm:ss] "
-      { color:`blue`,    value:` i `, background:`white`, bold:true },  // " i "
-      { color:`white`,   value:` ` },                                   // " "
-      { color:`white`,   splitLen:200, firstSplitLen:190 },             // Message
+      { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },       // "[hh:mm:ss] "
+      { color:`blue`,    value:` info `, bold:true },       // " i "
+      { color:`white`,   value:` ` },                       // " "
+      { color:`white`,   splitLen:170, firstSplitLen:160 }, // Message
     ] ),
     botSystem: new Logger( [
       { color:`magenta`, value:`  Bot` },                   // "Bot"
       { color:`white`,   value:`: ` },                      // ": "
-      { color:`white`,   splitLen:200, firstSplitLen:190 }, // Message
+      { color:`white`,   splitLen:170, firstSplitLen:160 }, // Message
     ], { separated:true } ),
   }
 
@@ -320,11 +320,11 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} message
    */
   onMessage = message => {
-    if (message.content === `.`) {
-      logUnderControl( this.loggers.guild, `server`, `channel`, `type`, `member name`, `message` )
-    } else if (message.content === `,`) {
+    if (message.content.startsWith( `.` )) {
+      logUnderControl( this.loggers.guild, `server`, `channel`, `type`, `member name`, message.content )
+    } else if (message.content.startsWith( `,` )) {
       logUnderControl( this.loggers.info, `information` )
-    } else if (message.content === `;`) {
+    } else if (message.content.startsWith( `;` )) {
       logUnderControl( this.loggers.botSystem, `system message` )
     }
     // const guildData = this.getGuildData( message )
@@ -355,7 +355,6 @@ export default class CactuDiscordBot {
 
     console.log()
     this.log( `I have been started!`)
-    console.log()
   }
 
   /**

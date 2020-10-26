@@ -79,6 +79,7 @@ export default class Logger {
       }
 
       const preparedItems = []
+      const date = Logger.getDate( options.locales )
 
       for (const part of parts) {
         const {
@@ -118,6 +119,12 @@ export default class Logger {
         if (splitLen) fieldValue = Logger.split( fieldValue, splitLen, firstSplitLen )
 
         preparedItems.push( fieldValue.replace( /\n/g, `\n     | ` )
+          .replace( `{YYYY}`, date.YYYY )
+          .replace( `{MM}`, date.MM )
+          .replace( `{DD}`, date.DD )
+          .replace( `{hh}`, date.hh )
+          .replace( `{mm}`, date.mm )
+          .replace( `{ss}`, date.ss )
           .replace( Logger.colorsReg, (...match) => {
             const { color, data } = match[ match.length - 1 ]
             const text = data.replace( /\n     \| /g, `\n     ${Logger.colors[ mainColor ]}| ${Logger.colors[ color ]}` )
@@ -175,6 +182,14 @@ export default class Logger {
     }
 
     return string
+  }
+
+  static getDate( locales=`en-GB`, date=Date.now() ) {
+    const options = { year:`numeric`, month:'2-digit', day: '2-digit', hour:`2-digit`, minute:`2-digit`, second:`2-digit` }
+    const [ { value:DD },,{ value:MM },,{ value:YYYY },,{ value:hh },,{ value:mm },,{ value:ss } ] = new Intl.DateTimeFormat( locales, options )
+      .formatToParts( date )
+
+    return { YYYY, MM, DD, hh, mm, ss }
   }
 }
 
