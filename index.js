@@ -26,7 +26,7 @@ export default class CactuDiscordBot {
 
   /** @type {Map<string,GuildModules>} */
   guildDatasets = new Map()
-
+  initialized = false
 
   logMaxLength = 170
   loggers = {
@@ -62,7 +62,7 @@ export default class CactuDiscordBot {
       { color:`white`,   value:` ` },                       // " "
       { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
     ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
-    botSystem: new Logger( [
+    system: new Logger( [
       { color:`magenta`, value:`  Bot` },                   // "Bot"
       { color:`white`,   value:`: ` },                      // ": "
       { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
@@ -142,8 +142,20 @@ export default class CactuDiscordBot {
   /**
    * @param {string} string
    */
-  log( string ) {
-    logUnderControl( this.loggers.botSystem, string )
+  log( string, type=`system` ) {
+    let logger = null
+
+    switch (type) {
+      case `info`:
+        logger = this.loggers.info
+        break
+        
+      case `system`:
+      default:
+        logger = this.loggers.system
+    }
+
+    logUnderControl( logger, string )
   }
 
   /**
@@ -358,7 +370,7 @@ export default class CactuDiscordBot {
 
   onReady = () => {
     console.log()
-    this.log( `Start initialized!` )
+    this.log( `Initialization started!` )
     console.log()
 
     this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild, true ) )
@@ -369,6 +381,7 @@ export default class CactuDiscordBot {
 
     console.log()
     this.log( `I have been started!`)
+    this.initialized = true
   }
 
   /**
@@ -384,7 +397,8 @@ export default class CactuDiscordBot {
     //   (event, litener) => this.discordClient.on( event, litener ) )
     // )
 
-    this.log( `I have joined to guild named [fgYellow]${name}[]`)
+    if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
+    else this.log( `I'm on guild named [fgYellow]${name}[]` )
 
     // if (!onReady && this.modulesCopying && this.modulesCopying != id) {
     //   const path = `${fs.realpathSync( `.` )}/guilds_modules`
