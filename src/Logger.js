@@ -3,7 +3,7 @@
 
 /**
  * @typedef {Object} LoggerPart
- * @property {Color?} color Color
+ * @property {Color?} color
  * @property {Color?} background Background color
  * @property {Align?} align
  * @property {string?} value Static value
@@ -17,6 +17,8 @@
 /**
  * @typedef {Object} Options
  * @property {boolean} separated Do log should be separated from others?
+ * @property {boolean} separateBreakBlock Do all log lines should start by \n?
+ * @property {string} newLinePrefix
  */
 
 export default class Logger {
@@ -116,9 +118,13 @@ export default class Logger {
             break
         }
 
-        if (splitLen) fieldValue = Logger.split( fieldValue, splitLen, firstSplitLen )
+        if (splitLen) fieldValue = Logger.split( fieldValue, splitLen, {
+          separateBreakBlock: options.separateBreakBlock,
+          newLinePrefix: options.newLinePrefix,
+          firstSplitLen,
+        } )
 
-        preparedItems.push( fieldValue.replace( /\n/g, `\n     | ` )
+        preparedItems.push( fieldValue.replace( /\n/g, `\n` + (options.newLinePrefix || `     | `) )
           .replace( `{YYYY}`, date.YYYY )
           .replace( `{MM}`, date.MM )
           .replace( `{DD}`, date.DD )
@@ -147,9 +153,9 @@ export default class Logger {
    * @param {Number} lineLength
    * @param {Number} firstLineLength
    */
-  static split( string, lineLength, firstLineLength=lineLength ) {
+  static split( string, lineLength, { firstSplitLen=lineLength, separateBreakBlock=false } ) {
     const lBrReg = /[- ,:;.]/
-    const fL = firstLineLength
+    const fL = separateBreakBlock ? lineLength : firstSplitLen
     const l = lineLength
 
     let cLL // current line length
@@ -182,7 +188,7 @@ export default class Logger {
       }
     }
 
-    return string
+    return (separateBreakBlock && (/\n/.test( string ) || string.length > firstSplitLen) ? `\n` : ``) + string
   }
 
   static getDate( locales=`en-GB`, date=Date.now() ) {

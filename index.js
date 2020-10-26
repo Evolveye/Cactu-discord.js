@@ -27,6 +27,8 @@ export default class CactuDiscordBot {
   /** @type {Map<string,GuildModules>} */
   guildDatasets = new Map()
 
+
+  logMaxLength = 170
   loggers = {
     guild: new Logger( [
       { color:`white`,   value:`[{hh}:{mm}:{ss}]` },              // "[hh:mm:ss] "
@@ -38,19 +40,19 @@ export default class CactuDiscordBot {
       { color:`white`,   value:`: ` },                            // ": "
       { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
       { color:`white`,   value:`: ` },                            // ": "
-      { color:`white`,   splitLen:170,  firstSplitLen:100 },      // Message
-    ] ),
+      { color:`white`,   splitLen:this.logMaxLength,  firstSplitLen:(this.logMaxLength - 70) }, // Message
+    ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
     info: new Logger( [
       { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },       // "[hh:mm:ss] "
       { color:`blue`,    value:` info `, bold:true },       // " i "
       { color:`white`,   value:` ` },                       // " "
-      { color:`white`,   splitLen:170, firstSplitLen:160 }, // Message
-    ] ),
+      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
+    ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
     botSystem: new Logger( [
       { color:`magenta`, value:`  Bot` },                   // "Bot"
       { color:`white`,   value:`: ` },                      // ": "
-      { color:`white`,   splitLen:170, firstSplitLen:160 }, // Message
-    ], { separated:true } ),
+      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
+    ], { separated:true, separateBreakBlock:true } ),
   }
 
   botSystemLogger = new Logger( [
@@ -70,6 +72,7 @@ export default class CactuDiscordBot {
    * @property {boolean} [prefixSpace]
    * @property {Object<string,*>} [publicVars]
    * @property {{ok:string,warn:string,error:string}} [signs]
+   * @property {number} [logMaxLength]
    */
   /**
    * @param {CactuDiscordBotConfig} config
@@ -80,6 +83,7 @@ export default class CactuDiscordBot {
     if (`publicVars`      in config) this.publicVars      = config.publicVars
     if (`modulesCopying`  in config) this.modulesCopying  = config.modulesCopying
     if (`signs`           in config) this.signs           = config.signs
+    if (`logMaxLength`    in config) this.logMaxLength    = config.logMaxLength
 
     this.discordClient
       .on( `message`, this.onMessage )
