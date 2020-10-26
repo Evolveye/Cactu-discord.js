@@ -33,14 +33,28 @@ export default class CactuDiscordBot {
     guild: new Logger( [
       { color:`white`,   value:`[{hh}:{mm}:{ss}]` },              // "[hh:mm:ss] "
       { color:`magenta`, align:`right`, length:20, maxLen:20 },   // Guild name
-      { color:`bright`,  value:` :: ` },                          // " :: "
+      { color:`white`,   value:` :: ` },                          // " :: "
       { color:`magenta`, align:`left`,  length:20, maxLen:20 },   // Channel name
-      { color:`bright`,  value:` :: ` },                          // " :: "
+      { color:`white`,   value:` :: ` },                          // " :: "
       { color:`blue`,    align:`right`, length:7 },               // /(Filter|Command)/
       { color:`white`,   value:`: ` },                            // ": "
       { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
       { color:`white`,   value:`: ` },                            // ": "
-      { color:`white`,   splitLen:this.logMaxLength,  firstSplitLen:(this.logMaxLength - 70) }, // Message
+      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 80) }, // Message
+    ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
+    dm: new Logger( [
+      { color:`white`,   value:`[{hh}:{mm}:{ss}]` },              // "[hh:mm:ss] "
+      { color:`magenta`, align:`right`, length:33 },              // Author id
+      { color:`white`,   value:`#` },                             // "#"
+      { color:`magenta`, length:4 },                              // Author discriminator
+      { color:`white`,   value:` :: ` },                          // " :: "
+      { color:`magenta`, value:`DM` },                            // "DM"
+      { color:`white`,   value:` :: ` },                          // " :: "
+      { color:`blue`,    align:`right`, length:7 },               // /(Filter|Command)/
+      { color:`white`,   value:`: ` },                            // ": "
+      { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
+      { color:`white`,   value:`: ` },                            // ": "
+      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 80) }, // Message
     ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
     info: new Logger( [
       { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },       // "[hh:mm:ss] "
@@ -54,12 +68,6 @@ export default class CactuDiscordBot {
       { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
     ], { separated:true, separateBreakBlock:true } ),
   }
-
-  botSystemLogger = new Logger( [
-    { color:`magenta`, value:`  Bot` },                   // "Bot"
-    { color:`white`,   value:`: ` },                      // ": "
-    { color:`white`,   splitLen:200, firstSplitLen:190 }, // Message
-  ] )
 
   prefix = `cc!`
   prefixSpace = true
@@ -327,9 +335,11 @@ export default class CactuDiscordBot {
     if (message.content.startsWith( `.` )) {
       logUnderControl( this.loggers.guild, `server`, `channel`, `type`, `member name`, message.content )
     } else if (message.content.startsWith( `,` )) {
-      logUnderControl( this.loggers.info, `information` )
+      logUnderControl( this.loggers.info, message.content )
     } else if (message.content.startsWith( `;` )) {
-      logUnderControl( this.loggers.botSystem, `system message` )
+      logUnderControl( this.loggers.botSystem, message.content )
+    } else if (message.content.startsWith( `'` )) {
+      logUnderControl( this.loggers.dm, message.member.id,message.author.discriminator, `type`, `member name`, message.content )
     }
     // const guildData = this.getGuildData( message )
 
