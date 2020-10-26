@@ -1,7 +1,4 @@
 node_modules
 
 priv-*
-files
-guilds_config
-guilds_modules
-app.js
+priv/

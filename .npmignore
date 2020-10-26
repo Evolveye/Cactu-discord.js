@@ -1,9 +1,6 @@
-example_config/
-img/
+node_modules/
 
-guilds_config/
-guilds_modules/
-files/
+presentation/
 
 priv-*
-app.js
+priv/
