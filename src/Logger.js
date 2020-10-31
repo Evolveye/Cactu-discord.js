@@ -208,6 +208,7 @@ let lastLogger = null
  * @param {string[]} data
  */
 export function logUnderControl( logger, ...data ) {
+  if (!logger) return
   if (lastLogger && lastLogger !== logger && (lastLogger.isSeparated || logger.isSeparated)) {
     console.log( `` )
   }
