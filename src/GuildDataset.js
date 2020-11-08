@@ -123,9 +123,10 @@ export default class GuildDataset {
    * @param {Logger} logger
    * @param {function(string,function)} eventBinder
    */
-  constructor( guild, logger ) {
+  constructor( guild, logger, eventBinder ) {
     this.guild = guild
     this.logger = logger
+    this.eventBinder = eventBinder
 
     this.clear()
   }
@@ -248,25 +249,10 @@ export default class GuildDataset {
    * @param {Message} message
    * @param {BotInstance} botInstance
    */
-  process( message, botInstance, { filters=true, commands=true }={} ) {
+  processMessage( message, { filters=true, commands=true }={} ) {
     const { guild, content } = message
-    const varsData = this.variablesSharedData
     const username = message.member ? message.member.displayName : message.author.username
-    const log = (type, log=content) => this.logger(
-      `[${getDate( `hh:mm` )}]`,
-      guild.name,
-      `::`,
-      message.channel.name,
-      `::`,
-      type,
-      `:`,
-      username,
-      `:`,
-      log
-    )
-
-    this.restoreVariablecSharedData()
-    this.setVariables( message, botInstance )
+    const log = (type, log=content) => this.logger( guild.name, message.channel.name, type, username, log )
 
     if (filters) {
       let filteringContent = content
