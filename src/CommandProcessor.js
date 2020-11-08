@@ -1,3 +1,94 @@
+/** @typedef {import("discord.js").Channel} Channel */
+/** @typedef {import("discord.js").MessageOptions} MessageOptions */
+/** @typedef {import("discord.js").MessageAdditions} MessageAdditions */
+/** @typedef {import("discord.js").PermissionOverwriteOptions} PermissionOverwriteOptions */
+/** @typedef {import("discord.js").Snowflake} Snowflake */
+
+/**
+ * @typedef {Object} ProcessedGuild
+ * @property {Snowflake} id
+ * @property {() => Channel[]} getChannels
+ * @property {(predicate:(channel:Channel) => boolean) => Channel} getChannel
+ * @property {() => ProcessedUser[]} getMembers
+ * @property {(predicate:(member:ProcessedUser) => boolean) => ProcessedUser} getMember
+ */
+
+/**
+ * @typedef {Object} ProcessedChannel
+ * @property {Snowflake} id
+ * @property {(message:string) => void} send
+ * @property {(message:MessageOptions|MessageAdditions) => Promise<ProcessedMessage>} sendEmbeded
+ * @property {(userOrRoleId:Snowflake options:PermissionOverwriteOptions) => Promise<>} updatePermissions
+ */
+
+/**
+ * @typedef {Object} ProcessedUser
+ * @property {Snowflake} id
+ * @property {(id:Snowflake) => void} setRole
+ */
+
+/**
+ * @typedef {Object} ProcessedMessage
+ * @property {string} content
+ * @property {Snowflake} id
+ * @property {() => voic} delete
+ * @property {ProcessedUser} author
+ * @property {ProcessedChannel} channel
+ */
+
+/**
+ * @typedef {Object} Variables
+ * @property {ProcessedMessage} message
+ * @property {(message:string) => Promise<ProcessedMessage>} sendOk
+ * @property {(message:string) => Promise<ProcessedMessage>} sendErr
+ */
+
+/**
+ * @typedef {Object} CommandsObjectMetadata
+ * @property {string|string[]} r Shortcut for `roles`. Names or IDs of roles which can use it
+ * @property {string|string[]} roles Names or IDs of roles which can use it
+ * @property {string} d Shortcut for `description`
+ * @property {string} description Just a description
+ * @property {string} sd Shortcut for `shortDescription`. Short version of the description (a few words)
+ * @property {string} shortDescription Short version of the description (a few words)
+ */
+
+/** @typedef {Object<string,Scope>} CommandsObjectData */
+
+export class Scope {
+  /**
+   * @param {CommandsObjectMetadata} meta
+   * @param {CommandsObjectData} data
+   */
+  constructor( meta, data ) {}
+}
+
+export class Command {
+  /**
+   * @param {CommandsObjectMetadata} meta
+   * @param {($:Variables, ...rest) => void|boolean|string} fn
+   */
+  constructor( meta, fn ) {}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /** @typedef {"badParam"|"details"|"noCommand"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandErrorType */
 /** @typedef {Object} CommandError
  * @property {CommandErrorType} type

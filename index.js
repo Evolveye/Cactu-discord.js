@@ -8,6 +8,9 @@ if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
 export const LoggerClass = Logger
 
+/** @typedef {import("discord.js").MessageReaction} MessageReaction */
+/** @typedef {import("discord.js").User} User */
+
 /** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
 /** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
 
@@ -71,6 +74,16 @@ export default class CactuDiscordBot {
 
   prefix = `cc!`
   prefixSpace = true
+  supportedEvents = {
+    /**
+     * @param {MessageReaction} reaction
+     * @param {User} user
+     */
+    messageReactionAdd( reaction, user ) {
+
+    }
+  }
+  events = {}
   signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
 
   /**
@@ -340,6 +353,14 @@ export default class CactuDiscordBot {
     return this.guildsData.get( id )
   }
 
+  eventBinder = (guild, eventName, listener) => {
+    if (!eventName in this.events) {
+      this.events[ eventName ] = []
+    }
+
+    this.events[ eventName ].push( listener )
+  }
+
   /**
    * @param {Discord.Message} message
    */
@@ -349,7 +370,7 @@ export default class CactuDiscordBot {
     } else if (message.content.startsWith( `,` )) {
       logUnderControl( this.loggers.info, message.content )
     } else if (message.content.startsWith( `;` )) {
-      logUnderControl( this.loggers.botSystem, message.content )
+      logUnderControl( this.loggers.system, message.content )
     } else if (message.content.startsWith( `'` )) {
       logUnderControl( this.loggers.dm, message.member.id,message.author.discriminator, `type`, `member name`, message.content )
     }
@@ -390,7 +411,7 @@ export default class CactuDiscordBot {
   onGuildCreate = guild => {
     const { id, name } = guild
 
-    this.guildDatasets.set( id, new GuildDataset( guild, this.loggers.guild ) )
+    this.guildDatasets.set( id, new GuildDataset( guild, this.loggers.guild, this.eventBinder ) )
 
     if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
     else this.log( `I'm on guild named [fgYellow]${name}[]` )
