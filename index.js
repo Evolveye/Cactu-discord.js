@@ -28,7 +28,7 @@ export default class CactuDiscordBot {
   )
 
   /** @type {Map<string,GuildDataset>} */
-  guildDatasets = new Map()
+  guildsDatasets = new Map()
   initialized = false
 
   logMaxLength = 170
@@ -102,7 +102,7 @@ export default class CactuDiscordBot {
     if (`prefix`          in config) this.prefix          = config.prefix
     if (`prefixSpace`     in config) this.prefixSpace     = config.prefixSpace
     if (`publicVars`      in config) this.publicVars      = config.publicVars
-    if (`modulesCopying`  in config) this.modulesCopying  = config.modulesCopying
+    if (`idOfGuildToCopy` in config) this.idOfGuildToCopy = config.idOfGuildToCopy
     if (`signs`           in config) this.signs           = config.signs
     if (`logMaxLength`    in config) this.logMaxLength    = config.logMaxLength
 
@@ -119,21 +119,23 @@ export default class CactuDiscordBot {
   /**
    * @param {string} moduleName
    */
-  loadModule = moduleName => {
-    if (!moduleName) return
+  loadModule = moduleFolder => {
+    if (!moduleFolder) return
 
-    const id = moduleName.match( /(.*?)-(.*)/ )[ 1 ]
-    const guildsData = this.guildsData.get( id )
+    const id = moduleFolder.match( /(\d{18})--(.*)$/ )[ 1 ]
+    const guildDataset = this.guildsDatasets.get( id )
     const dotPath = fs.realpathSync( `.` )
 
-    if (guildsData) import( `file:///${dotPath}/guilds_modules/${moduleName}` )
-      .then( module => guildsData.include( module.default ) )
-      .catch( err => this.log( `I can't load module.\n${err}` ) )
-    else try {
-      fs.unlinkSync( `${dotPath}/guilds_modules/${moduleName}` )
-    } catch {
-      this.log( `I can't remove module file (${moduleName}).` )
-    }
+    console.log( !!guildDataset, moduleFolder, id )
+
+    // if (guildsData) import( `file:///${dotPath}/guilds_modules/${moduleName}` )
+    //   .then( module => guildsData.include( module.default ) )
+    //   .catch( err => this.log( `I can't load module.\n${err}` ) )
+    // else try {
+    //   fs.unlinkSync( `${dotPath}/guilds_modules/${moduleName}` )
+    // } catch {
+    //   this.log( `I can't remove module file (${moduleName}).` )
+    // }
   }
 
   clearGuildModules( guildIdToRemove, ...excludeNames ) {
@@ -396,9 +398,7 @@ export default class CactuDiscordBot {
 
     this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild ) )
 
-    // fs.readdirSync( `${fs.realpathSync( `.` )}/guilds_modules` ).forEach( this.loadModule )
-
-    // this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
+    this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
 
     console.log()
     this.log( `I have been started!`)
@@ -410,24 +410,26 @@ export default class CactuDiscordBot {
    */
   onGuildCreate = guild => {
     const { id, name } = guild
+    const path = `./guild_configs/${id}--${name.slice( 0, 20 ).replace( / /g, `-` )}${name.length > 20 ? "..." : ""}/`
 
-    this.guildDatasets.set( id, new GuildDataset( guild, this.loggers.guild, this.eventBinder ) )
+    this.guildsDatasets.set( id, new GuildDataset( this, guild, this.loggers.guild, this.eventBinder ) )
+
+    if (!fs.existsSync( path )) fs.mkdirSync( path )
 
     if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
     else this.log( `I'm on guild named [fgYellow]${name}[]` )
 
-    // if (!onReady && this.modulesCopying && this.modulesCopying != id) {
-    //   const path = `${fs.realpathSync( `.` )}/guilds_modules`
+    if (!fs.existsSync( `${path}config.js` )) {
+      if (this.idOfGuildToCopy && this.idOfGuildToCopy != id) {
+        const configToCopyFolderPath = fs.readdirSync( path )
+          .filter( filename => filename.split( `--` )[ 0 ] === this.idOfGuildToCopy )[ 0 ]
 
-    //   this.clearGuildModules( id )
+        fs.copyFileSync( `${configToCopyFolderPath}config.js`, `${path}config.js` )
+      } else {
+        fs.writeFileSync( `${path}config.js`, `` )
+      }
+    }
 
-    //   fs.readdirSync( path )
-    //     .filter( filename => filename.split( /-/ )[ 0 ] ===  this.modulesCopying )
-    //     .map( filename => filename.split( /-/ ).slice( 1 ).join( `-` ) )
-    //     .forEach( filename => {
-    //       fs.copyFileSync( `${path}/${this.modulesCopying}-${filename}`, `${path}/${id}-${filename}` )
-    //       this.loadModule( `${id}-${filename}` )
-    //      } )
-    // }
+    this.loadModule( `${path}module.js` )
   }
 }

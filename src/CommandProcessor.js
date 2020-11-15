@@ -1,4 +1,6 @@
 /** @typedef {import("discord.js").Channel} Channel */
+/** @typedef {import("discord.js").Collection<Snowflake,MessageAttachment} Attachments */
+/** @typedef {import("discord.js").MessageAttachment} MessageAttachment */
 /** @typedef {import("discord.js").MessageOptions} MessageOptions */
 /** @typedef {import("discord.js").MessageAdditions} MessageAdditions */
 /** @typedef {import("discord.js").PermissionOverwriteOptions} PermissionOverwriteOptions */
@@ -7,6 +9,7 @@
 /**
  * @typedef {Object} ProcessedGuild
  * @property {Snowflake} id
+ * @property {string} name
  * @property {() => Channel[]} getChannels
  * @property {(predicate:(channel:Channel) => boolean) => Channel} getChannel
  * @property {() => ProcessedUser[]} getMembers
@@ -16,6 +19,8 @@
 /**
  * @typedef {Object} ProcessedChannel
  * @property {Snowflake} id
+ * @property {string} name
+ * @property {ProcessedGuild} guild
  * @property {(message:string) => void} send
  * @property {(message:MessageOptions|MessageAdditions) => Promise<ProcessedMessage>} sendEmbeded
  * @property {(userOrRoleId:Snowflake options:PermissionOverwriteOptions) => Promise<>} updatePermissions
@@ -25,6 +30,9 @@
  * @typedef {Object} ProcessedUser
  * @property {Snowflake} id
  * @property {(id:Snowflake) => void} setRole
+ * @property {string} displayName
+ * @property {string} name
+ * @property {string} mention
  */
 
 /**
@@ -34,6 +42,8 @@
  * @property {() => voic} delete
  * @property {ProcessedUser} author
  * @property {ProcessedChannel} channel
+ * @property {ProcessedGuild} guild
+ * @property {Attachments} attachments
  */
 
 /**
@@ -43,10 +53,12 @@
  * @property {(message:string) => Promise<ProcessedMessage>} sendErr
  */
 
+/** @typedef {"@bot_owner"|"@dm"|"@server_admin"|"@everyone"|"@bot"|"@<user id>"|"<role name or ID>"|string[]} Permission */
+
 /**
  * @typedef {Object} CommandsObjectMetadata
- * @property {string|string[]} r Shortcut for `roles`. Names or IDs of roles which can use it
- * @property {string|string[]} roles Names or IDs of roles which can use it
+ * @property {Permission} r Shortcut for `roles`. Names or IDs of roles which can use it. It can be any string
+ * @property {Permission} roles Names or IDs of roles which can use it. It can be any string
  * @property {string} d Shortcut for `description`
  * @property {string} description Just a description
  * @property {string} sd Shortcut for `shortDescription`. Short version of the description (a few words)

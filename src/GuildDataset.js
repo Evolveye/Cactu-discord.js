@@ -1,4 +1,4 @@
-import CommandProcessor from "./CommandProcessor.js"
+import CommandProcessor, { Scope, Command } from "./CommandProcessor.js"
 import fs from "fs"
 import https from "https"
 
@@ -7,7 +7,7 @@ import https from "https"
 /** @typedef {import("discord.js").Message} Message */
 /** @typedef {import("discord.js").TextChannel} TextChannel */
 
-/** @typedef {import("../index.js").default} BotInstance */
+/** @typedef {import("../index.js").default} CactuDiscordBot */
 /** @typedef {import("./Logger.js").default} Logger */
 /** @typedef {import("./CommandProcessor.js").Commands} GuildCommands */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildCommandsField */
@@ -119,11 +119,13 @@ export default class GuildDataset {
   botOperatorRoleId = ``
 
   /**
+   * @param {CactuDiscordBot} botInstance
    * @param {Guild} guild
    * @param {Logger} logger
    * @param {function(string,function)} eventBinder
    */
-  constructor( guild, logger, eventBinder ) {
+  constructor( botInstance, guild, logger, eventBinder ) {
+    this.botInstance = botInstance
     this.guild = guild
     this.logger = logger
     this.eventBinder = eventBinder
@@ -203,7 +205,7 @@ export default class GuildDataset {
       system_loadFail:  `Wrong file data!`
     }
 
-    this.include( GuildDataset.predefinedCommands )
+    this.include( this.getPredefinedCommands() )
   }
 
   restoreVariablecSharedData() {
@@ -280,6 +282,57 @@ export default class GuildDataset {
     )
   }
 
+  getPredefinedCommands() {
+    const t = this.translation
+    const { botInstance } = this
+
+    return new Scope( {
+      get description() { return t.help_showMasks + `\n` + t.help_params }
+
+      },{
+
+      $: new Scope({
+        shortDescription: `Bot administration`,
+        roles: `@server_admin`
+
+        },{
+
+        load: new Command({
+          shortDescription: `Clear all modules data and load new module from attached file`
+          }, $ => {
+            const { message } = $
+            const attachment = message.attachments.first()
+            const guildId = message.guild.id
+
+            if (!attachment) throw t.err_attachFile
+            if (attachment.url && !attachment.width) {
+              const path = `./guild_configs/${guildId}--${message.guild.name.slice( 0, 20 ).replace( / /g, `-` )}/`
+              const configPath = fs.createWriteStream( `${path}config.js` )
+
+              https.get( attachment.url, res => res.pipe( configPath ).on( `finish`, () => {
+                modulePath.close()
+
+                if ($.message.author.id !== `263736841025355777` && /(?<!\/\*\* @typedef { *)import|require/gi.test( fs.readFileSync( path ) )) {
+                  console.log( `Matched imports!` )
+                }
+
+                botInstance.clearGuildModules( guildId, fileName )
+                botInstance.loadModule( fileName )
+
+                message.delete()
+
+                $.sendOk( t.system_loadSucc )
+              } ) )
+            }
+          }
+        )
+
+      })
+
+      }
+    )
+  }
+
   /**
    * @param {Object<string,*>} target
    * @param {Object<string,*>} object
@@ -328,7 +381,7 @@ export default class GuildDataset {
   }
 
   /** @param {UnsafeVariables} $ */
-  static predefinedCommands = $ => ({ commands: {
+  static predefinedCommandsDEPRECATED = $ => ({ commands: {
     $: { d:`Bot administration`, r:`@owner`, v:{
       load: { d:`Clear all modules data and load new module from attached file`, v() {
         const { message, botInstance } = $
