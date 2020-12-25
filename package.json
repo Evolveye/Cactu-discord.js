@@ -1,6 +1,6 @@
 {
   "name": "cactu-discord.js",
-  "version": "3.0.0-13",
+  "version": "4.0.0-SNAPSHOT",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
   "type": "module",
@@ -8,13 +8,15 @@
     "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js."
   },
   "keywords": [
+    "codecactu",
     "cactu",
     "discord",
     "js",
     "discord.js",
     "cactu-discord.js",
     "bot",
-    "framework"
+    "framework",
+    "automated"
   ],
   "author": "Paweł S",
   "homepage": "https://github.com/Evolveye/Cactu-discord.js",
@@ -24,6 +26,7 @@
     "canvas": "^2.6.1",
     "discord.js": "^12.2.0",
     "formidable": "^1.2.2",
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.6.0",
+    "vm2": "^3.9.2"
   }
 }
