@@ -140,7 +140,12 @@ export default class CactuDiscordBot {
     const id = moduleFolder.match( /(\d{18})--(.*)$/ )[ 1 ]
     const guildDataset = this.guildsDatasets.get( id )
 
-    if (guildDataset) console.log( this.vm.runFile( `${__APPDIRNAME}/${moduleFolder}` ) )
+    if (guildDataset) {
+      const config = fs.readFileSync( `${__APPDIRNAME}/${moduleFolder}`, { encoding:`utf-8` } )
+      const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
+
+      console.log( this.vm.run( config.match( importsAndStartingCommentsTrimmer )[ 1 ] ) )
+    }
     // if (guildDataset) import( `file:///${__APPDIRNAME}/${moduleFolder}` )
     //   .then( console.log )
     //   // .then( module => guildsData.include( module.default ) )
