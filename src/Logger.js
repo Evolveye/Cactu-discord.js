@@ -158,34 +158,43 @@ export default class Logger {
     const fL = separateBreakBlock ? lineLength : firstSplitLen
     const l = lineLength
 
-    let cLL // current line length
+    let currentLineLen = fL
     let chrsFrStart = 0
+    let i = 0
 
-    for (let i = 0; chrsFrStart < string.length - (cLL = i == 0 ? fL : l); i++) {
+    while (chrsFrStart < string.length - currentLineLen) {
+      const lineBreakInCurrentLine = string.slice( chrsFrStart, chrsFrStart + currentLineLen ).match( /\n/ )
       let retreat = 0
 
-      while (retreat < 20 && !lBrReg.test( string[ chrsFrStart + cLL - retreat ] )) retreat++
+      if (lineBreakInCurrentLine) {
+        chrsFrStart += lineBreakInCurrentLine.index
+      } else {
+        while (retreat < 20 && !lBrReg.test( string[ chrsFrStart + currentLineLen - retreat ] )) retreat++
 
-      chrsFrStart = chrsFrStart + cLL - retreat
+        chrsFrStart += currentLineLen - retreat
 
-      switch (string[ chrsFrStart ]) {
-        case ` `:
-          string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart + 1 )}`
-          chrsFrStart++
-          break
+        switch (string[ chrsFrStart ]) {
+          case ` `:
+            string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart + 1 )}`
+            chrsFrStart++
+            break
 
-        case `,`:
-        case `:`:
-        case `;`:
-        case `-`:
-          string = `${string.slice( 0, chrsFrStart + 1 )}\n${string.slice( chrsFrStart + 1 )}`
-          break
+          case `,`:
+          case `:`:
+          case `;`:
+          case `-`:
+            string = `${string.slice( 0, chrsFrStart + 1 )}\n${string.slice( chrsFrStart + 1 )}`
+            break
 
-        case `.`:
-        default:
-          string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart )}`
-          break
+          case `.`:
+          default:
+            string = `${string.slice( 0, chrsFrStart )}\n${string.slice( chrsFrStart )}`
+            break
+        }
       }
+
+      ++i
+      currentLineLen = l
     }
 
     return (separateBreakBlock && (/\n/.test( string ) || string.length > firstSplitLen) ? `\n` : ``) + string

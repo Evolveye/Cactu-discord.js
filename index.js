@@ -84,7 +84,7 @@ export default class CactuDiscordBot {
       { color:`magenta`, value:`  Bot` },                   // "Bot"
       { color:`white`,   value:`: ` },                      // ": "
       { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
-    ], { separated:true, separateBreakBlock:true } ),
+    ], { separated:true, separateBreakBlock:false } ),
   }
 
   prefix = `cc!`
@@ -141,10 +141,14 @@ export default class CactuDiscordBot {
     const guildDataset = this.guildsDatasets.get( id )
 
     if (guildDataset) {
-      const config = fs.readFileSync( `${__APPDIRNAME}/${moduleFolder}`, { encoding:`utf-8` } )
+      const configCode = fs.readFileSync( `${__APPDIRNAME}/${moduleFolder}`, { encoding:`utf-8` } )
       const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
 
-      console.log( this.vm.run( config.match( importsAndStartingCommentsTrimmer )[ 1 ] ) )
+      try {
+        let config = this.vm.run( configCode.match( importsAndStartingCommentsTrimmer )[ 1 ] )
+      } catch (err) {
+        return /** @type {Error} */ (err).message
+      }
     }
     // if (guildDataset) import( `file:///${__APPDIRNAME}/${moduleFolder}` )
     //   .then( console.log )
@@ -436,9 +440,6 @@ export default class CactuDiscordBot {
 
     if (!fs.existsSync( path )) fs.mkdirSync( path )
 
-    if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
-    else this.log( `I'm on guild named [fgYellow]${name}[]` )
-
     if (!fs.existsSync( configPath )) {
       if (this.idOfGuildToCopy && this.idOfGuildToCopy != id) {
         const configToCopyFolderPath = fs.readdirSync( path )
@@ -450,6 +451,15 @@ export default class CactuDiscordBot {
       }
     }
 
-    this.loadModule( configPath )
+    const error = this.loadModule( configPath )
+
+    if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
+    else {
+      let message = `I'm on guild named [fgYellow]${name}[]`
+
+      if (error) message += `\n[fgRed]CONFIG LOADING ERROR[]: ${error}`
+
+      this.log( message )
+    }
   }
 }
