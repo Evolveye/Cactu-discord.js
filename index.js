@@ -1,12 +1,17 @@
 import Discord from "discord.js"
+import VM2Package from "vm2"
 import fs from "fs"
 
 import GuildDataset from "./src/GuildDataset.js"
+import { Scope, Command } from "./src/CommandProcessor.js"
 import Logger, { logUnderControl } from "./src/Logger.js"
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
 export const LoggerClass = Logger
+
+const __DIRNAME = import.meta.url.match( /(.*)\// )[ 1 ]
+const __APPDIRNAME = fs.realpathSync( `.` )
 
 /** @typedef {import("discord.js").MessageReaction} MessageReaction */
 /** @typedef {import("discord.js").User} User */
@@ -30,6 +35,16 @@ export default class CactuDiscordBot {
   /** @type {Map<string,GuildDataset>} */
   guildsDatasets = new Map()
   initialized = false
+  vm = new VM2Package.VM( {
+    eval: false,
+    wasm: false,
+    require: false,
+    nesting: false,
+    fixAsync: true,
+    timeout: 10,
+    wrapper: `none`,
+    sandbox: { Scope, Command },
+  } )
 
   logMaxLength = 170
   loggers = {
@@ -74,6 +89,8 @@ export default class CactuDiscordBot {
 
   prefix = `cc!`
   prefixSpace = true
+  events = {}
+  signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
   supportedEvents = {
     /**
      * @param {MessageReaction} reaction
@@ -83,8 +100,6 @@ export default class CactuDiscordBot {
 
     }
   }
-  events = {}
-  signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
 
   /**
    * @typedef {Object} CactuDiscordBotConfig
@@ -124,12 +139,11 @@ export default class CactuDiscordBot {
 
     const id = moduleFolder.match( /(\d{18})--(.*)$/ )[ 1 ]
     const guildDataset = this.guildsDatasets.get( id )
-    const dotPath = fs.realpathSync( `.` )
 
-    console.log( !!guildDataset, moduleFolder, id )
-
-    // if (guildsData) import( `file:///${dotPath}/guilds_modules/${moduleName}` )
-    //   .then( module => guildsData.include( module.default ) )
+    if (guildDataset) console.log( this.vm.runFile( `${__APPDIRNAME}/${moduleFolder}` ) )
+    // if (guildDataset) import( `file:///${__APPDIRNAME}/${moduleFolder}` )
+    //   .then( console.log )
+    //   // .then( module => guildsData.include( module.default ) )
     //   .catch( err => this.log( `I can't load module.\n${err}` ) )
     // else try {
     //   fs.unlinkSync( `${dotPath}/guilds_modules/${moduleName}` )
@@ -411,6 +425,7 @@ export default class CactuDiscordBot {
   onGuildCreate = guild => {
     const { id, name } = guild
     const path = `./guild_configs/${id}--${name.slice( 0, 20 ).replace( / /g, `-` )}${name.length > 20 ? "..." : ""}/`
+    const configPath = `${path}config.js`
 
     this.guildsDatasets.set( id, new GuildDataset( this, guild, this.loggers.guild, this.eventBinder ) )
 
@@ -419,17 +434,17 @@ export default class CactuDiscordBot {
     if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
     else this.log( `I'm on guild named [fgYellow]${name}[]` )
 
-    if (!fs.existsSync( `${path}config.js` )) {
+    if (!fs.existsSync( configPath )) {
       if (this.idOfGuildToCopy && this.idOfGuildToCopy != id) {
         const configToCopyFolderPath = fs.readdirSync( path )
           .filter( filename => filename.split( `--` )[ 0 ] === this.idOfGuildToCopy )[ 0 ]
 
-        fs.copyFileSync( `${configToCopyFolderPath}config.js`, `${path}config.js` )
+        fs.copyFileSync( `${configToCopyFolderPath}config.js`, configPath )
       } else {
-        fs.writeFileSync( `${path}config.js`, `` )
+        fs.writeFileSync( configPath, `` )
       }
     }
 
-    this.loadModule( `${path}module.js` )
+    this.loadModule( configPath )
   }
 }
