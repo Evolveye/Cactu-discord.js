@@ -65,22 +65,80 @@
  * @property {string} shortDescription Short version of the description (a few words)
  */
 
-/** @typedef {Object<string,Scope>} CommandsObjectData */
+/** @typedef {Object<string,Scope|Function>} CommandsObjectData */
 
-export class Scope {
+class MetaHandler {
+  /**
+   * @param {CommandsObjectMetadata} param0
+   */
+  constructor( { r=``, roles=r, d=``, description=d, sd=``, shortDescription=sd } ) {
+    this.roles            = roles            || `@everyone`
+    this.description      = description      || ``
+    this.shortDescription = shortDescription || this.description
+  }
+
+  /**
+   * @param {CommandsObjectMetadata} param0
+   */
+  updateMeta( { r=``, roles=r, d=``, description=d, sd=``, shortDescription=sd } ) {
+    if (roles)            this.roles            = typeof roles === `string` ? roles : roles.slice( 0 )
+    if (description)      this.description      = description
+    if (shortDescription) this.shortDescription = shortDescription
+  }
+}
+
+export class Scope extends MetaHandler {
   /**
    * @param {CommandsObjectMetadata} meta
    * @param {CommandsObjectData} data
    */
-  constructor( meta, data ) {}
+  constructor( meta, data ) {
+    super( meta )
+
+    this.structure = data
+  }
+
+  /**
+   * @param {Scope} scope
+   * @param {boolean} override
+   */
+  merge( scope, override=false ) {
+    Scope.merge( this, scope, override )
+  }
+
+  /**
+   * @param {Scope} targetScope
+   * @param {Scope} scope
+   * @param {boolean} override
+   */
+  static merge( targetScope, scope, override ) {
+    if (override) targetScope.updateMeta( scope )
+
+    for (const prop in scope.structure) {
+      const field = scope.structure[ prop ]
+
+      if (!(prop in targetScope.structure) || override) {
+        if (field instanceof Command) targetScope.structure[ prop ] = field
+        else if (field instanceof Scope) {
+          targetScope.structure[ prop ] = new Scope( {}, {} )
+
+          this.merge( targetScope.structure[ prop ], field, override )
+        }
+      }
+    }
+  }
 }
 
-export class Command {
+export class Command extends MetaHandler {
   /**
    * @param {CommandsObjectMetadata} meta
    * @param {($:Variables, ...rest) => void|boolean|string} fn
    */
-  constructor( meta, fn ) {}
+  constructor( meta, fn ) {
+    super( meta )
+
+    this.trigger = fn
+  }
 }
 
 

@@ -146,6 +146,8 @@ export default class CactuDiscordBot {
 
       try {
         let config = this.vm.run( configCode.match( importsAndStartingCommentsTrimmer )[ 1 ] )
+
+        guildDataset.loadConfig( config )
       } catch (err) {
         return /** @type {Error} */ (err).message
       }

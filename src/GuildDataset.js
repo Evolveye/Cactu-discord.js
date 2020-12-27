@@ -9,35 +9,36 @@ import https from "https"
 
 /** @typedef {import("../index.js").default} CactuDiscordBot */
 /** @typedef {import("./Logger.js").default} Logger */
-/** @typedef {import("./CommandProcessor.js").Commands} GuildCommands */
+/** @typedef {import("./CommandProcessor.js").Scope} ConfigCommands */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildCommandsField */
 
-/** @typedef {Object} GuildTranslation
- * @property {string} err_badParam
- * @property {string} err_noCommand
- * @property {string} err_noParam
- * @property {string} err_noPath
- * @property {string} err_noPerms
- * @property {string} err_noPrefix
- * @property {string} err_invalidCmd
- * @property {string} err_error
- * @property {string} err_attachFile
- * @property {string} help_title
- * @property {string} help_showMasks
- * @property {string} help_params
- * @property {string} help_masks
- * @property {string} help_cmds
- * @property {string} help_scopes
- * @property {string} footer_yourCmds
- * @property {string} footer_cmdInfo
- * @property {string} system_loadSucc
- * @property {string} system_loadFail
+/** ConfigTranslation
+ * @typedef {Object} ConfigTranslation
+ * @property {string} [err_badParam]
+ * @property {string} [err_noCommand]
+ * @property {string} [err_noParam]
+ * @property {string} [err_noPath]
+ * @property {string} [err_noPerms]
+ * @property {string} [err_noPrefix]
+ * @property {string} [err_invalidCmd]
+ * @property {string} [err_error]
+ * @property {string} [err_attachFile]
+ * @property {string} [help_title]
+ * @property {string} [help_showMasks]
+ * @property {string} [help_params]
+ * @property {string} [help_masks]
+ * @property {string} [help_cmds]
+ * @property {string} [help_scopes]
+ * @property {string} [footer_yourCmds]
+ * @property {string} [footer_cmdInfo]
+ * @property {string} [system_loadSucc]
+ * @property {string} [system_loadFail]
  */
 
-/** @typedef {{regExp:RegExp,func:function}[][]} GuildFilters */
+/** @typedef {{regExp:RegExp,func:function}[][]} ConfigFilters */
 
-
-/** @typedef {Object} Events For details look at Events on https://discord.js.org/#/docs/main/stable/class/Client
+/** ConfigSupportedEvents
+ * @typedef {Object} ConfigSupportedEvents For details look at Events on https://discord.js.org/#/docs/main/stable/class/Client
  * @property {function} [channelCreate]
  * @property {function} [channelDelete]
  * @property {function} [channelPinsUpdate]
@@ -89,15 +90,17 @@ import https from "https"
  * @property {function} [webhookUpdate]
 */
 
-/** @typedef {Object} GuildModule
- * @property {GuildModuleTranslation} translation
- * @property {Events} events
- * @property {GuildModuleFilters} filters
- * @property {GuildModuleCommands} commands
+/**
+ * @typedef {Object} Config
+ * @property {ConfigTranslation} translation
+ * @property {ConfigSupportedEvents} events
+ * @property {ConfigFilters} filters
+ * @property {ConfigCommands} commands
  */
 
 
-/** @typedef {Object} SafeVariables
+/**
+ * @typedef {Object} SafeVariables
  * @property {Message} message
  * @property {function(string,TextChannel?):Promise<Message>} send
  * @property {function(string,TextChannel?):Promise<Message>} sendOk
@@ -134,49 +137,55 @@ export default class GuildDataset {
   }
 
   /**
-   * @param {GuildModule} param0
+   * @param {Config} config
    */
-  include( module ) {
-    const { translation={}, events={}, commands={}, filters=[], botOperatorId=``, importantMessages } = typeof module === `function`
-      ? module( this.unsafeVariables )
-      : module
+  loadConfig( config ) {
+    if (typeof config !== `object`) return false
 
-    for (const event in events) {
-      if (!(event in this.events)) {
-        this.events[ event ] = []
+    const { translation={}, events={}, commands, filters=[], botOperatorId=`` } = config
 
-        this.eventBinder( event, (...data) => {
-          const { guild, message } = data[ 0 ]
-
-          if (guild) {
-            if (guild.id != this.guildId) return
-          } else if (message) {
-            if (message.guild.id != this.guildId) return
-          } else return
-
-          if (event in this.events) this.events[ event ].forEach( f => f( ...data ) )
-          else console.log( `Something went wrong with event emmiter!`, event, this.events )
-        } )
-      }
-
-      this.events[ event ].push( events[ event ] )
+    if (commands instanceof Scope) {
+      commands.merge( GuildDataset.predefinedCommands, true )
+      console.log( commands.structure )
     }
 
-    this.filters = filters.map( filterScope => Object.entries( filterScope ) )
-      .map( filterScope => filterScope.map( ([ regExp, func ]) => {
-        const [ regSource, regFlags ] = regExp.split( /\/$|\/(?=[gmiyus]+$)/ )
 
-        return {
-          regExp: new RegExp( regSource.slice( 1 ), regFlags ),
-          func,
-        }
-      } ) )
+    // for (const event in events) {
+    //   if (!(event in this.events)) {
+    //     this.events[ event ] = []
 
-    CommandProcessor.normalizeCommands( commands )
+    //     this.eventBinder( event, (...data) => {
+    //       const { guild, message } = data[ 0 ]
 
-    GuildDataset.safeCommandsAssign( this.commands, commands )
-    this.translation = Object.assign( this.translation, translation )
-    this.botOperatorId = botOperatorId
+    //       if (guild) {
+    //         if (guild.id != this.guildId) return
+    //       } else if (message) {
+    //         if (message.guild.id != this.guildId) return
+    //       } else return
+
+    //       if (event in this.events) this.events[ event ].forEach( f => f( ...data ) )
+    //       else console.log( `Something went wrong with event emmiter!`, event, this.events )
+    //     } )
+    //   }
+
+    //   this.events[ event ].push( events[ event ] )
+    // }
+
+    // this.filters = filters.map( filterScope => Object.entries( filterScope ) )
+    //   .map( filterScope => filterScope.map( ([ regExp, func ]) => {
+    //     const [ regSource, regFlags ] = regExp.split( /\/$|\/(?=[gmiyus]+$)/ )
+
+    //     return {
+    //       regExp: new RegExp( regSource.slice( 1 ), regFlags ),
+    //       func,
+    //     }
+    //   } ) )
+
+    // CommandProcessor.normalizeCommands( commands )
+
+    // GuildDataset.safeCommandsAssign( this.commands, commands )
+    // this.translation = Object.assign( this.translation, translation )
+    // this.botOperatorId = botOperatorId
   }
 
   clear() {
@@ -205,7 +214,7 @@ export default class GuildDataset {
       system_loadFail:  `Wrong file data!`
     }
 
-    this.include( this.getPredefinedCommands() )
+    this.loadConfig( this.getPredefinedCommands() )
   }
 
   restoreVariablecSharedData() {
@@ -379,9 +388,18 @@ export default class GuildDataset {
 
     deletePropG( object )
   }
-
   /** @param {UnsafeVariables} $ */
-  static predefinedCommandsDEPRECATED = $ => ({ commands: {
+  static predefinedCommands = new Scope( {}, {
+    $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
+      load: new Command( { d:`Clear all modules data and load new module from attached file` }, $ => {} ),
+      setBotOperator: new Command( { d:`Set the ID of bot operator` }, ($, id=/\d{18}/) => {} ),
+      getModules: new Command( { d:`Get the guild module config files` }, $ => {} ),
+    } )
+  } )
+  
+  
+  
+  static DEPRECATED_COMMANDS = $ => ({ commands: {
     $: { d:`Bot administration`, r:`@owner`, v:{
       load: { d:`Clear all modules data and load new module from attached file`, v() {
         const { message, botInstance } = $
