@@ -147,6 +147,7 @@ export default class GuildDataset {
     if (commands instanceof Scope) {
       commands.setSafety( false )
       commands.merge( GuildDataset.predefinedCommands, true )
+      console.log( commands.serialize() )
     }
 
 
@@ -396,9 +397,9 @@ export default class GuildDataset {
       getModules: new Command( { d:`Get the guild module config files` }, $ => {} ),
     } )
   } )
-  
-  
-  
+
+
+
   static DEPRECATED_COMMANDS = $ => ({ commands: {
     $: { d:`Bot administration`, r:`@owner`, v:{
       load: { d:`Clear all modules data and load new module from attached file`, v() {

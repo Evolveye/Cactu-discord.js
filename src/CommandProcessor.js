@@ -85,6 +85,14 @@ class MetaHandler {
     if (description)      this.description      = description
     if (shortDescription) this.shortDescription = shortDescription
   }
+
+  getMeta() {
+    return {
+      roles: this.roles,
+      description: this.description,
+      shortDescription: this.shortDescription,
+    }
+  }
 }
 
 export class Scope extends MetaHandler {
@@ -108,6 +116,10 @@ export class Scope extends MetaHandler {
    */
   merge( scope, override=false ) {
     Scope.merge( this, scope, override )
+  }
+
+  serialize( onlyUnsafe=true ) {
+    return Scope.serialize( this, onlyUnsafe )
   }
 
   static setSafety( scope, isSafe ) {
@@ -139,6 +151,44 @@ export class Scope extends MetaHandler {
         }
       }
     }
+  }
+
+  /**
+   * @param {Scope} scope
+   * @param {boolean} onlyUnsafe
+   */
+  static serialize( scope, onlyUnsafe ) {
+    return JSON.stringify( this.#serializeHelper( scope, onlyUnsafe ), null, 2 )
+  }
+
+  /**
+   * @param {Scope} scope
+   * @param {boolean} onlyUnsafe
+   */
+  static #serializeHelper( scope, onlyUnsafe ) {
+    const result = {
+      type: `scope`,
+      ...scope.getMeta(),
+      structure: {}
+    }
+
+    Object.entries( scope.structure ).map( ([ key, value ]) => {
+      if (value instanceof Command) {
+        if (onlyUnsafe && !value.safe) return
+
+        result.structure[ key ] = {
+          type: `command`,
+          ...value.getMeta(),
+          code: ``,
+        }
+      } else if (value instanceof Scope) {
+        const nestedScope = this.#serializeHelper( value, onlyUnsafe )
+
+        if (Object.keys( nestedScope.structure ).length) result.structure[ key ] = nestedScope
+      }
+    } )
+
+    return result
   }
 }
 
