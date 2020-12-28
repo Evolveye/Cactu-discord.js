@@ -145,8 +145,8 @@ export default class GuildDataset {
     const { translation={}, events={}, commands, filters=[], botOperatorId=`` } = config
 
     if (commands instanceof Scope) {
+      commands.setSafety( false )
       commands.merge( GuildDataset.predefinedCommands, true )
-      console.log( commands.structure )
     }
 
 

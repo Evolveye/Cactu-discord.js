@@ -98,12 +98,25 @@ export class Scope extends MetaHandler {
     this.structure = data
   }
 
+  setSafety( isSafe ) {
+    Scope.setSafety( this, isSafe )
+  }
+
   /**
    * @param {Scope} scope
    * @param {boolean} override
    */
   merge( scope, override=false ) {
     Scope.merge( this, scope, override )
+  }
+
+  static setSafety( scope, isSafe ) {
+    for (const prop in scope.structure) {
+      const field = scope.structure[ prop ]
+
+      if (field instanceof Command) field.setSafety( isSafe )
+      else if (field instanceof Scope) this.setSafety( field, isSafe )
+    }
   }
 
   /**
@@ -130,6 +143,8 @@ export class Scope extends MetaHandler {
 }
 
 export class Command extends MetaHandler {
+  safe = true
+
   /**
    * @param {CommandsObjectMetadata} meta
    * @param {($:Variables, ...rest) => void|boolean|string} fn
@@ -138,6 +153,10 @@ export class Command extends MetaHandler {
     super( meta )
 
     this.trigger = fn
+  }
+
+  setSafety( isSafe ) {
+    this.safe = isSafe
   }
 }
 
