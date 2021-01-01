@@ -1,11 +1,16 @@
 import http from "http"
 import fs from "fs"
+import url from "url"
+
+import processAuth from "./auth.js"
 
 const staticPath = `./public/`
 
-http.createServer( (req, res) => {
-  const urlPath = req.url.split( `?` )[ 0 ]
-  const staticFilePath = `${staticPath}${urlPath == "/" ? `index.html` : urlPath}`
+http.createServer( async (req, res) => {
+  const urlObj = url.parse( req.url, true )
+  const staticFilePath = `${staticPath}${urlObj.pathname == "/" ? `index.html` : urlObj.pathname}`
+
+  processAuth( urlObj )
 
   if (!fs.existsSync( staticFilePath )) return res
     .writeHead( 404, { "Content-Type":`text/json` } )
