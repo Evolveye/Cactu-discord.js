@@ -4,7 +4,8 @@ import fs from "fs"
 const staticPath = `./public/`
 
 http.createServer( (req, res) => {
-  const staticFilePath = `${staticPath}${req.url == "/" ? `index.html` : req.url}`
+  const urlPath = req.url.split( `?` )[ 0 ]
+  const staticFilePath = `${staticPath}${urlPath == "/" ? `index.html` : urlPath}`
 
   if (!fs.existsSync( staticFilePath )) return res
     .writeHead( 404, { "Content-Type":`text/json` } )

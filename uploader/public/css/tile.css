@@ -1,0 +1,36 @@
+.tile {
+    display: flex;
+    margin: 10px;
+    padding: 10px;
+    width: max-content;
+    min-width: 300px;
+    background-color: #0005;
+  }
+
+  .tile-icon {
+    width: 50px;
+  }
+
+  .tile-data {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    margin-left: 10px;
+  }
+
+  .tile-title {
+    display: block;
+    width: 100%;
+    margin: 0;
+    font-weight: bold;
+    font-size: 18px;
+    color: var( --white );
+  }
+
+  .tile-description {
+    display: block;
+    width: 100%;
+    font-size: 14px;
+    font-family: monospace;
+    color: var( --grey );
+  }
