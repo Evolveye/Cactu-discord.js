@@ -115,7 +115,8 @@ export default class GuildDataset {
   /** @type {GuildFilters} */
   filters = new Map()
   /** @type {GuildCommands} */
-  commands = {}
+  #commands = {}
+  #serializedCommands = ``
   /** @type {Object<string,function[]>} */
   events = {}
   /** @type {string} */
@@ -143,12 +144,19 @@ export default class GuildDataset {
     if (typeof config !== `object`) return false
 
     const { translation={}, events={}, commands, filters=[], botOperatorId=`` } = config
+    const serialized = { commands }
+    this.#commands = commands
 
     if (commands instanceof Scope) {
       commands.setSafety( false )
       commands.merge( GuildDataset.predefinedCommands, true )
-      console.log( commands.serialize() )
+
+      serialized.commands = commands.serialize()
+
+      this.#serializedCommands = serialized.commands
     }
+
+    return serialized
 
 
     // for (const event in events) {

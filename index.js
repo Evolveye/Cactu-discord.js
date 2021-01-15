@@ -145,10 +145,10 @@ export default class CactuDiscordBot {
       const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
 
       try {
-        let config = this.vm.run( configCode.match( importsAndStartingCommentsTrimmer )[ 1 ] )
-
-        guildDataset.loadConfig( config )
+        const config = this.vm.run( configCode.match( importsAndStartingCommentsTrimmer )[ 1 ] )
+        const serialized = guildDataset.loadConfig( config )
       } catch (err) {
+        // console.error( err )
         return /** @type {Error} */ (err).message
       }
     }

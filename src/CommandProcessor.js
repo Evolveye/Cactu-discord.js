@@ -174,12 +174,12 @@ export class Scope extends MetaHandler {
 
     Object.entries( scope.structure ).map( ([ key, value ]) => {
       if (value instanceof Command) {
-        if (onlyUnsafe && !value.safe) return
+        if (onlyUnsafe && value.safe) return
 
         result.structure[ key ] = {
           type: `command`,
           ...value.getMeta(),
-          code: ``,
+          code: value.code,
         }
       } else if (value instanceof Scope) {
         const nestedScope = this.#serializeHelper( value, onlyUnsafe )
@@ -203,10 +203,46 @@ export class Command extends MetaHandler {
     super( meta )
 
     this.trigger = fn
+
+    const { params, code } = Command.extractCommandData( fn )
+    this.params = params
+    this.code = code
   }
 
   setSafety( isSafe ) {
     this.safe = isSafe
+  }
+
+  /**
+   * @param {Command} command
+   */
+  static extractCommandData( command ) {
+    const reg = {
+      isItArrowFunction: /(?<params>[\s\S]*?) *=>/,
+
+      funcParter: /^(?<name>\S+) *\( *(?<paramsStr>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
+      arrowParter: /^\(? *(?<paramsStr>[\s\S]*?) *\)? *=> *{? *(?<code>[\s\S]*?)}?$/,
+
+      params: / *,? *(?<paramName>\$|\w+)(?: *= *\/(?<paramMask>.*?)\/(?<paramMaskFlags>\w*)?(?= *, *|$))?/y,
+    }
+
+    const commandString = command.toString()
+    const parterReg = reg.isItArrowFunction.test( commandString ) ? reg.arrowParter : reg.funcParter
+    const { paramsStr, code } = parterReg.exec( commandString ).groups
+    const params = []
+
+    for (let paramData; paramData = reg.params.exec( paramsStr );) {
+      const { paramName, paramMask, paramMaskFlags } = paramData.groups
+
+      params.push( {
+        param: paramName,
+        mask: paramMask ? new RegExp( `^${paramMask}`, `s` ) : null,
+        optional: paramMaskFlags ? /g/.test( paramMaskFlags ) || /^\.\*?$/.test( paramMask ) : false,
+        rest: paramMask ? /^\.(?:\+|\*)?$/.test( paramMask ) : false,
+      } )
+    }
+
+    return { params, code }
   }
 }
 
