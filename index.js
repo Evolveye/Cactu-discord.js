@@ -1,16 +1,18 @@
+import fs from "fs"
+
 import Discord from "discord.js"
 import VM2Package from "vm2"
-import fs from "fs"
 
 import GuildDataset from "./src/GuildDataset.js"
 import { Scope, Command } from "./src/CommandProcessor.js"
 import Logger, { logUnderControl } from "./src/Logger.js"
+import CommandWorker from "./src/CommandsWorker.js"
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
 export const LoggerClass = Logger
 
-const __DIRNAME = import.meta.url.match( /(.*)\// )[ 1 ]
+const __DIRNAME = import.meta.url.match( /(.*)\// )[ 1 ].slice( 8 )
 const __APPDIRNAME = fs.realpathSync( `.` )
 
 /** @typedef {import("discord.js").MessageReaction} MessageReaction */
@@ -35,7 +37,8 @@ export default class CactuDiscordBot {
   /** @type {Map<string,GuildDataset>} */
   guildsDatasets = new Map()
   initialized = false
-  vm = new VM2Package.VM( {
+  executiongWorker = new CommandWorker()
+  vmConfig = {
     eval: false,
     wasm: false,
     require: false,
@@ -44,7 +47,7 @@ export default class CactuDiscordBot {
     timeout: 10,
     wrapper: `none`,
     sandbox: { Scope, Command },
-  } )
+  }
 
   logMaxLength = 170
   loggers = {
@@ -145,8 +148,14 @@ export default class CactuDiscordBot {
       const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
 
       try {
-        const config = this.vm.run( configCode.match( importsAndStartingCommentsTrimmer )[ 1 ] )
-        const serialized = guildDataset.loadConfig( config )
+        const script = configCode.match( importsAndStartingCommentsTrimmer )[ 1 ]
+        const config = new VM2Package.VM( this.vmConfig ).run( script )
+        const minified = guildDataset.loadConfig( config )
+
+        if (minified) this.executiongWorker.emit( `set commands`, {
+          guildId: id,
+          config: minified,
+        } )
       } catch (err) {
         // console.error( err )
         return /** @type {Error} */ (err).message

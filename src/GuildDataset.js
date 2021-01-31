@@ -115,8 +115,8 @@ export default class GuildDataset {
   /** @type {GuildFilters} */
   filters = new Map()
   /** @type {GuildCommands} */
-  #commands = {}
-  #serializedCommands = ``
+  commands = {}
+  minifiedCommands = {}
   /** @type {Object<string,function[]>} */
   events = {}
   /** @type {string} */
@@ -141,22 +141,22 @@ export default class GuildDataset {
    * @param {Config} config
    */
   loadConfig( config ) {
-    if (typeof config !== `object`) return false
+    if (typeof config !== `object`) return null
 
     const { translation={}, events={}, commands, filters=[], botOperatorId=`` } = config
-    const serialized = { commands }
-    this.#commands = commands
+    const minified = { commands:{} }
+    this.commands = commands
 
     if (commands instanceof Scope) {
       commands.setSafety( false )
       commands.merge( GuildDataset.predefinedCommands, true )
 
-      serialized.commands = commands.serialize()
+      minified.commands = commands.getData()
 
-      this.#serializedCommands = serialized.commands
+      this.minifiedCommands = minified.commands
     }
 
-    return serialized
+    return minified
 
 
     // for (const event in events) {
@@ -200,6 +200,7 @@ export default class GuildDataset {
   clear() {
     this.filters = new Map()
     this.commands = {}
+    this.minifiedCommands = {}
     this.events = {}
     this.translation = {
       err_badParam:     `Not valid parameter!`,
@@ -405,8 +406,6 @@ export default class GuildDataset {
       getModules: new Command( { d:`Get the guild module config files` }, $ => {} ),
     } )
   } )
-
-
 
   static DEPRECATED_COMMANDS = $ => ({ commands: {
     $: { d:`Bot administration`, r:`@owner`, v:{

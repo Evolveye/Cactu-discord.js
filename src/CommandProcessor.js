@@ -119,7 +119,11 @@ export class Scope extends MetaHandler {
   }
 
   serialize( onlyUnsafe=true ) {
-    return Scope.serialize( this, onlyUnsafe )
+    return Scope.getData( this, { onlyUnsafe, meta:true, serialized:true } )
+  }
+
+  getData( { onlyUnsafe=true, meta=false, serialized=false }={} ) {
+    return Scope.getData( this, { onlyUnsafe, meta, serialized } )
   }
 
   static setSafety( scope, isSafe ) {
@@ -157,18 +161,20 @@ export class Scope extends MetaHandler {
    * @param {Scope} scope
    * @param {boolean} onlyUnsafe
    */
-  static serialize( scope, onlyUnsafe ) {
-    return JSON.stringify( this.#serializeHelper( scope, onlyUnsafe ), null, 2 )
+  static getData( scope, { onlyUnsafe=true, meta=false, serialized=false } ) {
+    const data = this.#dataGetterHelper( scope, onlyUnsafe )
+
+    return serialized ? JSON.stringify( data ) : data
   }
 
   /**
    * @param {Scope} scope
    * @param {boolean} onlyUnsafe
    */
-  static #serializeHelper( scope, onlyUnsafe ) {
+  static #dataGetterHelper( scope, { onlyUnsafe=true, meta=false } ) {
     const result = {
       type: `scope`,
-      ...scope.getMeta(),
+      ...(meta ? scope.getMeta() : {}),
       structure: {}
     }
 
@@ -182,7 +188,7 @@ export class Scope extends MetaHandler {
           code: value.code,
         }
       } else if (value instanceof Scope) {
-        const nestedScope = this.#serializeHelper( value, onlyUnsafe )
+        const nestedScope = this.#dataGetterHelper( value, { onlyUnsafe, meta } )
 
         if (Object.keys( nestedScope.structure ).length) result.structure[ key ] = nestedScope
       }
