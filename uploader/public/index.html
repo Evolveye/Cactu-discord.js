@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CactuJam</title>
+
+  <link rel="stylesheet" href="./css/main.css" />
+  <link rel="stylesheet" href="./css/sanitize.css" />
+  <link rel="stylesheet" href="./css/tile.css" />
+
+  <script type="module" src="./js/main.js"></script>
+</head>
+<body>
+  <h1 class="boxed-title is-green">Prymitywna platforma oceny prac CactuJam</h1>
+
+  <section class="auth">
+    <h2>Uwierzytelnienie</h2>
+    <div class="auth-link-wrapper">
+      <p>
+        Podłącz bota do swojego konta aby zalogować się do systemu klikając
+        <a class="auth-link" href="https://discord.com/api/oauth2/authorize?client_id=379234773408677888&redirect_uri=http%3A%2F%2Flocalhost%3A80%2F&response_type=code&scope=identify">tutaj</a>
+      </p>
+    </div>
+    <div class="auth-user-wrapper">
+      Witaj <span class="auth-user-name"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prace</h2>
+    <ul>
+      <li class="tile">
+        <div class="tile-data">
+          <h3 class="tile-title">title</h3>
+          <p class="tile-description">
+            description
+          </p>
+        </div>
+      </li>
+    </ul>
+  </section>
+</body>
+</html>

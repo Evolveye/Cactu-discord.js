@@ -4,4 +4,5 @@ node_modules/
 guild_configs/
 
 priv-*
+private*
 priv/
