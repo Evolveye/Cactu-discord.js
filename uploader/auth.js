@@ -1,13 +1,70 @@
 import fetch from "node-fetch"
 import config from "./private.js"
 
-/**
- * @param {import("url").UrlWithParsedQuery} urlObj
- */
-export default function handleUrlQuery( urlObj ) {
-  if (!urlObj.query.code) return
+/** @typedef {import("http").ClientRequest} ClientRequest */
+/** @typedef {import("http").ServerResponse} ServerResponse */
 
-  const accessCode = urlObj.query.code
+/**
+ * @typedef {object} User
+ * @property {string} id
+ * @property {string} username
+ * @property {string} avatar
+ * @property {string} discriminator
+ * @property {string} locale
+ * @property {number} public_flags
+ * @property {string} flags
+ * @property {string} mfa_enabled
+ */
+
+ /**
+  * @typedef {object} ErrMsg
+  * @property {string} message
+  * @property {number} code
+  */
+
+/**
+ * @typedef {object} Session
+ * @property {string} token
+ * @property {User} user
+ * @property {number} lastActivity
+ */
+
+/** @type {Session[]} */
+let sessions = []
+const ONE_MINUTE = 1000 * 60
+
+setInterval( () => {
+  sessions = sessions.filter( ({ lastActivity }) => Date.now() - ONE_MINUTE * 5 > lastActivity  )
+}, ONE_MINUTE * 15 )
+
+/**
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
+ * @param {string[]} urlParts
+ */
+export function handleSessionFromToken( req, res, urlParts ) {
+  if (req.method.toLowerCase() != `get`) return
+  if (!urlParts.length) return
+
+  const token = urlParts[ 0 ]
+  const user = getUserFromToken( token )
+
+  res.writeHead( 200, { "Content-Type":`text/json` } )
+
+  if (user) res.end( JSON.stringify( user ) )
+  else res.end( JSON.stringify( { message:`No session finded` } ) )
+}
+
+/**
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
+ * @param {string[]} urlParts
+ */
+export function handleUrlQuery( req, res, urlParts ) {
+  if (req.method.toLowerCase() != `get`) return
+  if (!urlParts.length) return
+
+  const accessCode = urlParts[ 0 ]
   const data = {
     client_id: config.clientId,
     client_secret: config.clientSecret,
@@ -23,9 +80,30 @@ export default function handleUrlQuery( urlObj ) {
     headers: { "Content-Type":`application/x-www-form-urlencoded` },
   } )
     .then( res => res.json() )
-    .then( info => fetch( `https://discord.com/api/users/@me`, { headers: {
-      authorization: `${info.token_type} ${info.access_token}`,
-    } } ) )
+    .then( info =>
+      fetch( `https://discord.com/api/users/@me`, { headers: {
+        authorization: `${info.token_type} ${info.access_token}`,
+      } } ).catch( console.error )
+    )
     .then( res => res.json() )
-    // .then( console.log )
+    .then( /** @param {User|ErrMsg} user */ user => {
+      console.log( `DISCORD API FETCH`, user )
+
+      if (user.message) return user
+
+      const token = Math.random().toString()
+      const data = { token, user, lastActivity:Date.now() }
+
+      sessions.push( data )
+
+      return data
+     } )
+    .then( JSON.stringify )
+    .then( user => res.writeHead( 200, { "Content-Type":`text/json` } ).end( user ) )
+    .catch( console.error )
+}
+
+/** @param {string} token */
+export function getUserFromToken( token ) {
+  return sessions.find( session => session.token == token )
 }

@@ -2,19 +2,30 @@ import http from "http"
 import fs from "fs"
 import url from "url"
 
-import processAuth from "./auth.js"
+import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
+import handleGame from "./gameHandler.js"
 
 const staticPath = `./public/`
 
 http.createServer( async (req, res) => {
   const urlObj = url.parse( req.url, true )
+
+  if (urlObj.pathname.startsWith( `/api/` )) {
+    const pathParts = urlObj.pathname.split( `/` ).filter( Boolean )
+    const trigger = pathParts[ 1 ]
+    const params = pathParts.slice( 2 )
+
+    switch (trigger) {
+      case `discordAuth`: return handleUrlQuery( req, res, params )
+      case `discordFromToken`: return handleSessionFromToken( req, res, params )
+      case `sendGame`: return handleGame( req, res, params )
+      default: return send404( res, `This API field not exists` )
+    }
+  }
+
   const staticFilePath = `${staticPath}${urlObj.pathname == "/" ? `index.html` : urlObj.pathname}`
 
-  processAuth( urlObj )
-
-  if (!fs.existsSync( staticFilePath )) return res
-    .writeHead( 404, { "Content-Type":`text/json` } )
-    .end( JSON.stringify( { error:`Wrong route. Content didn't find.` } ) )
+  if (!fs.existsSync( staticFilePath )) return send404( res )
 
   const pageContent = fs.readFileSync( staticFilePath )
 
@@ -22,6 +33,9 @@ http.createServer( async (req, res) => {
     .end( pageContent )
 } ).listen( 80, () => console.log( `started` ) )
 
+/**
+ * @param {string} path
+ */
 function getMime( path ) {
   const extension = /.*\.(\w+)/.exec( path )[ 1 ]
 
@@ -33,4 +47,13 @@ function getMime( path ) {
 
     default: return `text/plain`
   }
+}
+
+/**
+ * @param {http.ServerResponse} res
+ */
+function send404( res, reason=`Wrong route. Content didn't find.` ) {
+  res
+    .writeHead( 404, { "Content-Type":`text/json` } )
+    .end( JSON.stringify( { error:reason } ) )
 }

@@ -15,18 +15,26 @@
 <body>
   <h1 class="boxed-title is-green">Prymitywna platforma oceny prac CactuJam</h1>
 
-  <section class="auth">
-    <h2>Uwierzytelnienie</h2>
-    <div class="auth-link-wrapper">
+    <section class="auth-link-wrapper">
+      <h2>Uwierzytelnienie</h2>
       <p>
         Podłącz bota do swojego konta aby zalogować się do systemu klikając
-        <a class="auth-link" href="https://discord.com/api/oauth2/authorize?client_id=379234773408677888&redirect_uri=http%3A%2F%2Flocalhost%3A80%2F&response_type=code&scope=identify">tutaj</a>
+        <a class="auth-link" href="https://discord.com/api/oauth2/authorize?client_id=379234773408677888&redirect_uri=http%3A%2F%2Flocalhost%3A80%2F&response_type=code&scope=identify">tutaj</a>.
+        Strona nie przechowuje sesji, więc każde odświeżenie będzie skutkowało wylogowaniem.
       </p>
-    </div>
-    <div class="auth-user-wrapper">
-      Witaj <span class="auth-user-name"></span>
-    </div>
-  </section>
+    </section>
+
+    <section class="auth-user-wrapper">
+      <h2>Witaj <span class="auth-user-name"></span></h2>
+
+      <form class="games_sender" method="post">
+        <label>
+          Prześlij pracę na serwer<br>
+          <input class="games_sender-input" type="file" accept=".zip" name="game">
+        </label>
+        <button type="submit">Wyślij</button>
+      </form>
+    </section>
 
   <section>
     <h2>Prace</h2>
