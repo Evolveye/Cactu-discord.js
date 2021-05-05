@@ -32,6 +32,12 @@
 const fragment = new URLSearchParams( location.search )
 const token = localStorage.getItem( `token` )
 
+ui.authLink.href = `https://discord.com/oauth2/authorize`
+  + `?client_id=379234773408677888`
+  + `&redirect_uri=${encodeURIComponent( location.origin )}`
+  + `&response_type=code`
+  + `&scope=identify`
+
 if (token) {
   fetch( `/api/discordFromToken/${token}` )
     .then( res => res.json() )

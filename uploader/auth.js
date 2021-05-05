@@ -1,7 +1,7 @@
 import fetch from "node-fetch"
 import config from "./private.js"
 
-/** @typedef {import("http").ClientRequest} ClientRequest */
+/** @typedef {import("http").IncomingMessage} ClientRequest */
 /** @typedef {import("http").ServerResponse} ServerResponse */
 
 /**
@@ -64,12 +64,13 @@ export function handleUrlQuery( req, res, urlParts ) {
   if (req.method.toLowerCase() != `get`) return
   if (!urlParts.length) return
 
+  const reqLocation = req.headers.referer.match( /(?<origin>https?:\/\/(?<host>localhost|\d+\.\d+\.\d+\.\d+)(?::(?<port>\d+))?)/ )
   const accessCode = urlParts[ 0 ]
   const data = {
     client_id: config.clientId,
     client_secret: config.clientSecret,
     grant_type: `authorization_code`,
-    redirect_uri: `http://localhost:80/`,
+    redirect_uri: reqLocation.groups.origin,
     code: accessCode,
     scope: `identify`,
   }

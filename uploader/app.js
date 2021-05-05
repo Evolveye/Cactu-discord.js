@@ -33,7 +33,7 @@ http.createServer( async (req, res) => {
 
   res.writeHead( 200, { "Content-Type":getMime( staticFilePath ) } )
     .end( pageContent )
-} ).listen( 80, () => console.log( `started` ) )
+} ).listen( 3000, () => console.log( `started` ) )
 
 /**
  * @param {string} path
