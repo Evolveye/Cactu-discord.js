@@ -1,4 +1,5 @@
 import { getToken } from "./authorize.js"
+import fetcher from "./fetchGames.js"
 
 const ui = {
   /** @type {HTMLFormElement} */
@@ -18,4 +19,5 @@ ui.form.addEventListener( `submit`, e => {
   fetch( `/api/sendGame`, { method:`post`, body:formData } )
     .then( res => res.json() )
     .then( console.log )
+    .then( fetcher )
 } )

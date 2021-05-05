@@ -3,7 +3,7 @@ import fs from "fs"
 import url from "url"
 
 import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
-import handleGame from "./gameHandler.js"
+import { handleGame, fetchGames } from "./gamesManager.js"
 
 const staticPath = `./public/`
 
@@ -19,6 +19,7 @@ http.createServer( async (req, res) => {
       case `discordAuth`: return handleUrlQuery( req, res, params )
       case `discordFromToken`: return handleSessionFromToken( req, res, params )
       case `sendGame`: return handleGame( req, res, params )
+      case `fetchGames`: return fetchGames( req, res, params )
       default: return send404( res, `This API field not exists` )
     }
   }
