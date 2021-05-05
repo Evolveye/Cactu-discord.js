@@ -88,8 +88,6 @@ export function handleUrlQuery( req, res, urlParts ) {
     )
     .then( res => res.json() )
     .then( /** @param {User|ErrMsg} user */ user => {
-      console.log( `DISCORD API FETCH`, user )
-
       if (user.message) return user
 
       const token = Math.random().toString()
