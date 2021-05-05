@@ -19,6 +19,7 @@ ui.form.addEventListener( `submit`, e => {
   fetch( `/api/sendGame`, { method:`post`, body:formData } )
     .then( res => res.json() )
     .then( console.log )
+    .then( () => ui.input.value = `` )
     .then( fetcher )
     .catch( console.error )
 } )
