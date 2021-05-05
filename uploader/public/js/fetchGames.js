@@ -7,7 +7,8 @@ function getGameHtmlListItem( nickname, description, avatarUrl=null ) {
   const h3  = document.createElement( `h3` )
   const p   = document.createElement( `p` )
 
-  p.textContent = description
+  p.innerHTML = description
+
   p.className = `tile-description`
 
   h3.textContent = nickname
@@ -32,9 +33,11 @@ function getGameHtmlListItem( nickname, description, avatarUrl=null ) {
 
 export default async function fetcher() {
   const games = await fetch( `/api/fetchGames` ).then( res => res.json() )
-  const gamesItems = games.map( ({ username, avatarUrl, games }) =>
-    games.map( gamename => getGameHtmlListItem( username, gamename, avatarUrl ) )
-  ).flat()
+  const gamesItems = games.map( ({ userId, username, avatarUrl, games }) => games.map( gamename => {
+    const a = `<a download href="/api/downloadGame/${userId}/${gamename}">${gamename}</a>`
+
+    return getGameHtmlListItem( username, a, avatarUrl )
+  } ) ).flat()
 
   gamesList.innerHTML = ``
   gamesItems.forEach( gameItem => gamesList.appendChild( gameItem ) )

@@ -41,6 +41,7 @@ export function fetchGames( req, res ) {
     const games = fs.readdirSync( `./games/${dirname}` ).filter( filename => /\w+\.zip$/.test( filename ) )
 
     return {
+      userId: meta.id,
       username: meta.username,
       avatarUrl: `https://cdn.discordapp.com/avatars/${meta.id}/${meta.avatar}.png`,
       games,
@@ -48,4 +49,19 @@ export function fetchGames( req, res ) {
   } )
 
   res.end( JSON.stringify( usersWithGames ) )
+}
+
+
+/**
+ * @param {import("http").ClientRequest} req
+ * @param {import("http").ServerResponse} res
+ * @param {string[]} urlParts
+ */
+export function downloadGame( req, res, urlParts ) {
+  if (req.method.toLowerCase() != `get`) return
+
+  const path = `./games/${urlParts[ 0 ]}/${urlParts[ 1 ]}`
+
+  if (fs.existsSync( path )) res.end( fs.readFileSync( path ) )
+  else res.end()
 }
