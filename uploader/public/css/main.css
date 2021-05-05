@@ -7,3 +7,56 @@ body {
 .auth-user-wrapper {
   display: none;
 }
+
+
+/* GAMES */
+
+.games {
+  display: flex;
+}
+.game {
+  width: max-content;
+  padding: 5px;
+  margin: 5px;
+  background-color: #0002;
+}
+
+
+/* FORM */
+
+.form {
+  padding: 10px;
+  padding-top: 75px;
+  margin-left: 10px;
+}
+
+.form-fieldsets {
+  display: flex;
+}
+.form-scale,
+.form-fieldset {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-scale {
+  padding-top: 20px;
+}
+
+.form-category_name {
+  width: 20px;
+  transform: translate( 10px, -5px ) rotate( -45deg );
+}
+
+.form-scale_value,
+.form-input {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 5px 10px;
+}
+
+.form-scale_value {
+  text-align: center;
+  width: 30px;
+}
