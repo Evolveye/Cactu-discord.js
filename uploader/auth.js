@@ -29,6 +29,8 @@ import config from "./private.js"
  * @property {number} lastActivity
  */
 
+/** @typedef {ClientRequest} */
+
 /** @type {Session[]} */
 let sessions = []
 const ONE_MINUTE = 1000 * 60
@@ -36,6 +38,24 @@ const ONE_MINUTE = 1000 * 60
 setInterval( () => {
   sessions = sessions.filter( ({ lastActivity }) => Date.now() - ONE_MINUTE * 5 > lastActivity  )
 }, ONE_MINUTE * 15 )
+
+/** @param {ClientRequest} req */
+export function getTokenFromRequest( req ) {
+  const authentication = req.headers[ `authorization` ]
+
+  return authentication ? authentication.match( /Bearer (.*)/ )[ 1 ] : null
+}
+
+/** @param {ClientRequest} req */
+export function authorizeRequest( req ) {
+  const token = getTokenFromRequest( req )
+
+  if (!token) return false
+
+  req.session = sessions.find( s => s.token === token )
+
+  return true
+}
 
 /**
  * @param {ClientRequest} req

@@ -1,3 +1,5 @@
+import { getAuthHeader, getToken } from "./authorize.js"
+
 const gamesList = document.querySelector( `.games` )
 
 
@@ -93,7 +95,17 @@ function getGameHtmlForm() {
   formSubmit.addEventListener( `click`, async e => {
     e.preventDefault()
 
-    await fetch( `/api/fetchGames` ).then( res => res.json() )
+    const values = formFields.reduce( (obj, { categoryName }) => {
+      return { ...obj, [categoryName]:form[ categoryName ].value }
+    }, {} )
+
+    fetch( `/api/voteOnGame`, {
+      method: `POST`,
+      headers: { "Content-Type": `application/json`, ...getAuthHeader() },
+      body: JSON.stringify( values )
+    } ).then( res => res.json() ).then( () => {
+      console.log( `saved` )
+    } )
   } )
 
   form.className = `form`
@@ -119,7 +131,9 @@ function getGameHtmlListItem( nickname, description, avatarUrl ) {
 
 
 export default async function fetcher() {
-  const games = await fetch( `/api/fetchGames` ).then( res => res.json() )
+  const games = await fetch( `/api/fetchGames` )
+    .then( res => res.json() )
+
   const gamesItems = games.map( ({ userId, username, avatarUrl, games }) => games.map( gamename => {
     const a = `<a download href="/api/downloadGame/${userId}/${gamename}">${gamename}</a>`
 

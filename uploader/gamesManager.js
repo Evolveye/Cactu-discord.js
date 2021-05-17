@@ -1,9 +1,13 @@
 import formidable from "formidable"
 import fs  from "fs"
 
-import { getUserFromToken } from "./auth.js"
+import { authorizeRequest, getUserFromToken } from "./auth.js"
+
+/** @typedef {import("http").IncomingMessage} ClientRequest */
+/** @typedef {import("http").ServerResponse} ServerResponse */
 
 const RESPONSES = {
+  NOT_AUTH:       { status:401, message:`Unauthorized route` },
   ONLY_POST:      { status:405, message:`Only POST method operated` },
   ONLY_GET:       { status:405, message:`Only GET method operated` },
   NO_GAME:        { status:400, message:`Missing "game" file` },
@@ -11,13 +15,14 @@ const RESPONSES = {
   ONLY_ZIP:       { status:400, message:`Only .zip files operated` },
 
   SERVER_ERR:     { status:500, message:`Internal server error` },
+  SUCCESS:        { status:200, message:`Operation success` },
 
   GAME_UPLOADED:  { status:200, message:`Game uploaded successfully` },
 }
 
 
 /**
- * @param {import("http").ServerResponse} res
+ * @param {ServerResponse} res
  * @param {{ status:number message:string }} param1
  */
 function end( res, { status, message }, success=(status < 300)  ) {
@@ -28,8 +33,8 @@ function end( res, { status, message }, success=(status < 300)  ) {
 
 
 /**
- * @param {import("http").ClientRequest} req
- * @param {import("http").ServerResponse} res
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
 export function handleGame( req, res ) {
@@ -63,8 +68,8 @@ export function handleGame( req, res ) {
 
 
 /**
- * @param {import("http").ClientRequest} req
- * @param {import("http").ServerResponse} res
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
 export function fetchGames( req, res ) {
@@ -87,8 +92,8 @@ export function fetchGames( req, res ) {
 
 
 /**
- * @param {import("http").ClientRequest} req
- * @param {import("http").ServerResponse} res
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
 export function downloadGame( req, res, urlParts ) {
@@ -98,4 +103,26 @@ export function downloadGame( req, res, urlParts ) {
 
   if (fs.existsSync( path )) res.end( fs.readFileSync( path ) )
   else end( res, RESPONSES.SERVER_ERR )
+}
+
+
+/**
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
+ * @param {string[]} urlParts
+ */
+export function voteOnGame( req, res, urlParts ) {
+  if (req.method.toLowerCase() != `post`) return end( res, RESPONSES.ONLY_POST )
+
+  authorizeRequest( req )
+
+  if (!req.session) return end( res, RESPONSES.NOT_AUTH )
+
+  req.on(`data`, data => {
+    const jsonString = JSON.parse( data )
+
+    console.log( jsonString )
+
+    return end( res, RESPONSES.SUCCESS )
+  } )
 }

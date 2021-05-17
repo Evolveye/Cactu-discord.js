@@ -22,7 +22,7 @@
  * @property {User} user
  */
 
- const ui = {
+const ui = {
   authLinkWrapper: document.querySelector( `.auth-link-wrapper` ),
   authLink: document.querySelector( `.auth-link` ),
   authUserWrapper: document.querySelector( `.auth-user-wrapper` ),
@@ -68,9 +68,8 @@ if (token) {
     } )
 } else showAuthLink()
 
-export function getToken() {
-  return localStorage.getItem( `token` )
-}
+export const getToken = () => localStorage.getItem( `token` )
+export const getAuthHeader = () => ({ Authorization:`Bearer ${getToken()}` })
 
 function showAuthLink() {
   ui.authLinkWrapper.style.display = `block`
