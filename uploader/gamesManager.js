@@ -134,27 +134,32 @@ export function voteOnGame( req, res, urlParts ) {
   if (!req.session) return end( res, RESPONSES.NOT_AUTH )
 
   req.on(`data`, formDataJson => {
+    const { user } = req.session
     const formPosibleAnserws = formFields.reduce(
       (obj, { categoryName, scale }) => ({ ...obj, [categoryName]:scale }), {}
     )
 
     const formData = JSON.parse( formDataJson )
-    const path = `./games/${req.session.user.id}/voting.json`
+    const userPath = `./games/${user.id}/`
+    const votesPath = `${userPath}voting.json`
+    const metaPath = `${userPath}meta.json`
 
     for (const [ key, scale ] of Object.entries( formPosibleAnserws )) {
       if (key in formData && scale.includes( Number( formData[ key ] ) )) formPosibleAnserws[ key ] = Number( formData[ key ] )
       else return end( res, RESPONSES.WRONG_ANSWER )
     }
 
-    if (!fs.existsSync( path )) fs.writeFileSync( path, `{}` )
+    if (!fs.existsSync( userPath )) fs.mkdir( userPath )
+    if (!fs.existsSync( votesPath )) fs.writeFileSync( votesPath, `{}` )
+    if (!fs.existsSync( metaPath )) fs.writeFileSync( metaPath, JSON.stringify( user ) )
 
-    const votes = JSON.parse( fs.readFileSync( path, `utf-8` ) )
+    const votes = JSON.parse( fs.readFileSync( votesPath, `utf-8` ) )
 
     votes[ urlParts[ 0 ] ] = formPosibleAnserws
 
-    console.log( `Voting -> ${req.session.user.username} :: ${JSON.stringify( votes )}` )
+    console.log( `Voting -> ${user.username} :: ${JSON.stringify( votes )}` )
 
-    fs.writeFileSync( path, JSON.stringify( votes ) )
+    fs.writeFileSync( votesPath, JSON.stringify( votes ) )
 
     return end( res, RESPONSES.SUCCESS )
   } )
@@ -204,15 +209,17 @@ export function getAllVotes( req, res, urlParts ) {
 
   fs.readdirSync( `./games` ).forEach( userId => {
     const userFolder = `./games/${userId}`
-    const path = `${userFolder}/voting.json`
+    const votesPath = `${userFolder}/voting.json`
+    const metaath = `${userFolder}/meta.json`
 
-    if (!fs.existsSync( path )) {
-      if (!fs.existsSync( userFolder )) fs.mkdirSync( userFolder )
+    if (!fs.existsSync( votesPath )) fs.writeFileSync( votesPath, `{}` )
 
-      fs.writeFileSync( path, `{}` )
-    }
+    const userMeta = fs.existsSync( metaath ) ? JSON.parse( fs.readFileSync( metaath ) ) : { id:userId }
+    const userVotes =  JSON.parse( fs.readFileSync( votesPath, `utf-8` ) )
 
-    votes.push( JSON.parse( fs.readFileSync( path, `utf-8` ) ) )
+    const processedVotes = Object.entries( userVotes ).map( ([ userId, votes ]) => ({ userId, votes }) )
+
+    votes.push({ ...userMeta, votes:processedVotes })
   } )
 
 
