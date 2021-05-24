@@ -89,6 +89,8 @@ export function fetchGames( req, res ) {
   if (!fs.existsSync( `./games/` )) fs.mkdirSync( `./games/` )
 
   const usersWithGames = fs.readdirSync( `./games/` ).map( dirname => {
+    if (!fs.existsSync( `./games/${dirname}/meta.json` )) fs.writeFileSync( `./games/${dirname}/meta.json`, `{}` )
+
     const meta = JSON.parse( fs.readFileSync( `./games/${dirname}/meta.json`, `utf-8` ) )
     const games = fs.readdirSync( `./games/${dirname}` ).filter( filename => /\.zip$/.test( filename ) )
 
