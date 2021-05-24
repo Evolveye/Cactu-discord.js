@@ -41,10 +41,66 @@ function getGameHtmlForm( userId ) {
   const scaleWrapper    = document.createElement( `div` )
   const formSubmit      = document.createElement( `button` )
   const formFields      = [
-    { categoryName:`subject`,     scale:[ 0, 1, 2 ] },        // Zgodność z tematem
-    { categoryName:`impressions`, scale:[ 0, 1, 2, 3, 4 ] },  // Ogólne wrażenie, wywołana ciekawość, chęć zobaczenia kontynuacji, zaskoczenie
-    { categoryName:`realisation`, scale:[ 0, 1, 2, 3, 4 ] },  // Spójność produktu, dobrze dobrane wizualia
-    { categoryName:`readability`, scale:[ 0, 1, 2 ] },        // Czytelność i jasność zasad. Czy wiadomo co robić (jeśli błądzisz, czy wiesz o tym ze czegos szukasz)
+    {
+      label: `Temat`,
+      description: `
+        <p>Zgodność z tematem</p>
+
+        <ol>
+          <li> 0 - Temat nie jest dostrzegalny, lub jest niezwykle szczątkowy
+          <li> 1 - Temat występuje przykładowo w tle, okala produkcję, gra jakoś nawiązuje do tematu
+          <li> 2 - Temat został zaimplementowany w mechanikach dzieła, mechaniki są spójne z tematem a ich podmiana zupełnie by zmieniła produkt
+        </ol>
+      `,
+      categoryName: `subject`,
+      scale: [ 0, 1, 2 ]
+    },
+    {
+      label: `Wrażenia`,
+      description: `
+        <p>Ogólne wrażenia. Wywołana ciekawosć, chęć zobaczenia kontynuacji, element zaskoczenia, chęć powtarzania gry</p>
+
+        <ol>
+          <li> 0 - Monotonia, nuda, brak zaciekawienia odbiorcy, niechęć do przejścia całości lub przejscie z trudem
+          <li> 1 - Powiewa deliaktną nudą, fajne ale nie rób więcej
+          <li> 2 - Nic dodać nic ująć -- wartosć domyślna, zaznacz jeśli nic szczególnie nie wpłynęło na Twoje wrażenia
+          <li> 3 - Sympatyczna produkcja, wywołała przyjemne odczucia lub zachęciła do ponownej gry. Być może zagrałbyś w kontynuację lub wersję 2.0
+          <li> 4 - Chcesz więcej, nawet jeśli było coś nie tak to nie ma to zestawienia z plusami. Bardzo przyjemna gra
+        </ol>
+      `,
+      categoryName: `impressions`,
+      scale: [ 0, 1, 2, 3, 4 ]
+    },
+    {
+      label: `Realizacja`,
+      description: `
+        <p>Spójność produktu, dobrze dobrane wizualia</p>
+
+        <ol>
+          <li> 0 - Bez składu i ładu -- mało co do siebie pasuje.
+          <li> 1 - Niektóre elementy do siebie nie pasują, całość nie współgra najlepiej
+          <li> 2 - Nic dodać nic ująć -- wartosć domyślna, zaznacz jeśli nic szczególnie nie wpłynęło na Twoje wrażenia
+          <li> 3 - Dobrze dobrane elementy
+          <li> 4 - Wszystko świetnie ze sobą współgra razem tworząc jedność
+        </ol>
+      `,
+      categoryName: `realisation`,
+      scale: [ 0, 1, 2, 3, 4 ]
+    },
+    {
+      label: `Czytelność`,
+      description: `
+        <p>Czytelność i jasność zasad. Czy wiadomo co robić (jeśli błądzisz, czy wiesz o tym ze czegos szukasz)</p>
+
+        <ol>
+          <li> 0 - Niczego nie zrozumiałeś. Produkt niczego nie tłumaczy i bez pomocy autora nic nie zrobisz
+          <li> 1 - Autor musi wyjaśnić drobne kwestie ale poza prostymi dopowiedzeniami produkt względnie się tłumaczy
+          <li> 2 - Nikt nic nie musi dopowiadać. Jeśli tak się dzieje, to tylko w sytuacji gdy z gry nie wynika że powinno się do czegos dojść samemu
+        </ol>
+      `, //
+      categoryName: `readability`,
+      scale: [ 0, 1, 2 ]
+    },
   ]
 
   scaleWrapper.className = `form-scale`
@@ -54,12 +110,21 @@ function getGameHtmlForm( userId ) {
 
   const scaleValues = new Set()
 
-  formFields.forEach( ({ categoryName, scale }) => {
+  formFields.forEach( ({ label, categoryName, description, scale }) => {
     const fieldset = document.createElement( `fieldset` )
-    const category = document.createElement( `span` )
+    const categoryLabel = document.createElement( `span` )
+    const category = document.createElement( `div` )
+    const categoryDescription = document.createElement( `div` )
 
-    category.className = `form-category_name`
-    category.textContent = categoryName
+    categoryLabel.className = `form-category_name`
+    categoryLabel.textContent = label
+
+    categoryDescription.className = `form-category_description`
+    categoryDescription.innerHTML = description
+
+    category.className = `form-category`
+    category.appendChild( categoryLabel )
+    category.appendChild( categoryDescription )
 
     fieldset.className = `form-fieldset`
     fieldset.dataset.name = categoryName

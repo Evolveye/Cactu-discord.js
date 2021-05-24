@@ -43,9 +43,23 @@ body {
   padding-top: 20px;
 }
 
+.form-category_description {
+  position: absolute;
+  display: none;
+  padding: 10px;
+  margin: 10px;
+  background-color: black;
+  border-radius: 10px;
+}
+
 .form-category_name {
+  display: block;
   width: 20px;
   transform: translate( 10px, -5px ) rotate( -45deg );
+}
+
+.form-category_name:hover + .form-category_description {
+  display: block;
 }
 
 .form-scale_value,
