@@ -13,12 +13,21 @@ const RESPONSES = {
   NO_GAME:        { status:400, message:`Missing "game" file` },
   LOGGED_NEEDED:  { status:400, message:`Logged via Discord needed` },
   ONLY_ZIP:       { status:400, message:`Only .zip files operated` },
+  WRONG_ANSWER:   { status:400, message:`Wrong form data` },
 
   SERVER_ERR:     { status:500, message:`Internal server error` },
   SUCCESS:        { status:200, message:`Operation success` },
 
   GAME_UPLOADED:  { status:200, message:`Game uploaded successfully` },
 }
+
+
+const formFields = [
+  { categoryName:`subject`,     scale:[ 0, 1, 2 ] },        // Zgodność z tematem
+  { categoryName:`impressions`, scale:[ 0, 1, 2, 3, 4 ] },  // Ogólne wrażenie, wywołana ciekawość, chęć zobaczenia kontynuacji, zaskoczenie
+  { categoryName:`realisation`, scale:[ 0, 1, 2, 3, 4 ] },  // Spójność produktu, dobrze dobrane wizualia
+  { categoryName:`readability`, scale:[ 0, 1, 2 ] },        // Czytelność i jasność zasad. Czy wiadomo co robić (jeśli błądzisz, czy wiesz o tym ze czegos szukasz)
+]
 
 
 /**
@@ -118,11 +127,49 @@ export function voteOnGame( req, res, urlParts ) {
 
   if (!req.session) return end( res, RESPONSES.NOT_AUTH )
 
-  req.on(`data`, data => {
-    const jsonString = JSON.parse( data )
+  req.on(`data`, formDataJson => {
+    const formPosibleAnserws = formFields.reduce(
+      (obj, { categoryName, scale }) => ({ ...obj, [categoryName]:scale }), {}
+    )
 
-    console.log( jsonString )
+    const formData = JSON.parse( formDataJson )
+    const path = `./games/${req.session.user.id}/voting.json`
+
+    for (const [ key, scale ] of Object.entries( formPosibleAnserws )) {
+      if (key in formData && scale.includes( Number( formData[ key ] ) )) formPosibleAnserws[ key ] = Number( formData[ key ] )
+      else return end( res, RESPONSES.WRONG_ANSWER )
+    }
+
+    if (!fs.existsSync( path )) fs.writeFileSync( path, `{}` )
+
+    const votes = JSON.parse( fs.readFileSync( path, `utf-8` ) )
+
+    votes[ urlParts[ 0 ] ] = formPosibleAnserws
+
+    fs.writeFileSync( path, JSON.stringify( votes ) )
 
     return end( res, RESPONSES.SUCCESS )
   } )
+}
+
+
+/**
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
+ * @param {string[]} urlParts
+ */
+export function getMyVotes( req, res, urlParts ) {
+  if (req.method.toLowerCase() != `get`) return end( res, RESPONSES.ONLY_POST )
+
+  authorizeRequest( req )
+
+  if (!req.session) return end( res, RESPONSES.NOT_AUTH )
+
+  const path = `./games/${req.session.user.id}/voting.json`
+
+  if (!fs.existsSync( path )) fs.writeFileSync( path, `{}` )
+
+  const votes = fs.readFileSync( path, `utf-8` )
+
+  res.end( votes )
 }

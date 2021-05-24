@@ -3,7 +3,7 @@ import fs from "fs"
 import url from "url"
 
 import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
-import { handleGame, fetchGames, downloadGame, voteOnGame } from "./gamesManager.js"
+import { handleGame, fetchGames, downloadGame, voteOnGame, getMyVotes } from "./gamesManager.js"
 
 const staticPath = `./public/`
 
@@ -22,6 +22,7 @@ http.createServer( async (req, res) => {
       case `fetchGames`: return fetchGames( req, res, params )
       case `downloadGame`: return downloadGame( req, res, params )
       case `voteOnGame`: return voteOnGame( req, res, params )
+      case `getMyVotes`: return getMyVotes( req, res, params )
       default: return send404( res, `This API field not exists` )
     }
   }
@@ -52,7 +53,6 @@ function getMime( path ) {
 
 /*** @param {http.ServerResponse} res */
 function send404( res, reason=`Wrong route. Content didn't find.` ) {
-  res
-    .writeHead( 404, { "Content-Type":`text/json` } )
+  res.writeHead( 404, { "Content-Type":`text/json` } )
     .end( JSON.stringify( { error:reason } ) )
 }

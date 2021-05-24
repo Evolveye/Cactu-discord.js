@@ -35,7 +35,7 @@ function getGameHtmlTile( nickname, description, avatarUrl=null ) {
 }
 
 
-function getGameHtmlForm() {
+function getGameHtmlForm( userId ) {
   const form            = document.createElement( `form` )
   const fieldsets       = document.createElement( `div` )
   const scaleWrapper    = document.createElement( `div` )
@@ -62,7 +62,18 @@ function getGameHtmlForm() {
     category.textContent = categoryName
 
     fieldset.className = `form-fieldset`
+    fieldset.dataset.name = categoryName
     fieldset.appendChild( category )
+
+    const defaultCheckedInput = document.createElement( `input` )
+    defaultCheckedInput.type = `radio`
+    defaultCheckedInput.name = categoryName
+    defaultCheckedInput.value = -1
+    defaultCheckedInput.style.display = `none`
+    defaultCheckedInput.className = `form-input`
+    defaultCheckedInput.checked = true
+
+    fieldset.appendChild( defaultCheckedInput )
 
     scale.forEach( value => {
       const input = document.createElement( `input` )
@@ -99,13 +110,15 @@ function getGameHtmlForm() {
       return { ...obj, [categoryName]:form[ categoryName ].value }
     }, {} )
 
-    fetch( `/api/voteOnGame`, {
+    fetch( `/api/voteOnGame/${userId}`, {
       method: `POST`,
       headers: { "Content-Type": `application/json`, ...getAuthHeader() },
       body: JSON.stringify( values )
-    } ).then( res => res.json() ).then( () => {
-      console.log( `saved` )
     } )
+      .then( res => res.json() )
+      .then( res => {
+        //if (res.error) return showFormError( form )
+      } )
   } )
 
   form.className = `form`
@@ -116,15 +129,16 @@ function getGameHtmlForm() {
 }
 
 
-function getGameHtmlListItem( nickname, description, avatarUrl ) {
+function getGameHtmlListItem( userId, nickname, description, avatarUrl ) {
   const li   = document.createElement( `li` )
   const tile = getGameHtmlTile( nickname, description, avatarUrl )
-  const form = getGameHtmlForm()
+  const form = getToken() ? getGameHtmlForm( userId ) : null
 
   li.className = `game`
+  li.dataset.userId = userId
 
   li.appendChild( tile )
-  li.appendChild( form )
+  if (form) li.appendChild( form )
 
   return li
 }
@@ -137,8 +151,20 @@ export default async function fetcher() {
   const gamesItems = games.map( ({ userId, username, avatarUrl, games }) => games.map( gamename => {
     const a = `<a download href="/api/downloadGame/${userId}/${gamename}">${gamename}</a>`
 
-    return getGameHtmlListItem( username, a, avatarUrl )
+    return getGameHtmlListItem( userId, username, a, avatarUrl )
   } ) ).flat()
+
+
+  fetch( `/api/getMyVotes/`, { headers:getAuthHeader() } )
+    .then( res => res.json() )
+    .then( allVotes => Object.entries( allVotes ).forEach( ([ userId, votes ]) => {
+      console.log({ userId, votes })
+      Object.entries( votes ).forEach( ([ category, vote ]) => {
+        const input = document.querySelector( `.game[ data-user-id="${userId}" ] input[ name="${category}" ][ value="${vote}" ]` )
+
+        if (input) input.checked = true
+      } )
+    } ) )
 
   gamesList.innerHTML = ``
   gamesItems.forEach( gameItem => gamesList.appendChild( gameItem ) )

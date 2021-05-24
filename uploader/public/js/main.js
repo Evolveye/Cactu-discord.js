@@ -1,5 +1,5 @@
-import "./authorize.js"
+import { onAuthorize } from "./authorize.js"
 import "./uploadGame.js"
 import fetcher from "./fetchGames.js"
 
-fetcher()
+onAuthorize( fetcher )

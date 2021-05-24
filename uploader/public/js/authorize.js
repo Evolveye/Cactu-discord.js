@@ -10,11 +10,11 @@
  * @property {string} mfa_enabled
  */
 
- /**
-  * @typedef {object} ErrMsg
-  * @property {string} message
-  * @property {number} code
-  */
+/**
+ * @typedef {object} ErrMsg
+ * @property {string} message
+ * @property {number} code
+ */
 
 /**
  * @typedef {object} AuthObj
@@ -31,6 +31,7 @@ const ui = {
 
 const fragment = new URLSearchParams( location.search )
 const token = localStorage.getItem( `token` )
+const preAuthListeners = []
 
 ui.authLink.href = `https://discord.com/oauth2/authorize`
   + `?client_id=379234773408677888`
@@ -65,11 +66,18 @@ if (token) {
       showAuthUser( user )
 
       localStorage.setItem( `token`, token )
+
+      preAuthListeners.splice( 0 ).forEach( handler => handler() )
     } )
 } else showAuthLink()
 
 export const getToken = () => localStorage.getItem( `token` )
 export const getAuthHeader = () => ({ Authorization:`Bearer ${getToken()}` })
+
+export const onAuthorize = handler => {
+  if (getToken()) handler()
+  else preAuthListeners.push( handler )
+}
 
 function showAuthLink() {
   ui.authLinkWrapper.style.display = `block`
