@@ -71,6 +71,8 @@ export function handleGame( req, res ) {
     fs.writeFileSync( `${userPath}/${filename}`, raw )
     fs.writeFileSync( `${userPath}/meta.json`, JSON.stringify( user ) )
 
+    console.log( `Uploading -> ${user.username} :: ${filename}` )
+
     end( res, RESPONSES.GAME_UPLOADED )
   } )
 }
@@ -83,6 +85,8 @@ export function handleGame( req, res ) {
  */
 export function fetchGames( req, res ) {
   if (req.method.toLowerCase() != `get`) return end( res, RESPONSES.ONLY_GET )
+
+  if (!fs.existsSync( `./games/` )) fs.mkdirSync( `./games/` )
 
   const usersWithGames = fs.readdirSync( `./games/` ).map( dirname => {
     const meta = JSON.parse( fs.readFileSync( `./games/${dirname}/meta.json`, `utf-8` ) )
@@ -146,6 +150,8 @@ export function voteOnGame( req, res, urlParts ) {
 
     votes[ urlParts[ 0 ] ] = formPosibleAnserws
 
+    console.log( `Voting -> ${req.session.user.username} :: ${JSON.stringify( votes )}` )
+
     fs.writeFileSync( path, JSON.stringify( votes ) )
 
     return end( res, RESPONSES.SUCCESS )
@@ -165,9 +171,14 @@ export function getMyVotes( req, res, urlParts ) {
 
   if (!req.session) return end( res, RESPONSES.NOT_AUTH )
 
-  const path = `./games/${req.session.user.id}/voting.json`
+  const userFolder = `./games/${req.session.user.id}`
+  const path = `${userFolder}/voting.json`
 
-  if (!fs.existsSync( path )) fs.writeFileSync( path, `{}` )
+  if (!fs.existsSync( path )) {
+    if (!fs.existsSync( userFolder )) fs.mkdirSync( userFolder )
+
+    fs.writeFileSync( path, `{}` )
+  }
 
   const votes = fs.readFileSync( path, `utf-8` )
 

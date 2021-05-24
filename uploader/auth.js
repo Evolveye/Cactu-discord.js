@@ -33,7 +33,7 @@ import config from "./private.js"
 /** @typedef {ClientRequest} */
 
 /** @type {Session[]} */
-const sessions = []
+let sessions = []
 const ONE_MINUTE = 1000 * 60
 
 if (fs.existsSync( `./sessions.json` )) sessions.push( ...JSON.parse( fs.readFileSync( `./sessions.json`, `utf-8` ) ) )
@@ -117,6 +117,8 @@ export function handleUrlQuery( req, res, urlParts ) {
       const data = { token, user, lastActivity:Date.now() }
 
       sessions.push( data )
+
+      console.log( `Logged -> ${user.username}` )
 
       fs.writeFileSync( `./sessions.json`, JSON.stringify( sessions ) )
 
