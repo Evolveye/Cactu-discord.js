@@ -1,3 +1,4 @@
+import fs from "fs"
 import fetch from "node-fetch"
 import config from "./private.js"
 
@@ -32,8 +33,10 @@ import config from "./private.js"
 /** @typedef {ClientRequest} */
 
 /** @type {Session[]} */
-let sessions = []
+const sessions = []
 const ONE_MINUTE = 1000 * 60
+
+if (fs.existsSync( `./sessions.json` )) sessions.push( ...JSON.parse( fs.readFileSync( `./sessions.json`, `utf-8` ) ) )
 
 setInterval( () => {
   sessions = sessions.filter( ({ lastActivity }) => Date.now() - ONE_MINUTE * 5 > lastActivity  )
@@ -114,6 +117,8 @@ export function handleUrlQuery( req, res, urlParts ) {
       const data = { token, user, lastActivity:Date.now() }
 
       sessions.push( data )
+
+      fs.writeFileSync( `./sessions.json`, JSON.stringify( sessions ) )
 
       return data
      } )
