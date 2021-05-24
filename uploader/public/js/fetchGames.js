@@ -1,6 +1,9 @@
 import { getAuthHeader, getToken } from "./authorize.js"
 
-const gamesList = document.querySelector( `.games` )
+const ui = {
+  games: document.querySelector( `.games` ),
+  gamesList: document.querySelector( `.games-list` ),
+}
 
 
 function getGameHtmlTile( nickname, description, avatarUrl=null ) {
@@ -231,6 +234,11 @@ export default async function fetcher() {
       } )
     } ) )
 
-  gamesList.innerHTML = ``
-  gamesItems.forEach( gameItem => gamesList.appendChild( gameItem ) )
+  fetch( `/api/getAllVotes/`, { headers:getAuthHeader() } )
+    .then( res => res.json() )
+    .then( votes => window.votes = votes )
+
+  ui.games.style.display = `block`
+  ui.gamesList.innerHTML = ``
+  gamesItems.forEach( gameItem => ui.gamesList.appendChild( gameItem ) )
 }
