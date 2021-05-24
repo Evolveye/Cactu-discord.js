@@ -3,7 +3,7 @@ import fs from "fs"
 import url from "url"
 
 import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
-import { handleGame, fetchGames, downloadGame, voteOnGame, getMyVotes } from "./gamesManager.js"
+import { handleGame, fetchGames, downloadGame, voteOnGame, getMyVotes, getAllVotes } from "./gamesManager.js"
 
 const staticPath = `./public/`
 
@@ -23,6 +23,7 @@ http.createServer( async (req, res) => {
       case `downloadGame`: return downloadGame( req, res, params )
       case `voteOnGame`: return voteOnGame( req, res, params )
       case `getMyVotes`: return getMyVotes( req, res, params )
+      case `getAllVotes`: return getAllVotes( req, res, params )
       default: return send404( res, `This API field not exists` )
     }
   }

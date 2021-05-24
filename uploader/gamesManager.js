@@ -186,3 +186,35 @@ export function getMyVotes( req, res, urlParts ) {
 
   res.end( votes )
 }
+
+
+/**
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
+ * @param {string[]} urlParts
+ */
+export function getAllVotes( req, res, urlParts ) {
+  if (req.method.toLowerCase() != `get`) return end( res, RESPONSES.ONLY_POST )
+
+  authorizeRequest( req )
+
+  if (!req.session || req.session.user.id != `263736841025355777`) return end( res, RESPONSES.NOT_AUTH )
+
+  const votes = []
+
+  fs.readdirSync( `./games` ).forEach( userId => {
+    const userFolder = `./games/${userId}`
+    const path = `${userFolder}/voting.json`
+
+    if (!fs.existsSync( path )) {
+      if (!fs.existsSync( userFolder )) fs.mkdirSync( userFolder )
+
+      fs.writeFileSync( path, `{}` )
+    }
+
+    votes.push( JSON.parse( fs.readFileSync( path, `utf-8` ) ) )
+  } )
+
+
+  res.end( JSON.stringify( votes ) )
+}
