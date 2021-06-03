@@ -31,7 +31,7 @@ const __APPDIRNAME = fs.realpathSync( `.` )
 
 export default class CactuDiscordBot {
   discordClient = new Discord.Client(
-    { partials: [ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] }
+    { partials:[ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] },
   )
 
   /** @type {Map<string,GuildDataset>} */
@@ -101,7 +101,7 @@ export default class CactuDiscordBot {
      */
     messageReactionAdd( reaction, user ) {
 
-    }
+    },
   }
 
   /**
@@ -129,7 +129,7 @@ export default class CactuDiscordBot {
       .on( `ready`, this.onReady )
       .on( `messageUpdate`, this.onMessageUpdate )
       .on( `guildCreate`, this.onGuildCreate )
-      .on( `guildDelete`, ({ name }) => this.log( `I left from guild named [fgYellow]${name}[]`) )
+      .on( `guildDelete`, ({ name }) => this.log( `I left from guild named [fgYellow]${name}[]` ) )
       .login( config.token || `` )
       .catch( err => this.log( `I can't login in.\n${err}` ) )
   }
@@ -149,7 +149,7 @@ export default class CactuDiscordBot {
 
       try {
         const script = configCode.match( importsAndStartingCommentsTrimmer )[ 1 ]
-        const config = new VM2Package.VM( this.vmConfig ).run( script )
+        const config = new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` )
         const minified = guildDataset.loadConfig( config )
 
         if (minified) this.executiongWorker.emit( `set commands`, {
@@ -161,15 +161,6 @@ export default class CactuDiscordBot {
         return /** @type {Error} */ (err).message
       }
     }
-    // if (guildDataset) import( `file:///${__APPDIRNAME}/${moduleFolder}` )
-    //   .then( console.log )
-    //   // .then( module => guildsData.include( module.default ) )
-    //   .catch( err => this.log( `I can't load module.\n${err}` ) )
-    // else try {
-    //   fs.unlinkSync( `${dotPath}/guilds_modules/${moduleName}` )
-    // } catch {
-    //   this.log( `I can't remove module file (${moduleName}).` )
-    // }
   }
 
   clearGuildModules( guildIdToRemove, ...excludeNames ) {
@@ -191,7 +182,7 @@ export default class CactuDiscordBot {
   /**
    * @param {string} string
    */
-  log( string, type=`system` ) {
+  log( string, type = `system` ) {
     let logger = null
 
     switch (type) {
@@ -231,7 +222,7 @@ export default class CactuDiscordBot {
    * @param {GuildModuleTranslation} translation
    * @param {Discord.Message} message
    */
-  handleError({ type, value, paramMask }, translation, message) {
+  handleError( { type, value, paramMask }, translation, message ) {
     const { author, channel } = message
     const { error } = this.signs
     let title = `Unknown error`
@@ -251,13 +242,13 @@ export default class CactuDiscordBot {
 
         if (!value.params.length) break
 
-        description += "```js"
+        description += `\`\`\`js`
 
         for (const { param, mask, optional, rest } of value.params) {
           const beforEqual = `${rest ? `...` : ``}${param}${optional ? `?` : ` `}`
-          const field = beforEqual.padStart( 29, ` ` ) + ` = ${mask}`
+          const field = `${beforEqual.padStart( 29, ` ` )  } = ${mask}`
 
-          description += `\n` + field.padEnd( 60, ` ` )
+          description += `\n${  field.padEnd( 60, ` ` )}`
         }
 
         message.delete()
@@ -279,7 +270,7 @@ export default class CactuDiscordBot {
           const { type, desc, params } = value.structure[ part ]
 
           if (type == `scope`) {
-            scopes.push( { name:`${fieldNameStart}***${part}***...`, value:(desc || `-  -  -`), inline:true } )
+            scopes.push({ name:`${fieldNameStart}***${part}***...`, value:(desc || `-  -  -`), inline:true })
           } else {
             const paramsStrings = []
 
@@ -291,10 +282,10 @@ export default class CactuDiscordBot {
               ? `  \` ${paramsStrings.join( `   ` )} \``
               : ``
 
-            cmds.push( {
+            cmds.push({
               name: `${fieldNameStart}***${part}***${paramsString}`,
-              value: desc || `-  -  -`
-            } )
+              value: desc || `-  -  -`,
+            })
           }
         }
 
@@ -309,19 +300,19 @@ export default class CactuDiscordBot {
 
         title = `⚙️ ${translation.help_title}`
 
-        channel.send( { embed: { title, description, fields,
+        channel.send({ embed: { title, description, fields,
           color: 0x18d818,
           author: {
             name: `CodeCactu`,
             icon_url: this.discordClient.user.displayAvatarURL(),
-            url: `https://codecactu.github.io/`
+            url: `https://codecactu.github.io/`,
           },
           footer: {
             text: `${translation.footer_yourCmds} ${value.command}`,
-            icon_url: author.displayAvatarURL()
+            icon_url: author.displayAvatarURL(),
           },
           timestamp: new Date(),
-        } } )
+        } })
 
         return
       }
@@ -350,26 +341,26 @@ export default class CactuDiscordBot {
         if (typeof value === `string`) {
           title = `${error} ${translation.err_error}`
           description = `> \`${value}\` `
-        } else description = `> \`${value.message}\` ` + value.stack.split( `\n` )[ 1 ]
+        } else description = `> \`${value.message}\` ${  value.stack.split( `\n` )[ 1 ]
           .split( /-/ )
           .slice( -1 )[ 0 ]
-          .slice( 0, -1 )
+          .slice( 0, -1 )}`
         break
     }
 
-    channel.send( { embed: { title, description,
+    channel.send({ embed: { title, description,
       color: 0x18d818,
       author: {
         name: `CodeCactu`,
         icon_url: this.discordClient.user.displayAvatarURL(),
-        url: `https://codecactu.github.io/`
+        url: `https://codecactu.github.io/`,
       },
       footer: {
         text: footerTxt,
-        icon_url: author.displayAvatarURL()
+        icon_url: author.displayAvatarURL(),
       },
       timestamp: new Date(),
-    } } )
+    } })
   }
 
   /**
@@ -381,8 +372,8 @@ export default class CactuDiscordBot {
     const id = guild
       ? guild.id
       : author
-      ? author.client.guilds.cache.find( ({ id }) => this.discordClient.guilds.cache.has( id ) ).id
-      : null
+        ? author.client.guilds.cache.find( ({ id }) => this.discordClient.guilds.cache.has( id ) ).id
+        : null
 
     if (!id || !author || (author.bot && author.id === this.discordClient.user.id)) return
 
@@ -390,7 +381,7 @@ export default class CactuDiscordBot {
   }
 
   eventBinder = (guild, eventName, listener) => {
-    if (!eventName in this.events) {
+    if (!(eventName in this.events)) {
       this.events[ eventName ] = []
     }
 
@@ -401,6 +392,8 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} message
    */
   onMessage = message => {
+    this.executiongWorker.emit( `show commands` )
+
     if (message.content.startsWith( `.` )) {
       logUnderControl( this.loggers.guild, `server`, `channel`, `type`, `member name`, message.content )
     } else if (message.content.startsWith( `,` )) {
@@ -408,7 +401,7 @@ export default class CactuDiscordBot {
     } else if (message.content.startsWith( `;` )) {
       logUnderControl( this.loggers.system, message.content )
     } else if (message.content.startsWith( `'` )) {
-      logUnderControl( this.loggers.dm, message.member.id,message.author.discriminator, `type`, `member name`, message.content )
+      logUnderControl( this.loggers.dm, message.member.id, message.author.discriminator, `type`, `member name`, message.content )
     }
     // const guildData = this.getGuildData( message )
 
@@ -435,7 +428,7 @@ export default class CactuDiscordBot {
     this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
 
     console.log()
-    this.log( `I have been started!`)
+    this.log( `I have been started!` )
     this.initialized = true
   }
 
@@ -444,7 +437,7 @@ export default class CactuDiscordBot {
    */
   onGuildCreate = guild => {
     const { id, name } = guild
-    const path = `./guild_configs/${id}--${name.slice( 0, 20 ).replace( / /g, `-` )}${name.length > 20 ? "..." : ""}/`
+    const path = `./guild_configs/${id}--${name.slice( 0, 20 ).replace( / /g, `-` )}${name.length > 20 ? `...` : ``}/`
     const configPath = `${path}config.js`
 
     this.guildsDatasets.set( id, new GuildDataset( this, guild, this.loggers.guild, this.eventBinder ) )

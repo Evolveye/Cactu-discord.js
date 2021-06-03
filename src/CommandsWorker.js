@@ -26,7 +26,7 @@ export default class CommandsWorker {
   }
 
   emit( event, data ) {
-    this.worker.postMessage( { event, data } )
+    this.worker.postMessage({ event, data })
   }
 }
 

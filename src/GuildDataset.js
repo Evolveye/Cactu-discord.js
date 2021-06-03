@@ -143,7 +143,7 @@ export default class GuildDataset {
   loadConfig( config ) {
     if (typeof config !== `object`) return null
 
-    const { translation={}, events={}, commands, filters=[], botOperatorId=`` } = config
+    const { translation = {}, events = {}, commands, filters = [], botOperatorId = `` } = config
     const minified = { commands:{} }
     this.commands = commands
 
@@ -221,7 +221,7 @@ export default class GuildDataset {
       footer_yourCmds:  `These are your personalized commands after sending:`,
       footer_cmdInfo:   `Commands information`,
       system_loadSucc:  `File has been loaded`,
-      system_loadFail:  `Wrong file data!`
+      system_loadFail:  `Wrong file data!`,
     }
 
     this.loadConfig( this.getPredefinedCommands() )
@@ -242,11 +242,11 @@ export default class GuildDataset {
     if (!message || !botInstance) throw new Error( `All parameters are required!` )
 
     for (const variables of [ this.safeVariables, this.unsafeVariables ]) {
-      variables.send = (data, channel=message.channel) => channel.send( data )
-      variables.sendOk = (data, channel=message.channel) => channel.send( `${botInstance.signs.ok} ${data}` )
+      variables.send = (data, channel = message.channel) => channel.send( data )
+      variables.sendOk = (data, channel = message.channel) => channel.send( `${botInstance.signs.ok} ${data}` )
       variables.setSharedData = (property, value) =>
         property in this.variablesSharedData ? (this.variablesSharedData[ property ] = value) : false
-      variables.evalCmd = (commandWithoutPrefix, msg=message) => {
+      variables.evalCmd = (commandWithoutPrefix, msg = message) => {
         const command = `${this.prefix}${this.prefixSpace ? ` ` : ``}${commandWithoutPrefix}`
 
         new CommandProcessor( false, this.prefix, this.prefixSpace, command, this.commands ).process(
@@ -270,10 +270,10 @@ export default class GuildDataset {
    * @param {Message} message
    * @param {BotInstance} botInstance
    */
-  processMessage( message, { filters=true, commands=true }={} ) {
+  processMessage( message, { filters = true, commands = true } = {} ) {
     const { guild, content } = message
     const username = message.member ? message.member.displayName : message.author.username
-    const log = (type, log=content) => this.logger( guild.name, message.channel.name, type, username, log )
+    const log = (type, log = content) => this.logger( guild.name, message.channel.name, type, username, log )
 
     if (filters) {
       let filteringContent = content
@@ -306,49 +306,49 @@ export default class GuildDataset {
     const { botInstance } = this
 
     return new Scope( {
-      get description() { return t.help_showMasks + `\n` + t.help_params }
+      get description() { return t.help_showMasks + `\n` + t.help_params },
 
-      },{
+    }, {
 
       $: new Scope({
         shortDescription: `Bot administration`,
-        roles: `@server_admin`
+        roles: `@server_admin`,
 
-        },{
+      }, {
 
         load: new Command({
-          shortDescription: `Clear all modules data and load new module from attached file`
-          }, $ => {
-            const { message } = $
-            const attachment = message.attachments.first()
-            const guildId = message.guild.id
+          shortDescription: `Clear all modules data and load new module from attached file`,
+        }, $ => {
+          // const { message } = $
+          // const attachment = message.attachments.first()
+          // const guildId = message.guild.id
 
-            if (!attachment) throw t.err_attachFile
-            if (attachment.url && !attachment.width) {
-              const path = `./guild_configs/${guildId}--${message.guild.name.slice( 0, 20 ).replace( / /g, `-` )}/`
-              const configPath = fs.createWriteStream( `${path}config.js` )
+          // if (!attachment) throw t.err_attachFile
+          // if (attachment.url && !attachment.width) {
+          //   const path = `./guild_configs/${guildId}--${message.guild.name.slice( 0, 20 ).replace( / /g, `-` )}/`
+          //   const configPath = fs.createWriteStream( `${path}config.js` )
 
-              https.get( attachment.url, res => res.pipe( configPath ).on( `finish`, () => {
-                modulePath.close()
+          //   https.get( attachment.url, res => res.pipe( configPath ).on( `finish`, () => {
+          //     modulePath.close()
 
-                if ($.message.author.id !== `263736841025355777` && /(?<!\/\*\* @typedef { *)import|require/gi.test( fs.readFileSync( path ) )) {
-                  console.log( `Matched imports!` )
-                }
+          //     if ($.message.author.id !== `263736841025355777` && /(?<!\/\*\* @typedef { *)import|require/gi.test( fs.readFileSync( path ) )) {
+          //       console.log( `Matched imports!` )
+          //     }
 
-                botInstance.clearGuildModules( guildId, fileName )
-                botInstance.loadModule( fileName )
+          //     botInstance.clearGuildModules( guildId, fileName )
+          //     botInstance.loadModule( fileName )
 
-                message.delete()
+          //     message.delete()
 
-                $.sendOk( t.system_loadSucc )
-              } ) )
-            }
-          }
-        )
+          //     $.sendOk( t.system_loadSucc )
+          //   } ) )
+          // }
+        },
+        ),
 
-      })
+      }),
 
-      }
+    },
     )
   }
 
@@ -383,9 +383,9 @@ export default class GuildDataset {
    * @param {Object<string,*>} object
    * @param {string} property
    */
-  static deletePropertyGlobaly( object, property, maxDeep=Infinity ) {
+  static deletePropertyGlobaly( object, property, maxDeep = Infinity ) {
     const references = []
-    const deletePropG = (object, deep=0) => Object.keys( object ).forEach( key => {
+    const deletePropG = (object, deep = 0) => Object.keys( object ).forEach( key => {
       const prop = object[ key ]
 
       if ((deep === maxDeep && Object( prop ) === prop) || key === property) delete object[ key ]
@@ -402,9 +402,9 @@ export default class GuildDataset {
   static predefinedCommands = new Scope( {}, {
     $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
       load: new Command( { d:`Clear all modules data and load new module from attached file` }, $ => {} ),
-      setBotOperator: new Command( { d:`Set the ID of bot operator` }, ($, id=/\d{18}/) => {} ),
+      setBotOperator: new Command( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
       getModules: new Command( { d:`Get the guild module config files` }, $ => {} ),
-    } )
+    } ),
   } )
 
   static DEPRECATED_COMMANDS = $ => ({ commands: {
@@ -437,10 +437,10 @@ export default class GuildDataset {
             $.sendOk( translation.system_loadSucc )
           } ) )
         }
-      }},
-      setBotOperator: { d:`Set the ID of bot operator`, v( id=/\d{18}/) {
+      } },
+      setBotOperator: { d:`Set the ID of bot operator`, v( id = /\d{18}/ ) {
         $.guildModules.botOperatorId = id
-      }},
+      } },
       getModules: { d:`Get the guild module config files`, v() {
         const pathToModules = `${fs.realpathSync( `.` )}/guilds_modules`
         const guildId = $.message.guild.id
@@ -452,15 +452,15 @@ export default class GuildDataset {
 
         if (urls.length === 0) throw `That guild doesn't have the config file`
 
-        $.message.channel.send( { files:urls } )
-      }}
-    }},
+        $.message.channel.send({ files:urls })
+      } },
+    } },
   } })
 }
 
-function getDate( format, date=Date.now() ) {
-  const options = { year:`numeric`, month:'2-digit', day: '2-digit', hour:`2-digit`, minute:`2-digit` }
-  const [ { value:DD },,{ value:MM },,{ value:YYYY },,{ value:hh },,{ value:mm } ] = new Intl.DateTimeFormat( `pl`, options )
+function getDate( format, date = Date.now() ) {
+  const options = { year:`numeric`, month:`2-digit`, day: `2-digit`, hour:`2-digit`, minute:`2-digit` }
+  const [ { value:DD },, { value:MM },, { value:YYYY },, { value:hh },, { value:mm } ] = new Intl.DateTimeFormat( `pl`, options )
     .formatToParts( date )
 
   return format
