@@ -52,8 +52,8 @@ export default class CactuDiscordBot {
   logMaxLength = 170
   loggers = {
     guild: new Logger( [
-      { color:`white`,   value:`[{hh}:{mm}:{ss}]` },              // "[hh:mm:ss] "
-      { color:`magenta`, align:`right`, length:20, maxLen:20 },   // Guild name
+      { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },             // "[hh:mm:ss] "
+      { color:`magenta`, align:`right`, length:24, maxLen:24 },   // Guild name
       { color:`white`,   value:` :: ` },                          // " :: "
       { color:`magenta`, align:`left`,  length:20, maxLen:20 },   // Channel name
       { color:`white`,   value:` :: ` },                          // " :: "
@@ -64,12 +64,12 @@ export default class CactuDiscordBot {
       { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 80) }, // Message
     ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
     dm: new Logger( [
-      { color:`white`,   value:`[{hh}:{mm}:{ss}]` },              // "[hh:mm:ss] "
-      { color:`magenta`, align:`right`, length:33 },              // Author id
+      { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },             // "[hh:mm:ss] "
+      { color:`magenta`, align:`right`, length:19 },              // Author id
       { color:`white`,   value:`#` },                             // "#"
       { color:`magenta`, length:4 },                              // Author discriminator
       { color:`white`,   value:` :: ` },                          // " :: "
-      { color:`magenta`, value:`DM` },                            // "DM"
+      { color:`magenta`, value:`DM`, length:20 },                 // "DM"
       { color:`white`,   value:` :: ` },                          // " :: "
       { color:`blue`,    align:`right`, length:7 },               // /(Filter|Command)/
       { color:`white`,   value:`: ` },                            // ": "
@@ -393,15 +393,16 @@ export default class CactuDiscordBot {
    */
   onMessage = message => {
     this.executiongWorker.emit( `show commands` )
+    const { guild, channel, member, author } = message
 
     if (message.content.startsWith( `.` )) {
-      logUnderControl( this.loggers.guild, `server`, `channel`, `type`, `member name`, message.content )
+      logUnderControl( this.loggers.guild, guild.name, channel.name, `type`, member.displayName, message.content )
     } else if (message.content.startsWith( `,` )) {
       logUnderControl( this.loggers.info, message.content )
     } else if (message.content.startsWith( `;` )) {
       logUnderControl( this.loggers.system, message.content )
     } else if (message.content.startsWith( `'` )) {
-      logUnderControl( this.loggers.dm, message.member.id, message.author.discriminator, `type`, `member name`, message.content )
+      logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, message.content )
     }
     // const guildData = this.getGuildData( message )
 
