@@ -71,7 +71,7 @@ class MetaHandler {
   /**
    * @param {CommandsObjectMetadata} param0
    */
-  constructor( { r=``, roles=r, d=``, description=d, sd=``, shortDescription=sd } ) {
+  constructor({ r = ``, roles = r, d = ``, description = d, sd = ``, shortDescription = sd }) {
     this.roles            = roles            || `@everyone`
     this.description      = description      || ``
     this.shortDescription = shortDescription || this.description
@@ -80,7 +80,7 @@ class MetaHandler {
   /**
    * @param {CommandsObjectMetadata} param0
    */
-  updateMeta( { r=``, roles=r, d=``, description=d, sd=``, shortDescription=sd } ) {
+  updateMeta({ r = ``, roles = r, d = ``, description = d, sd = ``, shortDescription = sd }) {
     if (roles)            this.roles            = typeof roles === `string` ? roles : roles.slice( 0 )
     if (description)      this.description      = description
     if (shortDescription) this.shortDescription = shortDescription
@@ -114,15 +114,15 @@ export class Scope extends MetaHandler {
    * @param {Scope} scope
    * @param {boolean} override
    */
-  merge( scope, override=false ) {
+  merge( scope, override = false ) {
     Scope.merge( this, scope, override )
   }
 
-  serialize( onlyUnsafe=true ) {
+  serialize( onlyUnsafe = true ) {
     return Scope.getData( this, { onlyUnsafe, meta:true, serialized:true } )
   }
 
-  getData( { onlyUnsafe=true, meta=false, serialized=false }={} ) {
+  getData( { onlyUnsafe = false, meta = true, serialized = true } = {} ) {
     return Scope.getData( this, { onlyUnsafe, meta, serialized } )
   }
 
@@ -146,13 +146,13 @@ export class Scope extends MetaHandler {
     for (const prop in scope.structure) {
       const field = scope.structure[ prop ]
 
-      if (!(prop in targetScope.structure) || override) {
-        if (field instanceof Command) targetScope.structure[ prop ] = field
-        else if (field instanceof Scope) {
-          targetScope.structure[ prop ] = new Scope( {}, {} )
+      if (prop in targetScope.structure && !override) continue
 
-          this.merge( targetScope.structure[ prop ], field, override )
-        }
+      if (field instanceof Command) targetScope.structure[ prop ] = field
+      else if (field instanceof Scope) {
+        if (!(prop in targetScope.structure)) targetScope.structure[ prop ] = new Scope( {}, {} )
+
+        this.merge( targetScope.structure[ prop ], field, override )
       }
     }
   }
@@ -161,8 +161,8 @@ export class Scope extends MetaHandler {
    * @param {Scope} scope
    * @param {boolean} onlyUnsafe
    */
-  static getData( scope, { onlyUnsafe=true, meta=false, serialized=false } ) {
-    const data = this.#dataGetterHelper( scope, onlyUnsafe )
+  static getData( scope, { serialized = false, ...restOfConfig } ) {
+    const data = this.#dataGetterHelper( scope, restOfConfig )
 
     return serialized ? JSON.stringify( data ) : data
   }
@@ -171,11 +171,11 @@ export class Scope extends MetaHandler {
    * @param {Scope} scope
    * @param {boolean} onlyUnsafe
    */
-  static #dataGetterHelper( scope, { onlyUnsafe=true, meta=false } ) {
+  static #dataGetterHelper( scope, { onlyUnsafe = false, meta = false } ) {
     const result = {
       type: `scope`,
       ...(meta ? scope.getMeta() : {}),
-      structure: {}
+      structure: {},
     }
 
     Object.entries( scope.structure ).map( ([ key, value ]) => {
@@ -184,7 +184,7 @@ export class Scope extends MetaHandler {
 
         result.structure[ key ] = {
           type: `command`,
-          ...value.getMeta(),
+          ...(meta ? scope.getMeta() : {}),
           code: value.code,
         }
       } else if (value instanceof Scope) {
@@ -237,15 +237,15 @@ export class Command extends MetaHandler {
     const { paramsStr, code } = parterReg.exec( commandString ).groups
     const params = []
 
-    for (let paramData; paramData = reg.params.exec( paramsStr );) {
+    for (let paramData;  paramData;  paramData = reg.params.exec( paramsStr )) {
       const { paramName, paramMask, paramMaskFlags } = paramData.groups
 
-      params.push( {
+      params.push({
         param: paramName,
         mask: paramMask ? new RegExp( `^${paramMask}`, `s` ) : null,
         optional: paramMaskFlags ? /g/.test( paramMaskFlags ) || /^\.\*?$/.test( paramMask ) : false,
         rest: paramMask ? /^\.(?:\+|\*)?$/.test( paramMask ) : false,
-      } )
+      })
     }
 
     return { params, code }
@@ -356,7 +356,7 @@ export default class CommandProcessor {
    * @param {*} [value]
    * @param {RegExp} [paramMask]
    */
-  setError( type=null, value=null, paramMask=null ) {
+  setError( type = null, value = null, paramMask = null ) {
     this.#err.type = type
     this.#err.value = value
     this.#err.paramMask = paramMask
@@ -368,7 +368,7 @@ export default class CommandProcessor {
     return !!this.#parts.part
   }
 
-  partCommand( command=`` ) {
+  partCommand( command = `` ) {
     const { groups } = /^(?<part>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
 
     /** @type {string} */
@@ -472,7 +472,7 @@ export default class CommandProcessor {
 
       this.#parameters.push( isParamValueNumber
         ? Number( paramString.replace( /_/g, `` ) )
-        : paramString
+        : paramString,
       )
     }
 
@@ -525,7 +525,7 @@ export default class CommandProcessor {
    * @param {function} roleTesterFunction
    * @param {function} [errorHandlerFunction]
    */
-  process( roleTesterFunction, errorHandlerFunction=null, onPrefixSuccess=()=>{} ) {
+  process( roleTesterFunction, errorHandlerFunction = null, onPrefixSuccess = () => {} ) {
     this.checkPrefix()
 
     if (!this.#err.type) onPrefixSuccess()
@@ -588,15 +588,15 @@ export default class CommandProcessor {
     const params = []
 
     let paramData
-    while (paramData = reg.params.exec( paramString )) {
+    while ((paramData = reg.params.exec( paramString )) ) {
       const { paramName, paramMask, paramMaskFlags } = paramData.groups
 
-      params.push( {
+      params.push({
         param: paramName,
         mask: new RegExp( `^${paramMask}`, `s` ),
         optional: /g/.test( paramMaskFlags ) || /^\.\*?$/.test( paramMask ),
         rest: /^\.(?:\+|\*)?$/.test( paramMask ),
-      } )
+      })
     }
 
     return params

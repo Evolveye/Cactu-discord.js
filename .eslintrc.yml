@@ -24,4 +24,8 @@ rules:
   no-compare-neg-zero:
     - off
   key-spacing:
-    - off
+    - error
+    - singleLine:
+        afterColon: false
+      multiLine:
+        mode: minimum
