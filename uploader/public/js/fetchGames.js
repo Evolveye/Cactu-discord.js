@@ -236,7 +236,16 @@ export default async function fetcher() {
 
   fetch( `/api/getAllVotes/`, { headers:getAuthHeader() } )
     .then( res => res.json() )
-    .then( votes => window.votes = votes )
+    .then( votes => {
+      window.votes = votes.map( ({ username, votes:userVotes }) => {
+        return {
+            username,
+            votes: userVotes.map( ({ userId, votes:votesOnUser }) =>
+                ({ username:votes.find( ({ id }) => id == userId ).username, userId, votes:votesOnUser })
+            )
+        }
+    } )
+    } )
 
   ui.games.style.display = `block`
   ui.gamesList.innerHTML = ``

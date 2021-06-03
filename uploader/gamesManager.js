@@ -151,7 +151,8 @@ export function voteOnGame( req, res, urlParts ) {
 
     if (!fs.existsSync( userPath )) fs.mkdir( userPath )
     if (!fs.existsSync( votesPath )) fs.writeFileSync( votesPath, `{}` )
-    if (!fs.existsSync( metaPath )) fs.writeFileSync( metaPath, JSON.stringify( user ) )
+    // if (!fs.existsSync( metaPath ))
+    fs.writeFileSync( metaPath, JSON.stringify( user ) )
 
     const votes = JSON.parse( fs.readFileSync( votesPath, `utf-8` ) )
 
@@ -214,8 +215,10 @@ export function getAllVotes( req, res, urlParts ) {
 
     if (!fs.existsSync( votesPath )) fs.writeFileSync( votesPath, `{}` )
 
-    const userMeta = fs.existsSync( metaath ) ? JSON.parse( fs.readFileSync( metaath ) ) : { id:userId }
+    const userMeta = fs.existsSync( metaath ) ? JSON.parse( fs.readFileSync( metaath ) ) : {}
     const userVotes =  JSON.parse( fs.readFileSync( votesPath, `utf-8` ) )
+
+    userMeta.id = userId
 
     const processedVotes = Object.entries( userVotes ).map( ([ userId, votes ]) => ({ userId, votes }) )
 

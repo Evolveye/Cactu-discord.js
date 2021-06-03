@@ -1,5 +1,5 @@
 body {
-  background: #222;
+  background-color: #222;
   color: #ddd;
 }
 
@@ -24,6 +24,7 @@ section {
 }
 .games-list {
   display: flex;
+  flex-wrap: wrap
 }
 .game {
   position: relative;
