@@ -1,4 +1,5 @@
-import CommandProcessor, { Scope, Command } from "./CommandProcessor.js"
+import CommandProcessor, { Scope, Executor } from "./CommandProcessor.js"
+import CommandWorker from "./CommandsWorker.js"
 import fs from "fs"
 import https from "https"
 
@@ -11,6 +12,7 @@ import https from "https"
 /** @typedef {import("./Logger.js").default} Logger */
 /** @typedef {import("./CommandProcessor.js").Scope} ConfigCommands */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildCommandsField */
+/** @typedef {import("./CommandProcessor.js").Role} Role */
 
 /** ConfigTranslation
  * @typedef {Object} ConfigTranslation
@@ -110,15 +112,21 @@ import https from "https"
 /** @typedef {SafeVariables & {botInstance:BotInstance,guildModules:GuildModules}} UnsafeVariables */
 
 export default class GuildDataset {
+  executiongWorker = new CommandWorker()
+
   /** @type {GuildTranslation} */
   translation = {}
+
   /** @type {GuildFilters} */
   filters = new Map()
+
   /** @type {GuildCommands} */
   commands = {}
   minifiedCommands = {}
+
   /** @type {Object<string,function[]>} */
   events = {}
+
   /** @type {string} */
   botOperatorRoleId = ``
 
@@ -133,6 +141,7 @@ export default class GuildDataset {
     this.guild = guild
     this.logger = logger
     this.eventBinder = eventBinder
+    this.commandsProcessor = new CommandProcessor()
 
     this.clear()
   }
@@ -143,9 +152,20 @@ export default class GuildDataset {
   loadConfig( config ) {
     if (typeof config !== `object`) return null
 
-    const { translation = {}, events = {}, commands, filters = [], botOperatorId = `` } = config
+    const {
+      translation = {},
+      events = {},
+      commands,
+      filters = [],
+      botOperatorId = ``,
+      prefix,
+      prefixSpace,
+    } = config
     const minified = { commands:{} }
     this.commands = commands
+
+    if (prefix) this.commandsProcessor.setPrefix( prefix )
+    if (prefixSpace) this.commandsProcessor.setPrefixSpace( prefixSpace )
 
     if (commands instanceof Scope) {
       commands.setSafety( false )
@@ -154,9 +174,13 @@ export default class GuildDataset {
       minified.commands = commands.getData({ onlyUnsafe:true, meta:false, serialized:false })
 
       this.minifiedCommands = minified.commands
+      this.commandsProcessor.setCommandsStructure( commands )
     }
 
-    return minified
+    this.executiongWorker.emit( `set commands`, {
+      guildId: this.guild.id,
+      config: minified,
+    } )
 
 
     // for (const event in events) {
@@ -267,13 +291,16 @@ export default class GuildDataset {
   }
 
   /**
-   * @param {Message} message
-   * @param {BotInstance} botInstance
+   * @param {string} message
+   * @param {(roles:Role[] botOperatorId:string) => boolean} checkPermissions
+   * @param {(commandMeta:CommandMeta) => void} handleState
+   * @param {{ filters:boolean commands:boolean }} param3
    */
-  processMessage( message, { filters = true, commands = true } = {} ) {
-    const { guild, content } = message
-    const username = message.member ? message.member.displayName : message.author.username
-    const log = (type, log = content) => this.logger( guild.name, message.channel.name, type, username, log )
+  processMessage( message, checkPermissions, handleState, { filters = true, commands = true } = {} ) {
+    this.commandsProcessor.process( message, checkPermissions, handleState )
+    // const { guild, content } = message
+    // const username = message.member ? message.member.displayName : message.author.username
+    // const log = (type, log = content) => this.logger( guild.name, message.channel.name, type, username, log )
 
     // if (filters) {
     //   let filteringContent = content
@@ -316,7 +343,7 @@ export default class GuildDataset {
 
       }, {
 
-        load: new Command({
+        load: new Executor({
           shortDescription: `Clear all modules data and load new module from attached file`,
         }, $ => {
           // const { message } = $
@@ -401,9 +428,9 @@ export default class GuildDataset {
   /** @param {UnsafeVariables} $ */
   static predefinedCommands = new Scope( {}, {
     $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
-      load: new Command( { d:`Clear all modules data and load new module from attached file` }, $ => {} ),
-      setBotOperator: new Command( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
-      getModules: new Command( { d:`Get the guild module config files` }, $ => {} ),
+      load: new Executor( { d:`Clear all modules data and load new module from attached file` }, $ => {} ),
+      setBotOperator: new Executor( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
+      getModules: new Executor( { d:`Get the guild module config files` }, $ => {} ),
     } ),
   } )
 

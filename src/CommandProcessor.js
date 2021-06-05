@@ -53,7 +53,8 @@
  * @property {(message:string) => Promise<ProcessedMessage>} sendErr
  */
 
-/** @typedef {"@bot_owner"|"@dm"|"@server_admin"|"@everyone"|"@bot"|"@<user id>"|"<role name or ID>"|string[]} Permission */
+/** @typedef {"@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} PermissionInstance */
+/** @typedef {"@everyone" | PermissionInstance | PermissionInstance[]} Permission */
 
 /**
  * @typedef {Object} CommandsObjectMetadata
@@ -67,11 +68,37 @@
 
 /** @typedef {Object<string,Scope|Function>} CommandsObjectData */
 
-class MetaHandler {
+/** @typedef {"badParam"|"details"|"scope"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandMetaType */
+/**
+ * @typedef {Object} CommandMeta
+ * @property {CommandMetaType} type
+ * @property {*} value
+ * @property {RegExp|null} paramMask
+*/
+
+/** @typedef {("@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
+/**
+ * @typedef {Object} Parameter
+ * @property {string} param
+ * @property {RegExp} mask
+ * @property {boolean} optional
+ */
+/**
+ * @typedef {Object} CommandsField
+ * @property {Role[]} roles
+ * @property {string} desc
+ * @property {Parameter[]} params
+ * @property {function|Commands} value
+ */
+/** @typedef {Object<string,CommandsField} Commands */
+
+
+
+class CommandElement {
   /**
    * @param {CommandsObjectMetadata} param0
    */
-  constructor({ r = ``, roles = r, d = ``, description = d, sd = ``, shortDescription = sd }) {
+  constructor({ r, roles = r, d, description = d, sd, shortDescription = sd }) {
     this.roles            = roles            || `@everyone`
     this.description      = description      || ``
     this.shortDescription = shortDescription || this.description
@@ -95,7 +122,7 @@ class MetaHandler {
   }
 }
 
-export class Scope extends MetaHandler {
+export class Scope extends CommandElement {
   /**
    * @param {CommandsObjectMetadata} meta
    * @param {CommandsObjectData} data
@@ -198,7 +225,7 @@ export class Scope extends MetaHandler {
   }
 }
 
-export class Command extends MetaHandler {
+export class Executor extends CommandElement {
   safe = true
 
   /**
@@ -210,7 +237,7 @@ export class Command extends MetaHandler {
 
     this.trigger = fn
 
-    const { params, code } = Command.extractCommandData( fn )
+    const { params, code } = Executor.extractCommandData( fn )
     this.params = params
     this.code = code
   }
@@ -237,12 +264,12 @@ export class Command extends MetaHandler {
     const { paramsStr, code } = parterReg.exec( commandString ).groups
     const params = []
 
-    for (let paramData;  paramData;  paramData = reg.params.exec( paramsStr )) {
+    for (let paramData;  (paramData = reg.params.exec( paramsStr ));) {
       const { paramName, paramMask, paramMaskFlags } = paramData.groups
 
       params.push({
         param: paramName,
-        mask: paramMask ? new RegExp( `^${paramMask}`, `s` ) : null,
+        mask: paramMask ? new RegExp( `^${paramMask}`, `s` ) : /\S+/,
         optional: paramMaskFlags ? /g/.test( paramMaskFlags ) || /^\.\*?$/.test( paramMask ) : false,
         rest: paramMask ? /^\.(?:\+|\*)?$/.test( paramMask ) : false,
       })
@@ -254,77 +281,291 @@ export class Command extends MetaHandler {
 
 
 
+class Command {
+  #trigger
+  #prefix
+  #prefixSpace
+  #parameters = []
+  #parametersData = { fail:{ param:null, mask:null }, string:`` }
+  #parts = { previous:``, current:``, rest:`` }
+  #deeperPermittedToSeeCommandElements = []
+
+  /** @type {null|Executor} */
+  #foundExecutor = null
+
+  /** @type {CommandMeta} */
+  #meta = { type:null, value:null, paramMask:null }
 
 
 
+  get trigger() {
+    return this.#trigger
+  }
+  get prefix() {
+    return this.#prefix
+  }
+  get prefixSpace() {
+    return this.#prefixSpace
+  }
+  get currentlyCheckedPath() {
+    return `${this.#parts.previous} ${this.#parts.current}`
+  }
+  get parameters() {
+    return this.#parameters
+  }
+  get meta() {
+    return this.#meta.type ? { ...this.#meta } : null
+  }
 
 
+  /** @param {string} trigger */
+  constructor( trigger, prefix, prefixSpace ) {
+    this.#trigger = trigger
+    this.#prefix = prefix
+    this.#prefixSpace = prefixSpace
+
+    this.#partCommand( trigger )
+  }
 
 
+  #makeNextPart() {
+    this.#partCommand()
+
+    return !!this.#parts.current
+  }
 
 
+  #partCommand( command = this.#parts.rest ) {
+    const parts = this.#parts
+    const { groups } = /^(?<current>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) ?? { groups:{} }
+
+    parts.previous = `${parts.previous} ${parts.current}`
+    parts.current = groups.current ?? ``
+    parts.rest = groups.rest ?? ``
+  }
 
 
+  #partParameters({ param, mask, optional }) {
+    const parts = this.#parametersData
+    const paramsString = parts.string
+    const setFail = (param, mask) => {
+      parts.fail.param = param
+      parts.fail.mask = mask
+    }
+
+    if (!mask.test( paramsString )) {
+      if (optional) {
+        this.#paramAdder()
+        return true
+      }
+
+      if (paramsString) {
+        setFail( paramsString.split( ` ` )[ 0 ], mask )
+        return this.#setMeta( `badParam` )
+      } else {
+        setFail( param, mask )
+        return this.#setMeta( `noParam` )
+      }
+    }
+
+    const paramValue = mask.exec( paramsString )[ 0 ] ?? null
+
+    if (paramValue) {
+      parts.string = paramsString.substr( paramValue.length ).trim()
+      this.#paramAdder( paramValue, mask )
+    }
+  }
 
 
+  #paramAdder = paramString => {
+    if (paramString === ``) return
+
+    const isParamValueNumber = paramString
+      ? paramString.length < 10 && /^-?\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?$/.test( paramString )
+      : false
+
+    this.#parameters.push( isParamValueNumber
+      ? Number( paramString.replace( /_/g, `` ) )
+      : paramString,
+    )
+  }
 
 
+  /** @param {CommandMetaType} [type] */
+  #setMeta( type ) {
+    const setIt = (value = null, mask = null) => {
+      this.#meta.type = type
+      this.#meta.value = value
+      this.#meta.paramMask = mask
 
-/** @typedef {"badParam"|"details"|"noCommand"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandErrorType */
-/** @typedef {Object} CommandError
- * @property {CommandErrorType} type
- * @property {*} value
- * @property {RegExp|null} paramMask
-*/
+      return this.meta
+    }
 
-/** @typedef {("@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
-/** @typedef {Object} Parameter
- * @property {string} param
- * @property {RegExp} mask
- * @property {boolean} optional
- */
-/** @typedef {Object} CommandsField
- * @property {Role[]} roles
- * @property {string} desc
- * @property {Parameter[]} params
- * @property {function|Commands} value
- */
-/** @typedef {Object<string,CommandsField} Commands */
+    switch (type) {
+      case `noPrefix`: return setIt( this.prefix )
+      case `noPath`: return setIt( this.currentlyCheckedPath )
+      case `scope`: return setIt( this.#deeperPermittedToSeeCommandElements )
+      case `noParam`: return setIt()
+      case `badParam`: return setIt()
+      case `noPerms`: return setIt( this.currentlyCheckedPath )
+      case `tooManyParams`: return setIt( this.#parametersData.string.split( ` ` )[ 0 ] )
+
+      default:
+        console.log()
+        break
+    }
+  }
+
+
+  checkPrefix() {
+    if (this.meta) return this.meta
+
+    const { prefix, trigger, prefixSpace } = this
+    const firstWord = trigger.split( ` ` )[ 0 ]
+
+    if (!trigger.startsWith( prefix )) return this.#setMeta( `noPrefix` )
+
+    if (prefixSpace) {
+      if (firstWord !== prefix) return this.#setMeta( `noPrefix` )
+    } else {
+      if (firstWord !== trigger) return this.#setMeta( `noPrefix` )
+    }
+
+    return true
+  }
+
+
+  /**
+   * @param {Scope} scope
+   * @param {function} checkPermissions
+   */
+  checkAccessToScope( scope, checkPermissions ) {
+    if (this.meta) return this.meta
+
+    /** @param {Permission} roles */
+    const checkAccess = roles => {
+      // if (this.#isDm) return roles.includes( `@dm` )
+      if (roles.includes( `@everyone` )) return true
+
+      return checkPermissions( roles )
+    }
+
+    let deeperPermittedCommandElement = scope
+
+    while (this.#makeNextPart()) {
+      if (this.meta) return
+
+      const currentPart = this.#parts.current
+
+      if (!(currentPart in scope.structure)) return this.#setMeta( `noPath` )
+
+      const subScope = scope.structure[ currentPart ]
+
+      if (!checkAccess( subScope.roles )) return this.#setMeta( `noPerms` )
+      if (subScope instanceof Executor) {
+        deeperPermittedCommandElement = subScope
+        break
+      }
+
+      deeperPermittedCommandElement = subScope.structure
+    }
+
+    if (deeperPermittedCommandElement instanceof Scope) {
+      const structure = { ...deeperPermittedCommandElement.structure }
+      const elements = []
+
+      Object.keys( structure ).forEach( key => {
+        const cmdElement = structure[ key ]
+
+        if (!checkAccess( cmdElement.roles )) return
+
+        elements.push({
+          name: key,
+          meta: cmdElement.getMeta(),
+          type: cmdElement instanceof Scope ? `scope` : `executor`,
+        })
+
+      } )
+
+      this.#deeperPermittedToSeeCommandElements.push( ...elements )
+
+      return this.#setMeta( `scope` )
+    } else {
+      this.#foundExecutor = deeperPermittedCommandElement
+    }
+  }
+
+
+  validateParams() {
+    if (this.meta || !(this.#foundExecutor instanceof Executor)) return
+
+    const executor = this.#foundExecutor
+    // let pasedParams = this.#parts.rest
+
+    this.#parametersData.string = this.#parts.rest
+
+    if (this.#parametersData.string === `??`) {
+      return this.#setMeta( `details`, {
+        command: this.currentlyCheckedPath,
+        description: executor.description,
+        params: executor.params,
+      } )
+    // } else for (const { param, mask, optional } of executor.params) {
+    } else for (const param of executor.params) {
+      this.#partParameters( param )
+
+      // if (!mask.test( pasedParams )) {
+      //   if (optional) {
+      //     this.#paramAdder()
+      //     continue
+      //   }
+
+      //   if (pasedParams) {
+      //     this.#paramAdder( pasedParams.split( ` ` )[ 0 ], mask )
+      //     return this.#setMeta( `badParam` )
+      //   } else {
+      //     this.#paramAdder( param, mask )
+      //     return this.#setMeta( `noParam` )
+      //   }
+      // }
+
+      // const paramValue = mask.exec( pasedParams )[ 0 ] || null
+
+      // if (paramValue) {
+      //   pasedParams = pasedParams.substr( paramValue.length ).trimLeft()
+      //   this.#paramAdder( paramValue, mask )
+      // }
+    }
+
+    if (this.#parametersData.string.length) {
+      this.#setMeta( `tooManyParams` )
+    } else {
+      // pasedParams.split( ` ` ).forEach( this.#paramAdder )
+    }
+
+  }
+
+
+  /** @param {(commandMeta:CommandMeta) => void} [handleState] */
+  execute( handleState ) {
+    if (this.meta) return handleState?.( this.meta )
+
+    try {
+      console.log( this.#foundExecutor, this.#parameters ) // .( ...this.#parameters )
+    } catch (err) {
+      // this.setError( `invalidCmd`, err )
+    }
+  }
+}
 
 export default class CommandProcessor {
-  /** @type {string[]} */
-  #parameters = []
-
   /** @type {Commands} */
   #commandsStructure = {}
-  /** @type {Commands|CommandsField} */
-  #scopeFromCommand = {}
 
   #prefixSpace = false
   #command = ``
   #prefix = ``
-  #parts = { prev:``, part:``, rest:`` }
-  #path = ``
-  #isDm = false
 
-  /** @type {CommandError} */
-  #err = { type:null, value:null, paramMask:null }
-
-  /**
-   * @param {string} prefix
-   * @param {string} message
-   * @param {Commands>} commandsStructure
-   */
-  constructor( isDm, prefix, prefixSpace, message, commandsStructure ) {
-    this.#commandsStructure = commandsStructure
-    this.#prefixSpace = prefixSpace
-    this.#command = message.trim()
-    this.#prefix = prefix
-    this.#parts = this.partCommand()
-    this.#isDm = isDm
-
-    this.#parts.rest = message.slice( prefix.length ).trim()
-  }
 
   get commandsStructure() {
     return this.#commandsStructure
@@ -332,214 +573,64 @@ export default class CommandProcessor {
   get prefixSpace() {
     return this.#prefixSpace
   }
-  get parameters() {
-    return this.#parameters
-  }
   get command() {
     return this.#command
   }
   get prefix() {
     return this.#prefix
   }
-  get parts() {
-    return { ...this.#parts }
-  }
-  get path() {
-    return this.#path
-  }
-  get err() {
-    return { ...this.#err }
-  }
 
   /**
-   * @param {CommandErrorType} [type]
-   * @param {*} [value]
-   * @param {RegExp} [paramMask]
+   * @param {string} prefix
+   * @param {string} message
+   * @param {Commands>} commandsStructure
    */
-  setError( type = null, value = null, paramMask = null ) {
-    this.#err.type = type
-    this.#err.value = value
-    this.#err.paramMask = paramMask
+  constructor( prefix = ``, prefixSpace = true, commandsStructure = null ) {
+    this.#commandsStructure = commandsStructure
+    this.#prefixSpace = prefixSpace
+    // this.#command = message.trim()
+    this.#prefix = prefix
+    // this.#isDm = isDm
+
+    // this.#parts.rest = message.slice( prefix.length ).trim()
   }
 
-  nextPart() {
-    this.#parts = this.partCommand( this.#parts.rest )
 
-    return !!this.#parts.part
+  /** @param {string} prefix */
+  setPrefix( prefix ) {
+    this.#prefix = prefix
   }
 
-  partCommand( command = `` ) {
-    const { groups } = /^(?<part>\S+)(?: +(?<rest>[\s\S]*))?/.exec( command ) || { groups:{} }
 
-    /** @type {string} */
-    const prev = this.#parts ? `${this.#parts.prev} ${this.#parts.part}` : ``
-    /** @type {string} */
-    const part = groups.part || ``
-    /** @type {string} */
-    const rest = groups.rest || ``
-
-    return { prev, part, rest }
+  /** @param {boolean} prefixSpace */
+  setPrefixSpace( prefixSpace ) {
+    this.#prefixSpace = prefixSpace
   }
 
-  checkPrefix() {
-    const { command, prefix, prefixSpace } = this
-    const firstWord = command.split( ` ` )[ 0 ]
 
-    if (!command.startsWith( prefix )) this.setError( `noPrefix` )
-
-    if (prefixSpace) {
-      if (firstWord !== prefix) return this.setError( `noPrefix` )
-    } else {
-      if (firstWord !== command) return this.setError( `noPrefix` )
-    }
+  /** @param {Scope} scope */
+  setCommandsStructure( scope ) {
+    this.#commandsStructure = scope
   }
 
-  /**
-   * @param {function} roleTesterFunction
-   */
-  checkAccessToStructure( roleTesterFunction ) {
-    if (this.err.type) return
-
-    this.#scopeFromCommand = this.#commandsStructure
-
-    /** @param {Role[]} roles */
-    const checkAccess = roles => {
-      if (this.#isDm) return roles.includes( `@dm` )
-      if (roles.includes( `@everyone` )) return true
-
-      return roleTesterFunction( roles )
-    }
-
-    while (this.nextPart()) {
-      const { err, parts:{ part } } = this
-
-      if (err.type) return
-
-      if (!(part in this.#scopeFromCommand)) {
-        return this.setError( `noPath`, this.command )
-      }
-
-      const structPart = this.#scopeFromCommand[ part ]
-
-      if (!checkAccess( structPart.roles )) {
-        return this.setError( `noPerms`, this.#command )
-      }
-
-      if (typeof structPart.value === `function`) {
-        this.#scopeFromCommand = structPart
-
-        return
-      } else {
-        this.#scopeFromCommand = structPart.value
-      }
-    }
-
-    if (typeof this.#scopeFromCommand.value != `function`) {
-      const value = {
-        command: this.#command,
-        structure: { ...this.#scopeFromCommand },
-      }
-
-      Object.keys( value.structure )
-        .forEach( key => {
-          value.structure[ key ] = { ...this.#scopeFromCommand[ key ] }
-
-          /** @type {Role[]} */
-          const scope = value.structure[ key ]
-
-          if (!checkAccess( scope.roles )) delete value.structure[ key ]
-          else {
-            scope.type = typeof scope.value === `function` ? `command` : `scope`
-
-            delete scope.value
-          }
-        } )
-
-      this.setError( `noCommand`, value )
-    }
-  }
-
-  validateParams() {
-    if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
-
-    const { params } = this.#scopeFromCommand
-    const paramAdder = paramString => {
-      if (paramString === ``) return
-
-      const isParamValueNumber = paramString
-        ? paramString.length < 10 && /^\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?$/.test( paramString )
-        : false
-
-      this.#parameters.push( isParamValueNumber
-        ? Number( paramString.replace( /_/g, `` ) )
-        : paramString,
-      )
-    }
-
-    let pasedParams = this.#parts.rest
-
-    if (pasedParams == `??` || pasedParams.startsWith( `?? ` )) {
-      const cmd = this.#scopeFromCommand
-
-      return this.setError( `details`, {
-        command: this.#command,
-        description: cmd.desc,
-        params: cmd.params,
-      } )
-    } else for (const { param, mask, optional } of params) {
-      if (!mask.test( pasedParams )) {
-        if (optional) {
-          paramAdder( null )
-          continue
-        }
-
-        return pasedParams
-          ? this.setError( `badParam`, pasedParams.split( ` ` )[ 0 ], mask )
-          : this.setError( `noParam`, param, mask )
-      }
-
-      const paramValue = mask.exec( pasedParams )[ 0 ] || null
-
-      if (paramValue) {
-        pasedParams = pasedParams.substr( paramValue.length ).trimLeft()
-
-        paramAdder( paramValue )
-      }
-    }
-
-    pasedParams.split( ` ` ).forEach( paramAdder )
-  }
-
-  execute() {
-    if (this.err.type || typeof this.#scopeFromCommand.value != `function`) return
-
-    try {
-      this.#scopeFromCommand.value( ...this.#parameters )
-    } catch (err) {
-      this.setError( `invalidCmd`, err )
-    }
-  }
 
   /**
    * @param {boolean} prefixSpace
-   * @param {function} roleTesterFunction
-   * @param {function} [errorHandlerFunction]
+   * @param {(roles:Role[] botOperatorId:string) => boolean} checkPermissions
+   * @param {(commandMeta:CommandMeta) => void} handleState
    */
-  process( roleTesterFunction, errorHandlerFunction = null, onPrefixSuccess = () => {} ) {
-    this.checkPrefix()
+  process( commandTrigger, checkPermissions, handleState ) {
+    if (!this.#commandsStructure) return
 
-    if (!this.#err.type) onPrefixSuccess()
+    const command = new Command( commandTrigger, this.prefix, this.prefixSpace )
 
-    this.checkAccessToStructure( roleTesterFunction )
-    this.validateParams()
-    this.execute()
-
-    if (this.#err.type && errorHandlerFunction) errorHandlerFunction( this.err )
+    command.checkPrefix()
+    command.checkAccessToScope( this.#commandsStructure, checkPermissions )
+    command.validateParams()
+    command.execute( handleState )
   }
 
-  /**
-   * @param {Commands} commands
-   */
+  /** @param {Commands} commands */
   static normalizeCommands( commands ) {
     const allAcceptableParams = [ `roles`, `desc`, `value`, `params` ]
     const checkField = (field, property, surrogate, defaultVal) => {
@@ -575,9 +666,7 @@ export default class CommandProcessor {
     }
   }
 
-  /**
-   * @param {function} func
-   */
+  /** @param {function} func */
   static funcData( func ) {
     const reg = {
       funcParter: /^(?<name>\S+) *\( *(?<params>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
