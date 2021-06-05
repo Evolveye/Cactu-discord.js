@@ -33,6 +33,6 @@
     "vm2": "^3.9.2"
   },
   "devDependencies": {
-    "eslint-config-eye": "^1.0.2"
+    "eslint-config-eye": "^1.1.0"
   }
 }
