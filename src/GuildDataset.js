@@ -293,11 +293,10 @@ export default class GuildDataset {
   /**
    * @param {string} message
    * @param {(roles:Role[] botOperatorId:string) => boolean} checkPermissions
-   * @param {(commandMeta:CommandMeta) => void} handleState
    * @param {{ filters:boolean commands:boolean }} param3
    */
   processMessage( message, checkPermissions, handleState, { filters = true, commands = true } = {} ) {
-    this.commandsProcessor.process( message, checkPermissions, handleState )
+    return this.commandsProcessor.process( message, checkPermissions )
     // const { guild, content } = message
     // const username = message.member ? message.member.displayName : message.author.username
     // const log = (type, log = content) => this.logger( guild.name, message.channel.name, type, username, log )

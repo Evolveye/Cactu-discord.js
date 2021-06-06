@@ -27,6 +27,7 @@ const __APPDIRNAME = fs.realpathSync( `.` )
 /** @typedef {import("./GuildDataset.js").GuildModuleCommands} GuildModuleCommands */
 /** @typedef {import("./GuildDataset.js").GuildModule} GuildModule */
 /** @typedef {import("./GuildDataset.js").UnsafeVariables} GuildModule */
+/** @typedef {import("./src/CommandProcessor.js").CommandState} CommandState */
 
 export default class CactuDiscordBot {
   discordClient = new Discord.Client(
@@ -102,6 +103,7 @@ export default class CactuDiscordBot {
     },
   }
 
+
   /**
    * @typedef {Object} CactuDiscordBotConfig
    * @property {string} token
@@ -132,9 +134,8 @@ export default class CactuDiscordBot {
       .catch( err => this.log( `I can't login in.\n${err}` ) )
   }
 
-  /**
-   * @param {string} moduleName
-   */
+
+  /** @param {string} moduleName */
   loadModule = moduleFolder => {
     if (!moduleFolder) return
 
@@ -157,6 +158,7 @@ export default class CactuDiscordBot {
     }
   }
 
+
   clearGuildModules( guildIdToRemove, ...excludeNames ) {
     const dotPath = `${fs.realpathSync( `.` )}`
 
@@ -173,9 +175,8 @@ export default class CactuDiscordBot {
     this.guildsData.get( guildIdToRemove ).clear()
   }
 
-  /**
-   * @param {string} string
-   */
+
+  /** @param {string} string */
   log( string, type = `system` ) {
     let logger = null
 
@@ -191,6 +192,7 @@ export default class CactuDiscordBot {
 
     logUnderControl( logger, string )
   }
+
 
   /**
    * @param {GuildModuleRoles} roleNames
@@ -210,6 +212,7 @@ export default class CactuDiscordBot {
       if (havingARole) return true
     }
   }
+
 
   /**
    * @param {CommandError} param0
@@ -357,9 +360,43 @@ export default class CactuDiscordBot {
     } })
   }
 
-  /**
-   * @param {Discord.Message} message
-   */
+
+  /** @param {CommandState} state */
+  performResponse( state ) {
+    const { type, value } = state
+
+    switch (type) {
+      case `noPrefix`: return console.log( type, value )
+      case `noPath`: {
+        return console.log( type, value )
+      }
+      case `scope`: {
+        return console.log( type, value )
+      }
+      case `noParam`: {
+        return console.log( type, value )
+      }
+      case `badParam`: {
+        return console.log( type, value )
+      }
+      case `noPerms`: {
+        return console.log( type, value )
+      }
+      case `tooManyParams`: {
+        return console.log( type, value )
+      }
+      case `readyToExecute`: {
+        return console.log( type, value )
+      }
+
+      default:
+        console.warn( `unknown state` )
+        break
+    }
+  }
+
+
+  /** @param {Discord.Message} message */
   getGguildDatasets( message ) {
     const { guild, author } = message
 
@@ -374,6 +411,7 @@ export default class CactuDiscordBot {
     return this.guildsDatasets.get( id )
   }
 
+
   eventBinder = (guild, eventName, listener) => {
     if (!(eventName in this.events)) {
       this.events[ eventName ] = []
@@ -382,21 +420,11 @@ export default class CactuDiscordBot {
     this.events[ eventName ].push( listener )
   }
 
-  /**
-   * @param {Discord.Message} message
-   */
+
+  /** @param {Discord.Message} message */
   onMessage = message => {
     const { guild, channel, member, author } = message
 
-    // if (message.content.startsWith( `.` )) {
-    //   logUnderControl( this.loggers.guild, guild.name, channel.name, `type`, member.displayName, message.content )
-    // } else if (message.content.startsWith( `,` )) {
-    //   logUnderControl( this.loggers.info, message.content )
-    // } else if (message.content.startsWith( `;` )) {
-    //   logUnderControl( this.loggers.system, message.content )
-    // } else if (message.content.startsWith( `'` )) {
-    //   logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, message.content )
-    // }
     if (guild) {
       if (guild.id != `315215466215899146`) return
       logUnderControl( this.loggers.guild, guild.name, channel.name, `type`, member.displayName, message.content )
@@ -404,14 +432,14 @@ export default class CactuDiscordBot {
       logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, message.content )
     }
 
-    this.getGguildDatasets( message )?.processMessage(
+    const state = this.getGguildDatasets( message )?.processMessage(
       message.content,
       (roles, botOperatorRoleId) => this.checkPermissions( roles, botOperatorRoleId, message ),
-      console.log,
     )
 
-    // if (guildData) guildData.process( message, this )
+    this.performResponse( state )
   }
+
 
   /**
    * @param {Discord.Message} oldMessage
@@ -422,6 +450,7 @@ export default class CactuDiscordBot {
 
     // if (guildData) guildData.process( newMessage, this, { commands:false } )
   }
+
 
   onReady = () => {
     console.log()
@@ -436,6 +465,7 @@ export default class CactuDiscordBot {
     this.log( `I have been started!` )
     this.initialized = true
   }
+
 
   /** @param {Discord.Guild} guild */
   onGuildCreate = guild => {
