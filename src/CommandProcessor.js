@@ -475,37 +475,34 @@ class Command {
       const subScope = scope.structure[ currentPart ]
 
       if (!checkAccess( subScope.roles )) return this.#setState( `noPerms` )
-      if (subScope instanceof Executor) {
-        deeperPermittedCommandElement = subScope
-        break
-      }
 
-      deeperPermittedCommandElement = subScope.structure
+      deeperPermittedCommandElement = subScope
+
+      if (subScope instanceof Executor) break
     }
 
-    if (deeperPermittedCommandElement instanceof Scope) {
-      const structure = { ...deeperPermittedCommandElement.structure }
-      const elements = []
-
-      Object.keys( structure ).forEach( key => {
-        const cmdElement = structure[ key ]
-
-        if (!checkAccess( cmdElement.roles )) return
-
-        elements.push({
-          name: key,
-          meta: cmdElement.getMeta(),
-          type: cmdElement instanceof Scope ? `scope` : `executor`,
-        })
-
-      } )
-
-      this.#deeperPermittedToSeeCommandElements.push( ...elements )
-
-      return this.#setState( `scope` )
-    } else {
-      this.#foundExecutor = deeperPermittedCommandElement
+    if (deeperPermittedCommandElement instanceof Executor) {
+      return this.#foundExecutor = deeperPermittedCommandElement
     }
+
+    const structure = { ...deeperPermittedCommandElement.structure }
+    const elements = []
+
+    Object.keys( structure ).forEach( key => {
+      const cmdElement = structure[ key ]
+
+      if (!checkAccess( cmdElement.roles )) return
+
+      elements.push({
+        name: key,
+        meta: cmdElement.getMeta(),
+        type: cmdElement instanceof Scope ? `scope` : `executor`,
+      })
+    } )
+
+    this.#deeperPermittedToSeeCommandElements.push( ...elements )
+
+    return this.#setState( `scope` )
   }
 
 
