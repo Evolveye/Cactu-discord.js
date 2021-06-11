@@ -100,7 +100,7 @@ class CommandElement {
    */
   constructor({ r, roles = r, d, description = d, sd, shortDescription = sd }) {
     this.roles            = roles            || `@everyone`
-    this.description      = description      || ``
+    this.description      = description      || shortDescription
     this.shortDescription = shortDescription || this.description
   }
 
@@ -269,7 +269,9 @@ export class Executor extends CommandElement {
       funcParter: /^(?<name>\S+) *\( *(?<paramsStr>[\s\S]*?) *\) *{ *(?<code>[\s\S]*)}$/,
       arrowParter: /^\(? *(?<paramsStr>[\s\S]*?) *\)? *=> *{? *(?<code>[\s\S]*?)}?$/,
 
-      params: / *,? *(?<paramName>\$|\w+)(?: *= *\/(?<paramMask>.*?)\/(?<paramMaskFlags>\w*)?(?= *, *|$))?/y,
+      // params: / *,? *(?<paramName>\$|\w+)(?: *= *\/(?<paramMask>.*?)\/(?<paramMaskFlags>\w*)?(?= *, *|$))?/y,
+      params: / *,? *(?<name>\$|\w+)(?: *= *(?<value>.*?)(?= *, *|$))?/y,
+      regExp: /\/(?<mask>.*?)\/(?<flags>\w*)?/,
     }
 
     const commandString = command.toString()
@@ -278,14 +280,30 @@ export class Executor extends CommandElement {
     const params = []
 
     for (let paramData;  (paramData = reg.params.exec( paramsStr ));) {
-      const { paramName, paramMask, paramMaskFlags } = paramData.groups
+      const { name, value } = paramData.groups
+      let mask = /\S+/
+      let optional = false
+      let rest = false
 
-      params.push({
-        param: paramName,
-        mask: paramMask ? new RegExp( `^${paramMask}`, `s` ) : /\S+/,
-        optional: paramMaskFlags ? /g/.test( paramMaskFlags ) || /^\.\*?$/.test( paramMask ) : false,
-        rest: paramMask ? /^\.(?:\+|\*)?$/.test( paramMask ) : false,
-      })
+      if (value) {
+        if (reg.regExp.test( value )) {
+          const regExp = reg.regExp.exec( value )?.groups ?? {}
+
+          if (regExp.mask) mask = new RegExp( `^${regExp.mask}`, `s` )
+          if (/g/.test( regExp.flags )) optional = true
+        } else if (/^(`|'|").*(`|'|")$/.test( value )) {
+          const stringValue = /^(?:`|'|")(.*)(?:`|'|")$/.exec( value )[ 1 ]
+
+          switch (stringValue) {
+            case `...`: optional = true
+            case `!!!`:
+              rest = true
+              break
+          }
+        }
+      }
+
+      params.push({ name, mask, optional, rest })
     }
 
     return { params, code }
@@ -358,7 +376,7 @@ class Command {
   }
 
 
-  #partParameters({ param, mask, optional }) {
+  #partParameters({ name, mask, optional }) {
     const parts = this.#parametersData
     const paramsString = parts.string
     const setFail = (param, mask) => {
@@ -376,7 +394,7 @@ class Command {
         setFail( paramsString.split( ` ` )[ 0 ], mask )
         return this.#setState( `badParam` )
       } else {
-        setFail( param, mask )
+        setFail( name, mask )
         return this.#setState( `noParam` )
       }
     }
@@ -423,6 +441,11 @@ class Command {
       case `noPerms`: return setIt( this.currentlyCheckedPath )
       case `tooManyParams`: return setIt( this.#parametersData.string.split( ` ` )[ 0 ] )
       case `readyToExecute`: return setIt( this.#parameters )
+      case `details`: return setIt({
+        command: this.currentlyCheckedPath,
+        ...this.#foundExecutor.getMeta(),
+        params: this.#foundExecutor.params,
+      })
 
       default:
         console.warn( `unknown state` )
@@ -493,9 +516,13 @@ class Command {
 
       if (!checkAccess( cmdElement.roles )) return
 
+      const meta = cmdElement.getMeta()
+
+      if (cmdElement instanceof Executor) meta.params = cmdElement.params
+
       elements.push({
-        name: key,
-        meta: cmdElement.getMeta(),
+        name: `${this.#parts.previous} ${key}`,
+        meta,
         type: cmdElement instanceof Scope ? `scope` : `executor`,
       })
     } )

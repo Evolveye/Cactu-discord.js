@@ -361,17 +361,87 @@ export default class CactuDiscordBot {
   }
 
 
-  /** @param {CommandState} state */
-  performResponse( state ) {
+  /**
+   * @param {CommandState} state
+   * @param {Discord.Message} message
+   */
+  performResponse( state, message ) {
     const { type, value } = state
 
     switch (type) {
-      case `noPrefix`: return console.log( type, value )
+      case `noPrefix`: return
       case `noPath`: {
         return console.log( type, value )
       }
       case `scope`: {
-        return console.log( type, value )
+        const scopes = value.filter( ({ type }) => type == `scope` )
+          .map( ({ name, meta }) => ({ name, value:(meta.shortDescription || `- - -`), inline:true }) )
+
+        const cmds = value.filter( ({ type }) => type == `executor` )
+          .map( ({ name, meta }) => {
+            const params = meta.params.map( ({ name, rest, optional }) => `${rest ? `...` : ``}${name}${optional ? `?` : ``}` )
+            const sygnature = `${name} ${params.join( ` ` )}`
+
+            return { name:sygnature, value:(meta.shortDescription || `- - -`) }
+          } )
+
+        message.channel.send({ embed: {
+          fields: [
+            { name:`\u200b`, value:`Zestawy poleceń:` },
+            ...scopes,
+            { name:`\u200b`, value:`Polecenia:` },
+            ...cmds,
+          ],
+        } })
+        // console.log({ scopes, cmds })
+
+        // for (const part in value.structure) {
+        //   const { type, desc, params } = value.structure[ part ]
+
+        //   if (type == `scope`) {
+        //     scopes.push({ name:`${part}...`, value:desc, inline:true })
+        //   } else {
+        //     const paramsStrings = []
+
+        //     for (const { param, rest, optional } of params) {
+        //       paramsStrings.push( `${rest ? `...` : ``}${param}${optional ? `?` : ``}` )
+        //     }
+
+        //     const paramsString = paramsStrings.length
+        //       ? `  \` ${paramsStrings.join( `   ` )} \``
+        //       : ``
+
+        //     cmds.push({
+        //       name: `${part}${paramsString}`,
+        //       value: desc || `-  -  -`,
+        //     })
+        //   }
+        // }
+
+        // if (scopes.length) {
+        //   description = `${translation.help_scopes}:`
+        //   fields.push( ...scopes, { name:`\u200B`, value:`${translation.help_cmds}:` } )
+        // } else description = `${translation.help_cmds}:`
+
+        // fields.push( ...cmds )
+
+        // title = `⚙️ ${translation.help_title}`
+
+        // channel.send({ embed: { title, description, fields,
+        //   color: 0x18d818,
+        //   author: {
+        //     name: `CodeCactu`,
+        //     icon_url: this.discordClient.user.displayAvatarURL,
+        //     url: `https://codecactu.github.io/`,
+        //   },
+        //   footer: {
+        //     text: `${translation.footer_yourCmds} ${value.command}`,
+        //     icon_url: author.displayAvatarURL,
+        //   },
+        //   timestamp: new Date(),
+        // } })
+
+        break
       }
       case `noParam`: {
         return console.log( type, value )
@@ -387,6 +457,11 @@ export default class CactuDiscordBot {
       }
       case `readyToExecute`: {
         return console.log( type, value )
+      }
+      case `details`: {
+        message.channel.send( `${value.command} --- ${value.description}` )
+
+        break
       }
 
       default:
@@ -423,21 +498,25 @@ export default class CactuDiscordBot {
 
   /** @param {Discord.Message} message */
   onMessage = message => {
-    const { guild, channel, member, author } = message
+    const { guild, channel, member, author, content } = message
 
-    if (guild) {
-      if (guild.id != `315215466215899146`) return
-      logUnderControl( this.loggers.guild, guild.name, channel.name, `type`, member.displayName, message.content )
-    } else {
-      logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, message.content )
-    }
+    if (!content || author.bot) return
 
     const state = this.getGguildDatasets( message )?.processMessage(
-      message.content,
+      content,
       (roles, botOperatorRoleId) => this.checkPermissions( roles, botOperatorRoleId, message ),
     )
 
-    this.performResponse( state )
+    if (!state || state.type == `noPrefix`) return
+
+    if (guild) {
+      if (guild.id != `315215466215899146`) return
+      logUnderControl( this.loggers.guild, guild.name, channel.name, `type`, member.displayName, content )
+    } else {
+      logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, content )
+    }
+
+    this.performResponse( state, message )
   }
 
 
