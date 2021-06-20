@@ -19,10 +19,12 @@
 
 /** @typedef {Object<string,Scope|Executor>} CommandsObjectData */
 
-/** @typedef {"badParam"|"details"|"scope"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandMetaType */
+/** @typedef {"noPrefix"|"noPath"|"scope"|"noParam"|"badParam"|"noPerms"|"tooManyParams"|"readyToExecute"|"details"} CommandMetaType */
+
 /**
  * @typedef {Object} CommandState
  * @property {CommandMetaType} type
+ * @property {string} trigger
  * @property {*} value
  * @property {RegExp|null} paramMask
 */
@@ -292,7 +294,7 @@ class Command {
   #prefix
   #prefixSpace
   #parameters = []
-  #parametersData = { fail:{ param:null, mask:null }, string:`` }
+  #parametersData = { fail:{ param:null, mask:null, optional:false, rest:false }, string:`` }
   #parts = { previous:``, current:``, rest:`` }
   #deeperPermittedToSeeCommandElements = []
 
@@ -300,7 +302,7 @@ class Command {
   #foundExecutor = null
 
   /** @type {CommandState} */
-  #state = { type:null, value:null, paramMask:null }
+  #state = { trigger:``, type:null, value:null, paramMask:null }
 
 
 
@@ -314,7 +316,7 @@ class Command {
     return this.#prefixSpace
   }
   get currentlyCheckedPath() {
-    return `${this.#parts.previous} ${this.#parts.current}`
+    return `${this.#parts.previous} ${this.#parts.current}`.trim()
   }
   get parameters() {
     return this.#parameters
@@ -348,15 +350,18 @@ class Command {
     parts.previous = `${parts.previous} ${parts.current}`
     parts.current = groups.current ?? ``
     parts.rest = groups.rest ?? ``
+
   }
 
 
-  #partParameters({ name, mask, optional }) {
+  #partParameters({ name, mask, optional, rest }) {
     const parts = this.#parametersData
     const paramsString = parts.string
     const setFail = (param, mask) => {
       parts.fail.param = param
       parts.fail.mask = mask
+      parts.fail.optional = optional
+      parts.fail.rest = rest
     }
 
     if (!mask.test( paramsString )) {
@@ -397,12 +402,13 @@ class Command {
   }
 
 
-  /** @param {CommandMetaType} [type] */
+  /** @param {CommandMetaType} type */
   #setState( type ) {
     const setIt = (value = null, mask = null) => {
       this.#state.type = type
       this.#state.value = value
       this.#state.paramMask = mask
+      this.#state.trigger = this.trigger
 
       return this.state
     }
@@ -423,7 +429,7 @@ class Command {
       })
 
       default:
-        console.warn( `unknown state` )
+        console.warn( `Unknown command state used in "#setState" method` )
         break
     }
   }
@@ -468,9 +474,9 @@ class Command {
 
       const currentPart = this.#parts.current
 
-      if (!(currentPart in scope.structure)) return this.#setState( `noPath` )
+      if (!(currentPart in deeperPermittedCommandElement.structure)) return this.#setState( `noPath` )
 
-      const subScope = scope.structure[ currentPart ]
+      const subScope = deeperPermittedCommandElement.structure[ currentPart ]
 
       if (!checkAccess( subScope.roles )) return this.#setState( `noPerms` )
 

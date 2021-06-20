@@ -65,7 +65,7 @@
 /** @typedef {import("./GuildDataset.js").GuildModuleCommands} GuildModuleCommands */
 /** @typedef {import("./GuildDataset.js").GuildModule} GuildModule */
 /** @typedef {import("./GuildDataset.js").UnsafeVariables} GuildModule */
-/** @typedef {import("./src/CommandProcessor.js").CommandState} CommandState */
+/** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
 
 /** @typedef {"@everyone" | "@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} Permission */
 

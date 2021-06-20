@@ -360,13 +360,20 @@ export default class CactuDiscordBot {
    * @param {Discord.Message} message
    */
   performResponse( state, message ) {
-    const { type, value } = state
+    /** @param {string} str */
+    const processTooLongString = str => str.length > 20 ? str.slice( 0, 20 ) + `...` : str
+    /** @param {string} str */
+    const escapeString = str => str.replace( /`|_|\*|\|\|/g, `` )
+    /** @param {string} str */
+    const processUserString = str => escapeString( processTooLongString( str ) )
+
+    const { trigger, type, value } = state
+    let embed = {}
 
     switch (type) {
       case `noPrefix`: return
-      case `noPath`: {
-        return console.log( type, value )
-      }
+
+
       case `scope`: {
         const scopes = value.filter( ({ type }) => type == `scope` )
           .map( ({ name, meta }) => ({ name, value:(meta.shortDescription || `- - -`), inline:true }) )
@@ -379,89 +386,80 @@ export default class CactuDiscordBot {
             return { name:sygnature, value:(meta.shortDescription || `- - -`) }
           } )
 
-        message.channel.send({ embed: {
+        embed = {
           fields: [
             { name:`\u200b`, value:`Zestawy poleceń:` },
             ...scopes,
             { name:`\u200b`, value:`Polecenia:` },
             ...cmds,
           ],
-        } })
-        // console.log({ scopes, cmds })
-
-        // for (const part in value.structure) {
-        //   const { type, desc, params } = value.structure[ part ]
-
-        //   if (type == `scope`) {
-        //     scopes.push({ name:`${part}...`, value:desc, inline:true })
-        //   } else {
-        //     const paramsStrings = []
-
-        //     for (const { param, rest, optional } of params) {
-        //       paramsStrings.push( `${rest ? `...` : ``}${param}${optional ? `?` : ``}` )
-        //     }
-
-        //     const paramsString = paramsStrings.length
-        //       ? `  \` ${paramsStrings.join( `   ` )} \``
-        //       : ``
-
-        //     cmds.push({
-        //       name: `${part}${paramsString}`,
-        //       value: desc || `-  -  -`,
-        //     })
-        //   }
-        // }
-
-        // if (scopes.length) {
-        //   description = `${translation.help_scopes}:`
-        //   fields.push( ...scopes, { name:`\u200B`, value:`${translation.help_cmds}:` } )
-        // } else description = `${translation.help_cmds}:`
-
-        // fields.push( ...cmds )
-
-        // title = `⚙️ ${translation.help_title}`
-
-        // channel.send({ embed: { title, description, fields,
-        //   color: 0x18d818,
-        //   author: {
-        //     name: `CodeCactu`,
-        //     icon_url: this.discordClient.user.displayAvatarURL,
-        //     url: `https://codecactu.github.io/`,
-        //   },
-        //   footer: {
-        //     text: `${translation.footer_yourCmds} ${value.command}`,
-        //     icon_url: author.displayAvatarURL,
-        //   },
-        //   timestamp: new Date(),
-        // } })
-
+        }
         break
       }
+
+
       case `noParam`: {
-        return console.log( type, value )
+        const { param, mask, optional, rest } = value
+        embed = `**No param**: ${param}\n**Optional**: ${optional},   **rest**: ${rest},   **mask**: ${mask}`
+        break
       }
+
+
       case `badParam`: {
-        return console.log( type, value )
+        const { param, mask, optional, rest } = value
+        embed = `**Bad param**: ${processUserString( param )}\n**Optional**: ${optional},   **rest**: ${rest},   **mask**: ${mask}`
+        break
       }
+
+
+      case `noPath`: {
+        embed = `**No path \`${processUserString( value )}\`**`
+        break
+      }
+
+
       case `noPerms`: {
-        return console.log( type, value )
+        embed = `**No access permissions to \`${value}\`**`
+        break
       }
+
+
       case `tooManyParams`: {
-        return console.log( type, value )
+        embed = `**Too many parameters**\nUnnecessary param: \`${processUserString( value )}\``
+        break
       }
+
+
+      case `details`: {
+        embed = `${value.command} --- ${value.description}`
+        break
+      }
+
+
       case `readyToExecute`: {
         return console.log( type, value )
       }
-      case `details`: {
-        message.channel.send( `${value.command} --- ${value.description}` )
 
-        break
-      }
 
       default:
-        console.warn( `unknown state` )
+        embed = `Unknown command state`
         break
     }
+
+    if (!embed) return
+
+    const processedTrigger = trigger.split( / +/ ).map( processUserString ).join( ` ` )
+
+    message.delete()
+    message.channel.send({ embed: (typeof embed === `object` ? embed : {
+      title: embed,
+      color: 0x2f3136,
+      footer: {
+        text: message.member.displayName + `   --   ` + (processedTrigger.length > 50 ? processedTrigger.slice( 0, 50 ) + `...` : processedTrigger),
+        icon_url: message.author.displayAvatarURL(),
+      },
+      // timestamp: new Date(),
+    }) })
   }
 
 
