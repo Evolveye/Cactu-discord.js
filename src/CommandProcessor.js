@@ -1,72 +1,23 @@
-/** @typedef {import("discord.js").Channel} Channel */
-/** @typedef {import("discord.js").Collection<Snowflake,MessageAttachment} Attachments */
-/** @typedef {import("discord.js").MessageAttachment} MessageAttachment */
-/** @typedef {import("discord.js").MessageOptions} MessageOptions */
-/** @typedef {import("discord.js").MessageAdditions} MessageAdditions */
-/** @typedef {import("discord.js").PermissionOverwriteOptions} PermissionOverwriteOptions */
-/** @typedef {import("discord.js").Snowflake} Snowflake */
-
-/**
- * @typedef {Object} ProcessedGuild
- * @property {Snowflake} id
- * @property {string} name
- * @property {() => Channel[]} getChannels
- * @property {(predicate:(channel:Channel) => boolean) => Channel} getChannel
- * @property {() => ProcessedUser[]} getMembers
- * @property {(predicate:(member:ProcessedUser) => boolean) => ProcessedUser} getMember
- */
-
-/**
- * @typedef {Object} ProcessedChannel
- * @property {Snowflake} id
- * @property {string} name
- * @property {ProcessedGuild} guild
- * @property {(message:string) => void} send
- * @property {(message:MessageOptions|MessageAdditions) => Promise<ProcessedMessage>} sendEmbeded
- * @property {(userOrRoleId:Snowflake options:PermissionOverwriteOptions) => Promise<>} updatePermissions
- */
-
-/**
- * @typedef {Object} ProcessedUser
- * @property {Snowflake} id
- * @property {(id:Snowflake) => void} setRole
- * @property {string} displayName
- * @property {string} name
- * @property {string} mention
- */
-
-/**
- * @typedef {Object} ProcessedMessage
- * @property {string} content
- * @property {Snowflake} id
- * @property {() => voic} delete
- * @property {ProcessedUser} author
- * @property {ProcessedChannel} channel
- * @property {ProcessedGuild} guild
- * @property {Attachments} attachments
- */
-
-/**
- * @typedef {Object} Variables
- * @property {ProcessedMessage} message
- * @property {(message:string) => Promise<ProcessedMessage>} sendOk
- * @property {(message:string) => Promise<ProcessedMessage>} sendErr
- */
-
 /** @typedef {"@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} PermissionInstance */
 /** @typedef {"@everyone" | PermissionInstance | PermissionInstance[]} Permission */
 
 /**
- * @typedef {Object} CommandsObjectMetadata
- * @property {Permission} r Shortcut for `roles`. Names or IDs of roles which can use it. It can be any string
- * @property {Permission} roles Names or IDs of roles which can use it. It can be any string
+ * @typedef {Object} CommandsObjectMetadataInit
+ * @property {string|string[]} r Shortcut for `roles`. Names or IDs of roles which can use it. It can be any string
+ * @property {string|string[]} roles Names or IDs of roles which can use it. It can be any string
  * @property {string} d Shortcut for `description`
  * @property {string} description Just a description
  * @property {string} sd Shortcut for `shortDescription`. Short version of the description (a few words)
  * @property {string} shortDescription Short version of the description (a few words)
  */
+/**
+ * @typedef {Object} CommandsObjectMetadata
+ * @property {string[]} roles Names or IDs of roles which can use it. It can be any string
+ * @property {string} description Just a description
+ * @property {string} shortDescription Short version of the description (a few words)
+ */
 
-/** @typedef {Object<string,Scope|Function>} CommandsObjectData */
+/** @typedef {Object<string,Scope|Executor>} CommandsObjectData */
 
 /** @typedef {"badParam"|"details"|"scope"|"noParam"|"noPath"|"noPerms"|"noPrefix"|"invalidCmd"} CommandMetaType */
 /**
@@ -85,7 +36,7 @@
  */
 /**
  * @typedef {Object} CommandsField
- * @property {Role[]} roles
+ * @property {Permission} roles
  * @property {string} desc
  * @property {Parameter[]} params
  * @property {function|Commands} value
@@ -94,36 +45,54 @@
 
 
 
+/** @template TOwnMetaFields */
 class CommandElement {
-  /**
-   * @param {CommandsObjectMetadata} param0
-   */
-  constructor({ r, roles = r, d, description = d, sd, shortDescription = sd }) {
-    this.roles            = roles            || `@everyone`
-    this.description      = description      || shortDescription
-    this.shortDescription = shortDescription || this.description
+  /** @type {CommandsObjectMetadata & TOwnMetaFields} */
+  #data = null
+
+  /** @param {CommandsObjectMetadataInit & TOwnMetaFields} param0 */
+  constructor({ r, roles = r, d, description = d, sd, shortDescription = sd, ...rest }) {
+    this.#data = {
+      roles:            roles            || ``,
+      description:      description      || shortDescription,
+      shortDescription: shortDescription || description       || shortDescription,
+    }
+
+    Object.entries( rest ).forEach( ([ key, value ]) => this.#data[ key ] = value )
   }
 
+  get roles() {
+    return this.#data.roles
+  }
+  get description() {
+    return this.#data.description
+  }
+  get shortDescription() {
+    return this.#data.shortDescription
+  }
 
-  /**
-   * @param {CommandsObjectMetadata} param0
-   */
-  updateMeta({ r = ``, roles = r, d = ``, description = d, sd = ``, shortDescription = sd }) {
-    if (roles)            this.roles            = typeof roles === `string` ? roles : roles.slice( 0 )
-    if (description)      this.description      = description
-    if (shortDescription) this.shortDescription = shortDescription
+  /** @param {CommandsObjectMetadata} param0 */
+  updateMeta({ r = ``, roles = r, d = ``, description = d, sd = ``, shortDescription = sd, ...rest }) {
+    const data = this.#data
+
+    if (roles)            data.roles            = typeof roles === `string` ? roles : roles.slice( 0 )
+    if (description)      data.description      = description
+    if (shortDescription) data.shortDescription = shortDescription
+
+    Object.entries( rest ).forEach( ([ key, value ]) => key in data && (data[ key ] = value) )
   }
 
 
   getMeta() {
-    return {
-      roles: this.roles,
-      description: this.description,
-      shortDescription: this.shortDescription,
-    }
+    return { ...this.#data }
   }
 }
 
+/**
+ * @constructor
+ * @template TOwnMetaFields
+ * @extends {CommandElement<TOwnMetaFields>}
+ */
 export class Scope extends CommandElement {
   /**
    * @param {CommandsObjectMetadata} meta
@@ -235,13 +204,19 @@ export class Scope extends CommandElement {
   }
 }
 
+/**
+ * @constructor
+ * @template TVariables
+ * @template TOwnMetaFields
+ * @extends {CommandElement<TOwnMetaFields>}
+ */
 export class Executor extends CommandElement {
   safe = true
 
 
   /**
    * @param {CommandsObjectMetadata} meta
-   * @param {($:Variables, ...rest) => void|boolean|string} fn
+   * @param {($:TVariables, ...rest) => void|boolean|string} fn
    */
   constructor( meta, fn ) {
     super( meta )
@@ -623,7 +598,7 @@ export default class CommandProcessor {
 
   /**
    * @param {boolean} prefixSpace
-   * @param {(roles:Role[] botOperatorId:string) => boolean} checkPermissions
+   * @param {(roles:Permission botOperatorId:string) => boolean} checkPermissions
    * @param {(commandMeta:CommandState) => void} handleState
    */
   process( commandTrigger, checkPermissions ) {

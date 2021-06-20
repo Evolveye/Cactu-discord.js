@@ -4,30 +4,33 @@ import Discord from "discord.js"
 import VM2Package from "vm2"
 
 import GuildDataset from "./src/GuildDataset.js"
-import { Scope, Executor } from "./src/CommandProcessor.js"
 import Logger, { logUnderControl } from "./src/Logger.js"
+import { Scope as CommandScope, Executor as CommandExecutor } from "./src/CommandProcessor.js"
+
+import "./src/jsdoc.js"
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
-
-export const LoggerClass = Logger
 
 const __DIRNAME = import.meta.url.match( /(.*)\// )[ 1 ].slice( 8 )
 const __APPDIRNAME = fs.realpathSync( `.` )
 
-/** @typedef {import("discord.js").MessageReaction} MessageReaction */
-/** @typedef {import("discord.js").User} User */
 
-/** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
-/** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
+export const LoggerClass = Logger
 
-/** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
-/** @typedef {import("./GuildDataset.js").GuildModuleFilters} GuildModuleFilters */
-/** @typedef {import("./GuildDataset.js").GuildModuleRoles} GuildModuleRoles */
-/** @typedef {import("./GuildDataset.js").GuildModuleCommandsField} GuildModuleCommandsField */
-/** @typedef {import("./GuildDataset.js").GuildModuleCommands} GuildModuleCommands */
-/** @typedef {import("./GuildDataset.js").GuildModule} GuildModule */
-/** @typedef {import("./GuildDataset.js").UnsafeVariables} GuildModule */
-/** @typedef {import("./src/CommandProcessor.js").CommandState} CommandState */
+
+/**
+ * @constructor
+ * @extends {CommandScope<DiscordCommandElementMetaPart>}
+ */
+export class Scope extends CommandScope {}
+
+
+/**
+ * @constructor
+ * @extends {CommandExecutor<Variables,DiscordCommandElementMetaPart>}
+ */
+export class Executor extends CommandExecutor {}
+
 
 export default class CactuDiscordBot {
   discordClient = new Discord.Client(
@@ -104,18 +107,7 @@ export default class CactuDiscordBot {
   }
 
 
-  /**
-   * @typedef {Object} CactuDiscordBotConfig
-   * @property {string} token
-   * @property {string} [prefix]
-   * @property {boolean} [prefixSpace]
-   * @property {Object<string,*>} [publicVars]
-   * @property {{ok:string,warn:string,error:string}} [signs]
-   * @property {number} [logMaxLength]
-   */
-  /**
-   * @param {CactuDiscordBotConfig} config
-   */
+  /** @param {CactuDiscordBotConfig} config */
   constructor( config ) {
     if (`prefix`          in config) this.prefix          = config.prefix
     if (`prefixSpace`     in config) this.prefixSpace     = config.prefixSpace
@@ -195,11 +187,13 @@ export default class CactuDiscordBot {
 
 
   /**
-   * @param {GuildModuleRoles} roleNames
+   * @param {Permission} roleNames
    * @param {Discord.Snowflake} botOperatorId
    * @param {Discord.Message} param2
    */
   checkPermissions( roleNames, botOperatorId, { author, member, guild } ) {
+    if (roleNames == `@everyone`) return true
+
     const memberRoles = member.roles.cache
 
     if (author.bot) return roleNames.includes( `@bot` )
@@ -500,7 +494,7 @@ export default class CactuDiscordBot {
   onMessage = message => {
     const { guild, channel, member, author, content } = message
 
-    if (!content || author.bot) return
+    if (!content) return
 
     const state = this.getGguildDatasets( message )?.processMessage(
       content,
