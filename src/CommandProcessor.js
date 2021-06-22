@@ -258,7 +258,7 @@ export class Executor extends CommandElement {
 
     for (let paramData;  (paramData = reg.params.exec( paramsStr ));) {
       const { name, value } = paramData.groups
-      let mask = /\S+/
+      let mask = /[\s\S]+/
       let optional = false
       let rest = false
 
@@ -294,7 +294,7 @@ class Command {
   #prefix
   #prefixSpace
   #parameters = []
-  #parametersData = { fail:{ param:null, mask:null, optional:false, rest:false }, string:`` }
+  #parametersData = { fail:{ name:null, optional:false, rest:false, param:null, mask:null }, string:`` }
   #parts = { previous:``, current:``, rest:`` }
   #deeperPermittedToSeeCommandElements = []
 
@@ -357,11 +357,12 @@ class Command {
   #partParameters({ name, mask, optional, rest }) {
     const parts = this.#parametersData
     const paramsString = parts.string
-    const setFail = (param, mask) => {
+    const setFail = (mask, param = null) => {
       parts.fail.param = param
-      parts.fail.mask = mask
+      parts.fail.name = name
       parts.fail.optional = optional
       parts.fail.rest = rest
+      parts.fail.mask = mask
     }
 
     if (!mask.test( paramsString )) {
@@ -371,10 +372,10 @@ class Command {
       }
 
       if (paramsString) {
-        setFail( paramsString.split( ` ` )[ 0 ], mask )
+        setFail( mask, paramsString.split( ` ` )[ 0 ] )
         return this.#setState( `badParam` )
       } else {
-        setFail( name, mask )
+        setFail( mask )
         return this.#setState( `noParam` )
       }
     }

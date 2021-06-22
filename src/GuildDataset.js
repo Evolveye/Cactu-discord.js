@@ -15,29 +15,30 @@ import https from "https"
 /** @typedef {import("./CommandProcessor.js").Role} Role */
 
 /** ConfigTranslation
- * @typedef {Object} ConfigTranslation
- * @property {string} [err_badParam]
- * @property {string} [err_noCommand]
- * @property {string} [err_noParam]
- * @property {string} [err_noPath]
- * @property {string} [err_noPerms]
- * @property {string} [err_noPrefix]
- * @property {string} [err_invalidCmd]
- * @property {string} [err_error]
- * @property {string} [err_attachFile]
- * @property {string} [help_title]
- * @property {string} [help_showMasks]
- * @property {string} [help_params]
- * @property {string} [help_masks]
- * @property {string} [help_cmds]
- * @property {string} [help_scopes]
- * @property {string} [footer_yourCmds]
- * @property {string} [footer_cmdInfo]
- * @property {string} [system_loadSucc]
- * @property {string} [system_loadFail]
+ * @typedef {Object} GuildTranslation
+ * @property {string} [err_noParam] `Required parameter was not provided!`,
+ * @property {string} [err_badParam] `Not valid parameter!`,
+ * @property {string} [err_noPath] `Command does not exists!`,
+ * @property {string} [err_noPerms] `You don't have permissions to use that!`,
+ * @property {string} [err_tooManyParams] `Too many parameteres!`,
+ * @property {string} [err_tooManyParamsUnnecessaryParam] `Unnecessary param`,
+ * @property {string} [help_title] `Help for a syntax of the specified command`,
+ * @property {string} [help_showDescription] `Send **??** as first parameter of command to show description and params syntax`,
+ * @property {string} [help_optionalParam] `The __param**?**__ means parameter is optional`,
+ * @property {string} [help_restParam] `The __**...**param__ means parameter can be any string`,
+ * @property {string} [footer_yourCommands] `These are your personalized commands`,
+ * @property {string} [label_scopes] `Scopes`,
+ * @property {string} [label_commands] `Commands`,
+ * @property {string} [label_providedValue] `Provided value`,
+ * @property {string} [label_parameter] `Parameter`,
+ * @property {string} [label_optional] `Optional`,
+ * @property {string} [label_rest] `Rest`,
+ * @property {string} [label_mask] `Mask`,
+ * @property {string} [label_yes] `Yes`,
+ * @property {string} [label_no] `No`,
  */
 
-/** @typedef {{regExp:RegExp,func:function}[][]} ConfigFilters */
+/** @typedef {{regExp:RegExp,func:function}[][]} GuildFilters */
 
 /** ConfigSupportedEvents
  * @typedef {Object} ConfigSupportedEvents For details look at Events on https://discord.js.org/#/docs/main/stable/class/Client
@@ -164,6 +165,8 @@ export default class GuildDataset {
     const minified = { commands:{} }
     this.commands = commands
 
+    Object.assign( this.translation, translation )
+
     if (prefix) this.commandsProcessor.setPrefix( prefix )
     if (prefixSpace) this.commandsProcessor.setPrefixSpace( prefixSpace )
 
@@ -227,25 +230,26 @@ export default class GuildDataset {
     this.minifiedCommands = {}
     this.events = {}
     this.translation = {
+      err_noParam: `Required parameter was not provided!`,
       err_badParam: `Not valid parameter!`,
-      err_noCommand: `This is scope, not a command!`,
-      err_noParam: `Required parameters weren't passed!`,
-      err_noPath: `Command doesn't exists`,
+      err_noPath: `Command does not exists!`,
       err_noPerms: `You don't have permissions to use that!`,
-      err_noPrefix: `You didn't pass the prefix`,
-      err_invalidCmd: `That command have invalid code!`,
-      err_error: `Error!`,
-      err_attachFile: `You should attach module file!`,
+      err_tooManyParams: `Too many parameteres!`,
+      err_tooManyParamsUnnecessaryParam: `Unnecessary param`,
       help_title: `Help for a syntax of the specified command`,
-      help_showMasks: `Send **??** as first parameter of command to show description and params syntax`,
-      help_params: `The X**?** means optional parameter and the **...**X means any string`,
-      help_masks: `If you don't know what is going on, you can ask somebody from server stuff, or you can check "masks" on`,
-      help_cmds: `Commands`,
-      help_scopes: `Scopes`,
-      footer_yourCmds: `These are your personalized commands after sending:`,
-      footer_cmdInfo: `Commands information`,
-      system_loadSucc: `File has been loaded`,
-      system_loadFail: `Wrong file data!`,
+      help_showDescription: `Send **??** as first command parameter to show its description (e.g. __prefix command ??__)`,
+      help_optionalParam: `The __param**?**__ means parameter is optional`,
+      help_restParam: `The __**...**param__ means parameter can be any string`,
+      footer_yourCommands: `These are your personalized commands`,
+      label_scopes: `Scopes`,
+      label_commands: `Commands`,
+      label_providedValue: `Provided value`,
+      label_parameter: `Parameter`,
+      label_optional: `Optional`,
+      label_rest: `Rest`,
+      label_mask: `Mask`,
+      label_yes: `Yes`,
+      label_no: `No`,
     }
 
     this.loadConfig( this.getPredefinedCommands() )

@@ -357,18 +357,28 @@ export default class CactuDiscordBot {
 
   /**
    * @param {CommandState} state
+   * @param {GuildDataset} guildDataset
    * @param {Discord.Message} message
    */
-  performResponse( state, message ) {
-    /** @param {string} str */
+  performResponse( state, guildDataset, message ) {
+    const getParamStr = ({ name, rest, optional }) => `${rest ? `...` : ``}${name}${optional ? `?` : ``}`
     const processTooLongString = str => str.length > 20 ? str.slice( 0, 20 ) + `...` : str
-    /** @param {string} str */
     const escapeString = str => str.replace( /`|_|\*|\|\|/g, `` )
-    /** @param {string} str */
     const processUserString = str => escapeString( processTooLongString( str ) )
 
+    const t9n = guildDataset.translation
     const { trigger, type, value } = state
-    let embed = {}
+    const processedTrigger = trigger.split( / +/ ).map( processUserString ).join( ` ` )
+
+
+    let embed = {
+      color: 0x2f3136,
+      footer: {
+        text: message.member.displayName + `   --   ` + (processedTrigger.length > 50 ? processedTrigger.slice( 0, 50 ) + `...` : processedTrigger),
+        icon_url: message.author.displayAvatarURL(),
+      },
+      // timestamp: new Date(),
+    }
 
     switch (type) {
       case `noPrefix`: return
@@ -380,58 +390,80 @@ export default class CactuDiscordBot {
 
         const cmds = value.filter( ({ type }) => type == `executor` )
           .map( ({ name, meta }) => {
-            const params = meta.params.map( ({ name, rest, optional }) => `${rest ? `...` : ``}${name}${optional ? `?` : ``}` )
+            const params = meta.params.map( getParamStr )
             const sygnature = `${name} ${params.join( ` ` )}`
 
             return { name:sygnature, value:(meta.shortDescription || `- - -`) }
           } )
 
         embed = {
+          color: 0x5a9f32,
+          title: t9n.help_title,
+          description: `
+            ${t9n.help_showDescription}
+
+            ${t9n.help_optionalParam}
+            ${t9n.help_restParam}
+          `,
           fields: [
-            { name:`\u200b`, value:`Zestawy poleceń:` },
+            { name:`\u200b`, value:`${t9n.label_scopes}:` },
             ...scopes,
-            { name:`\u200b`, value:`Polecenia:` },
+            { name:`\u200b`, value:`${t9n.label_commands}:` },
             ...cmds,
           ],
+          footer: {
+            text: message.member.displayName + `   --   ` + t9n.footer_yourCommands,
+            icon_url: message.author.displayAvatarURL(),
+          },
         }
         break
       }
 
 
       case `noParam`: {
-        const { param, mask, optional, rest } = value
-        embed = `**No param**: ${param}\n**Optional**: ${optional},   **rest**: ${rest},   **mask**: ${mask}`
+        const { name, optional, rest, mask } = value
+        embed.title = t9n.err_noParam
+        embed.fields = [
+          { name:t9n.label_parameter, value:getParamStr({ name, optional, rest }), inline:true },
+          { name:t9n.label_mask, value:`\`${mask}\``, inline:true },
+        ]
         break
       }
 
 
       case `badParam`: {
-        const { param, mask, optional, rest } = value
-        embed = `**Bad param**: ${processUserString( param )}\n**Optional**: ${optional},   **rest**: ${rest},   **mask**: ${mask}`
+        const { name, optional, rest, param, mask } = value
+        embed.title = t9n.err_badParam
+        embed.fields = [
+          { name:t9n.label_parameter, value:getParamStr({ name, optional, rest }), inline:true },
+          { name:t9n.label_providedValue, value:param, inline:true },
+          { name:t9n.label_mask, value:`\`${mask}\``, inline:true },
+        ]
         break
       }
 
 
       case `noPath`: {
-        embed = `**No path \`${processUserString( value )}\`**`
+        embed.title = `**${t9n.err_noPath} \`${processUserString( value )}\`**`
         break
       }
 
 
       case `noPerms`: {
-        embed = `**No access permissions to \`${value}\`**`
+        embed.title = `**${t9n.err_noPerms} \`${value}\`**`
         break
       }
 
 
       case `tooManyParams`: {
-        embed = `**Too many parameters**\nUnnecessary param: \`${processUserString( value )}\``
+        embed.title = `**${t9n.err_tooManyParams}**`
+        embed.description = `${t9n.err_tooManyParamsUnnecessaryParam}: \`${processUserString( value )}\``
         break
       }
 
 
       case `details`: {
-        embed = `${value.command} --- ${value.description}`
+        embed.title = `${value.command} --- ${value.description}`
         break
       }
 
@@ -442,24 +474,14 @@ export default class CactuDiscordBot {
 
 
       default:
-        embed = `Unknown command state`
+        embed.title = `Unknown command state`
         break
     }
 
     if (!embed) return
 
-    const processedTrigger = trigger.split( / +/ ).map( processUserString ).join( ` ` )
-
     message.delete()
-    message.channel.send({ embed: (typeof embed === `object` ? embed : {
-      title: embed,
-      color: 0x2f3136,
-      footer: {
-        text: message.member.displayName + `   --   ` + (processedTrigger.length > 50 ? processedTrigger.slice( 0, 50 ) + `...` : processedTrigger),
-        icon_url: message.author.displayAvatarURL(),
-      },
-      // timestamp: new Date(),
-    }) })
+    message.channel.send({ embed })
   }
 
 
@@ -494,7 +516,8 @@ export default class CactuDiscordBot {
 
     if (!content) return
 
-    const state = this.getGguildDatasets( message )?.processMessage(
+    const guildDataset = this.getGguildDatasets( message )
+    const state = guildDataset?.processMessage(
       content,
       (roles, botOperatorRoleId) => this.checkPermissions( roles, botOperatorRoleId, message ),
     )
@@ -508,7 +531,7 @@ export default class CactuDiscordBot {
       logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, content )
     }
 
-    this.performResponse( state, message )
+    this.performResponse( state, guildDataset, message )
   }
 
 
