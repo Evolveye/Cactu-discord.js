@@ -20,14 +20,14 @@ export const LoggerClass = Logger
 
 /**
  * @constructor
- * @extends {CommandScope<DiscordCommandElementMetaPart>}
+ * @extends {CommandScope<DiscordCommandElementMetaPart,Permission,Variables>}
  */
 export class Scope extends CommandScope {}
 
 
 /**
  * @constructor
- * @extends {CommandExecutor<Variables,DiscordCommandElementMetaPart>}
+ * @extends {CommandExecutor<DiscordCommandElementMetaPart,Permission,Variables>}
  */
 export class Executor extends CommandExecutor {}
 
@@ -187,23 +187,35 @@ export default class CactuDiscordBot {
 
 
   /**
-   * @param {Permission} roleNames
-   * @param {Discord.Snowflake} botOperatorId
+   * @param {Permission[]} roles
+   * @param {string} botOperatorRoleName
    * @param {Discord.Message} param2
    */
-  checkPermissions( roleNames, botOperatorId, { author, member, guild } ) {
-    if (roleNames == `@everyone`) return true
+  checkPermissions( roles, botOperatorRoleName, { author, member, guild } ) {
+    const dm = roles.includes( `@dm` )
+
+    if (!guild) return dm
+    if (author.bot) return roles.includes( `@bot` )
+    if (!roles.length || roles.includes( `@everyone` )) return true
+    if ((author.id === this.botOwnerId || author.id === guild.ownerID) && (!dm || roles.includes( `@server_admin` ))) return true
 
     const memberRoles = member.roles.cache
 
-    if (author.bot) return roleNames.includes( `@bot` )
-    if (author.id === guild.ownerID || memberRoles.has( botOperatorId )) return true
+    if (memberRoles.find( ({ name }) => name === botOperatorRoleName )) return true
 
-    for (const roleName of roleNames) {
-      const roleObject = guild.roles.cache.find( r => r.name === roleName )
-      const havingARole = roleObject ? memberRoles.has( roleObject.id ) : false
+    for (const role of roles) {
+      if (role.charAt( 0 ) === `@`) {
+        const roleName = role.slice( 1 )
 
-      if (havingARole) return true
+        if (/^\d+$/.test( roleName )) {
+          if (author.id == roleName) return true
+        }
+      } else {
+        const roleObject = guild.roles.cache.find( r => r.name === role )
+        const havingARole = roleObject ? memberRoles.has( roleObject.id ) : false
+
+        if (havingARole) return true
+      }
     }
   }
 

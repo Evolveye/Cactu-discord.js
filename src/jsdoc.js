@@ -1,3 +1,11 @@
+/*\
+ *
+ *  IMPORTED TYPES
+ *
+\*/
+
+
+
 /** @typedef {import("discord.js").Channel} Channel */
 /** @typedef {import("discord.js").Collection<Snowflake,MessageAttachment} Attachments */
 /** @typedef {import("discord.js").MessageAttachment} MessageAttachment */
@@ -7,6 +15,26 @@
 /** @typedef {import("discord.js").Snowflake} Snowflake */
 /** @typedef {import("discord.js").MessageReaction} MessageReaction */
 /** @typedef {import("discord.js").User} User */
+
+/** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
+/** @typedef {import("./GuildDataset.js").GuildModuleFilters} GuildModuleFilters */
+/** @typedef {import("./GuildDataset.js").GuildModuleRoles} GuildModuleRoles */
+/** @typedef {import("./GuildDataset.js").GuildModuleCommandsField} GuildModuleCommandsField */
+/** @typedef {import("./GuildDataset.js").GuildModuleCommands} GuildModuleCommands */
+/** @typedef {import("./GuildDataset.js").GuildModule} GuildModule */
+/** @typedef {import("./GuildDataset.js").UnsafeVariables} GuildModule */
+/** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
+/** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
+/** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
+
+
+/*\
+ *
+ *  EXECUTOR VARIABLES
+ *
+\*/
+
+
 
 /**
  * @typedef {Object} ProcessedGuild
@@ -55,23 +83,21 @@
  * @property {(message:string) => Promise<ProcessedMessage>} sendErr
  */
 
-/** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
-/** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
 
-/** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
-/** @typedef {import("./GuildDataset.js").GuildModuleFilters} GuildModuleFilters */
-/** @typedef {import("./GuildDataset.js").GuildModuleRoles} GuildModuleRoles */
-/** @typedef {import("./GuildDataset.js").GuildModuleCommandsField} GuildModuleCommandsField */
-/** @typedef {import("./GuildDataset.js").GuildModuleCommands} GuildModuleCommands */
-/** @typedef {import("./GuildDataset.js").GuildModule} GuildModule */
-/** @typedef {import("./GuildDataset.js").UnsafeVariables} GuildModule */
-/** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
+
+/*\
+ *
+ *  REST
+ *
+\*/
+
+
+
 
 /** @typedef {"@everyone" | "@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} Permission */
 
 /**
  * @typedef {object} DiscordCommandElementMetaPart
- * @property {Permission} roles
  */
 
 /** @typedef {CommandState & DiscordCommandElementMetaPart} DiscordCommandState */

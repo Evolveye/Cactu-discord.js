@@ -1,25 +1,5 @@
-/** @typedef {"@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} PermissionInstance */
-/** @typedef {"@everyone" | PermissionInstance | PermissionInstance[]} Permission */
-
-/**
- * @typedef {Object} CommandsObjectMetadataInit
- * @property {string|string[]} r Shortcut for `roles`. Names or IDs of roles which can use it. It can be any string
- * @property {string|string[]} roles Names or IDs of roles which can use it. It can be any string
- * @property {string} d Shortcut for `description`
- * @property {string} description Just a description
- * @property {string} sd Shortcut for `shortDescription`. Short version of the description (a few words)
- * @property {string} shortDescription Short version of the description (a few words)
- */
-/**
- * @typedef {Object} CommandsObjectMetadata
- * @property {string[]} roles Names or IDs of roles which can use it. It can be any string
- * @property {string} description Just a description
- * @property {string} shortDescription Short version of the description (a few words)
- */
-
-/** @typedef {Object<string,Scope|Executor>} CommandsObjectData */
-
 /** @typedef {"noPrefix"|"noPath"|"scope"|"noParam"|"badParam"|"noPerms"|"tooManyParams"|"readyToExecute"|"details"} CommandMetaType */
+
 
 /**
  * @typedef {Object} CommandState
@@ -29,7 +9,8 @@
  * @property {RegExp|null} paramMask
 */
 
-/** @typedef {("@dm"|"@owner"|"@bot"|"@everyone")[]|string[]} Role */
+
+
 /**
  * @typedef {Object} Parameter
  * @property {string} param
@@ -47,21 +28,34 @@
 
 
 
-/** @template TOwnMetaFields */
+/**
+ * @template TRole
+ * @typedef {Object} CommandsObjectMetadataInit
+ * @property {TRole|TRole[]} r Shortcut for `roles`. Names or IDs of roles which can use it. It can be any string
+ * @property {TRole|TRole[]} roles Names or IDs of roles which can use it. It can be any string
+ * @property {string} d Shortcut for `description`
+ * @property {string} description Just a description
+ * @property {string} sd Shortcut for `shortDescription`. Short version of the description (a few words)
+ * @property {string} shortDescription Short version of the description (a few words)
+ */
+/**
+ * @template TRole
+ * @typedef {Object} CommandsObjectMetadata
+ * @property {TRole[]} roles Names or IDs of roles which can use it. It can be any string
+ * @property {string} description Just a description
+ * @property {string} shortDescription Short version of the description (a few words)
+ */
+
+
+
+/**
+ * @template TOwnMetaFields
+ * @template TRole
+ */
 class CommandElement {
-  /** @type {CommandsObjectMetadata & TOwnMetaFields} */
+  /** @type {CommandsObjectMetadata<TRole> & TOwnMetaFields} */
   #data = null
 
-  /** @param {CommandsObjectMetadataInit & TOwnMetaFields} param0 */
-  constructor({ r, roles = r, d, description = d, sd, shortDescription = sd, ...rest }) {
-    this.#data = {
-      roles:            roles            || ``,
-      description:      description      || shortDescription,
-      shortDescription: shortDescription || description       || shortDescription,
-    }
-
-    Object.entries( rest ).forEach( ([ key, value ]) => this.#data[ key ] = value )
-  }
 
   get roles() {
     return this.#data.roles
@@ -73,7 +67,20 @@ class CommandElement {
     return this.#data.shortDescription
   }
 
-  /** @param {CommandsObjectMetadata} param0 */
+
+  /** @param {CommandsObjectMetadataInit<TRole> & TOwnMetaFields} param0 */
+  constructor({ r, roles = r, d, description = d, sd, shortDescription = sd, ...rest }) {
+    this.#data = {
+      roles:            roles ? (Array.isArray( roles ) ? roles : [ roles ]) : [],
+      description:      description      || shortDescription,
+      shortDescription: shortDescription || description       || shortDescription,
+    }
+
+    Object.entries( rest ).forEach( ([ key, value ]) => this.#data[ key ] = value )
+  }
+
+
+  /** @param {CommandsObjectMetadata<TRole>} param0 */
   updateMeta({ r = ``, roles = r, d = ``, description = d, sd = ``, shortDescription = sd, ...rest }) {
     const data = this.#data
 
@@ -90,15 +97,19 @@ class CommandElement {
   }
 }
 
+
+
 /**
  * @constructor
  * @template TOwnMetaFields
- * @extends {CommandElement<TOwnMetaFields>}
+ * @template TRole
+ * @template TVariables
+ * @extends {CommandElement<TOwnMetaFields,TRole>}
  */
 export class Scope extends CommandElement {
   /**
-   * @param {CommandsObjectMetadata} meta
-   * @param {CommandsObjectData} data
+   * @param {CommandsObjectMetadataInit<TRole>} meta
+   * @param {Object<string,Scope<TOwnMetaFields,TRole,TVariables>|Executor<TOwnMetaFields,TRole,TVariables>>} data
    */
   constructor( meta, data ) {
     super( meta )
@@ -206,18 +217,21 @@ export class Scope extends CommandElement {
   }
 }
 
+
+
 /**
  * @constructor
- * @template TVariables
  * @template TOwnMetaFields
- * @extends {CommandElement<TOwnMetaFields>}
+ * @template TRole
+ * @template TVariables
+ * @extends {CommandElement<TOwnMetaFields,TRole>}
  */
 export class Executor extends CommandElement {
   safe = true
 
 
   /**
-   * @param {CommandsObjectMetadata} meta
+   * @param {CommandsObjectMetadataInit<TRole>} meta
    * @param {($:TVariables, ...rest) => void|boolean|string} fn
    */
   constructor( meta, fn ) {
@@ -236,9 +250,7 @@ export class Executor extends CommandElement {
   }
 
 
-  /**
-   * @param {Command} command
-   */
+  /** @param {Command} command */
   static extractCommandData( command ) {
     const reg = {
       isItArrowFunction: /(?<params>[\s\S]*?) *=>/,
@@ -303,7 +315,6 @@ class Command {
 
   /** @type {CommandState} */
   #state = { trigger:``, type:null, value:null, paramMask:null }
-
 
 
   get trigger() {
@@ -456,17 +467,10 @@ class Command {
 
   /**
    * @param {Scope} scope
-   * @param {function} checkPermissions
+   * @param {(roles:string[]) => Boolean} checkPermissions
    */
   checkAccessToScope( scope, checkPermissions ) {
     if (this.state) return this.state
-
-    /** @param {Permission} roles */
-    const checkAccess = roles => {
-      if (roles.includes( `@everyone` )) return true
-
-      return checkPermissions( roles )
-    }
 
     let deeperPermittedCommandElement = scope
 
@@ -479,7 +483,7 @@ class Command {
 
       const subScope = deeperPermittedCommandElement.structure[ currentPart ]
 
-      if (!checkAccess( subScope.roles )) return this.#setState( `noPerms` )
+      if (!checkPermissions( subScope.roles )) return this.#setState( `noPerms` )
 
       deeperPermittedCommandElement = subScope
 
@@ -496,7 +500,7 @@ class Command {
     Object.keys( structure ).forEach( key => {
       const cmdElement = structure[ key ]
 
-      if (!checkAccess( cmdElement.roles )) return
+      if (!checkPermissions( cmdElement.roles )) return
 
       const meta = cmdElement.getMeta()
 
@@ -553,6 +557,8 @@ class Command {
     }
   }
 }
+
+
 
 export default class CommandProcessor {
   /** @type {Commands} */

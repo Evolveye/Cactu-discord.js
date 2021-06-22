@@ -154,16 +154,18 @@ export default class GuildDataset {
     if (typeof config !== `object`) return null
 
     const {
-      translation = {},
-      events = {},
-      commands,
-      filters = [],
-      botOperatorId = ``,
       prefix,
       prefixSpace,
+      botOperatorRoleName,
+      translation = {},
+      events = {},
+      filters = [],
+      commands,
     } = config
     const minified = { commands:{} }
     this.commands = commands
+
+    this.botOperatorRoleName = botOperatorRoleName
 
     Object.assign( this.translation, translation )
 
@@ -300,7 +302,7 @@ export default class GuildDataset {
    * @param {{ filters:boolean commands:boolean }} param3
    */
   processMessage( message, checkPermissions, handleState, { filters = true, commands = true } = {} ) {
-    return this.commandsProcessor.process( message, checkPermissions )
+    return this.commandsProcessor.process( message, roles => checkPermissions( roles, this.botOperatorRoleName ) )
     // const { guild, content } = message
     // const username = message.member ? message.member.displayName : message.author.username
     // const log = (type, log = content) => this.logger( guild.name, message.channel.name, type, username, log )
