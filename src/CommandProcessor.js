@@ -232,7 +232,7 @@ export class Executor extends CommandElement {
 
   /**
    * @param {CommandsObjectMetadataInit<TRole>} meta
-   * @param {($:TVariables, ...rest) => void|boolean|string} fn
+   * @param {($:TVariables, ...rest) => void|boolean|string} fn ... | !!! | [optional] number | [optional] word [strict] | [optional] boolean
    */
   constructor( meta, fn ) {
     super( meta )
@@ -270,6 +270,7 @@ export class Executor extends CommandElement {
 
     for (let paramData;  (paramData = reg.params.exec( paramsStr ));) {
       const { name, value } = paramData.groups
+      let maskName = null
       let mask = /[\s\S]+/
       let optional = false
       let rest = false
@@ -278,21 +279,48 @@ export class Executor extends CommandElement {
         if (reg.regExp.test( value )) {
           const regExp = reg.regExp.exec( value )?.groups ?? {}
 
-          if (regExp.mask) mask = new RegExp( `^${regExp.mask}`, `s` )
+          if (regExp.mask) mask = new RegExp( `^${regExp.mask}\b`, `s` )
           if (/g/.test( regExp.flags )) optional = true
         } else if (/^(`|'|").*(`|'|")$/.test( value )) {
           const stringValue = /^(?:`|'|")(.*)(?:`|'|")$/.exec( value )[ 1 ]
 
+          maskName = stringValue
+
           switch (stringValue) {
             case `...`: optional = true
             case `!!!`:
+              maskName = `string`
               rest = true
+              break
+
+            case `optional number`:
+              optional = true
+            case `number`:
+              mask = /^-?\d+(?:[\d_]*\d)?(?:\.\d+(?:[\d_]*\d)?)?(?:e\d+(?:[\d_]*\d)?)?\b/
+              break
+
+            case `optional word`:
+              optional = true
+            case `word`:
+              mask = /^[\w-]+\b/
+              break
+
+            case `optional word strict`:
+              optional = true
+            case `word strict`:
+              mask = /^[a-z_-]+\b/i
+              break
+
+            case `optional boolean`:
+              optional = true
+            case `boolean`:
+              mask = /^(1|0|true|false|t|f|y|n)\b/i
               break
           }
         }
       }
 
-      params.push({ name, mask, optional, rest })
+      params.push({ name, mask, maskName, optional, rest })
     }
 
     return { params, code }
@@ -365,7 +393,7 @@ export class Command {
   }
 
 
-  #partParameters({ name, mask, optional, rest }) {
+  #partParameters({ name, mask, maskName, optional, rest }) {
     const parts = this.#parametersData
     const paramsString = parts.string
     const setFail = (mask, param = null) => {
@@ -374,11 +402,12 @@ export class Command {
       parts.fail.optional = optional
       parts.fail.rest = rest
       parts.fail.mask = mask
+      parts.fail.maskName = maskName
     }
 
     if (!mask.test( paramsString )) {
       if (optional) {
-        this.#paramAdder()
+        this.#paramAdder( null )
         return true
       }
 
@@ -393,10 +422,9 @@ export class Command {
 
     const paramValue = mask.exec( paramsString )[ 0 ] ?? null
 
-    if (paramValue) {
-      parts.string = paramsString.substr( paramValue.length ).trim()
-      this.#paramAdder( paramValue, mask )
-    }
+    if (paramValue) parts.string = paramsString.substr( paramValue.length ).trim()
+
+    this.#paramAdder( paramValue )
   }
 
 
@@ -555,6 +583,7 @@ export class Command {
     if (this.state.type != `readyToExecute`) return
 
     try {
+      console.log( this.#parameters )
       this.#foundExecutor.trigger( ...this.#parameters )
     } catch (err) {
       // this.setError( `invalidCmd`, err )

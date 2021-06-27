@@ -408,7 +408,6 @@ export default class CactuDiscordBot {
     const { trigger, type, value } = state
     const processedTrigger = trigger.split( / +/ ).map( processUserString ).join( ` ` )
 
-
     let embed = {
       color: 0x2f3136,
       footer: {
@@ -458,23 +457,23 @@ export default class CactuDiscordBot {
 
 
       case `noParam`: {
-        const { name, optional, rest, mask } = value
+        const { name, optional, rest, mask, maskName } = value
         embed.title = t9n.err_noParam
         embed.fields = [
           { name:t9n.label_parameter, value:getParamStr({ name, optional, rest }), inline:true },
-          { name:t9n.label_mask, value:`\`${mask}\``, inline:true },
+          { name:t9n.label_mask, value:`\`${maskName ?? mask}\``, inline:true },
         ]
         break
       }
 
 
       case `badParam`: {
-        const { name, optional, rest, param, mask } = value
+        const { name, optional, rest, param, mask, maskName } = value
         embed.title = t9n.err_badParam
         embed.fields = [
           { name:t9n.label_parameter, value:getParamStr({ name, optional, rest }), inline:true },
           { name:t9n.label_providedValue, value:param, inline:true },
-          { name:t9n.label_mask, value:`\`${mask}\``, inline:true },
+          { name:t9n.label_mask, value:`\`${maskName ?? mask}\``, inline:true },
         ]
         break
       }
