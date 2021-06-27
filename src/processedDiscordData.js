@@ -1,4 +1,15 @@
-import "./jsdoc.js"
+/** @typedef {import("discord.js").Guild} Guild */
+/** @typedef {import("discord.js").ImageURLOptions} ImageURLOptions */
+/** @typedef {import("discord.js").GuildChannel} GuildChannel */
+/** @typedef {import("discord.js").Message} Message */
+/** @typedef {import("discord.js").Snowflake} Snowflake */
+/** @typedef {import("discord.js").Collection<Snowflake,MessageAttachment} Attachments */
+/** @typedef {import("discord.js").MessageAttachment} MessageAttachment */
+/** @typedef {import("discord.js").MessageOptions} MessageOptions */
+/** @typedef {import("discord.js").MessageAdditions} MessageAdditions */
+/** @typedef {import("discord.js").PermissionOverwriteOptions} PermissionOverwriteOptions */
+/** @typedef {import("discord.js").User} User */
+/** @typedef {import("discord.js").GuildMember} GuildMember */
 
 
 
@@ -82,10 +93,10 @@ export class ProcessedUser {
   }
 
 
-  /** @param {User|GuildMember} userOrMember */
-  constructor( userOrMember ) {
-    this.#user = `username` in userOrMember ? userOrMember : userOrMember.user
-    this.#member = `username` in userOrMember ? null : userOrMember
+  /** @param {GuildMember|User} memberOrUser */
+  constructor( memberOrUser ) {
+    this.#user = `username` in memberOrUser ? memberOrUser : memberOrUser.user
+    this.#member = `username` in memberOrUser ? null : memberOrUser
 
     const user = this.#user
     const member = this.#member

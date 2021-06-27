@@ -8,7 +8,35 @@ import Logger, { logUnderControl } from "./src/Logger.js"
 import { Scope as CommandScope, Executor as CommandExecutor } from "./src/CommandProcessor.js"
 import { ProcessedMessage } from "./src/processedDiscordData.js"
 
-import "./src/jsdoc.js"
+/** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
+/** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
+/** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
+/** @typedef {import("./CommandProcessor.js").Command} Command */
+
+/** @typedef {"@everyone" | "@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} Permission */
+
+/** @typedef {{}} DiscordCommandElementMetaPart */
+
+/** @typedef {CommandState & DiscordCommandElementMetaPart} DiscordCommandState */
+
+/**
+ * @typedef {object} Variables
+ * @property {ProcessedMessage} message
+ * @property {Discord.Message} nativeMessage
+ * @property {(message:string) => Promise<ProcessedMessage>} response
+ * @property {(message:string) => Promise<ProcessedMessage>} sendOk
+ * @property {(message:string) => Promise<ProcessedMessage>} sendErr
+ */
+
+/**
+ * @typedef {Object} CactuDiscordBotConfig
+ * @property {string} token
+ * @property {string} [prefix]
+ * @property {boolean} [prefixSpace]
+ * @property {Object<string,*>} [publicVars]
+ * @property {{ok:string,warn:string,error:string}} [signs]
+ * @property {number} [logMaxLength]
+ */
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
@@ -93,14 +121,11 @@ export default class CactuDiscordBot {
     ], { separated:true, separateBreakBlock:false } ),
   }
 
-  prefix = `cc!`
-  prefixSpace = true
   events = {}
-  signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
   supportedEvents = {
     /**
-     * @param {MessageReaction} reaction
-     * @param {User} user
+     * @param {Discord.MessageReaction} reaction
+     * @param {Discord.User} user
      */
     messageReactionAdd( reaction, user ) {
 
@@ -507,19 +532,19 @@ export default class CactuDiscordBot {
       message: new ProcessedMessage( message ),
       nativeMessage: message,
 
-      /** @param {string} message */
-      response( message ) {
-        message.channel.send( message )
+      /** @param {string} msg */
+      response( msg ) {
+        return message.channel.send( msg ).then( m => new ProcessedMessage( m ) )
       },
 
-      /** @param {string} message */
-      sendOk( message ) {
-        this.response( `${guildDataset.signs.ok}  ${message}` )
+      /** @param {string} msg */
+      sendOk( msg ) {
+        return this.response( `${guildDataset.signs.ok}  ${msg}` )
       },
 
-      /** @param {string} message */
-      sendErr( message ) {
-        this.response( `${guildDataset.signs.error}  ${message}` )
+      /** @param {string} msg */
+      sendErr( msg ) {
+        return this.response( `${guildDataset.signs.error}  ${msg}` )
       },
     }
 
