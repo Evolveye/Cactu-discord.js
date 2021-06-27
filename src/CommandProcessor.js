@@ -507,7 +507,7 @@ class Command {
       if (cmdElement instanceof Executor) meta.params = cmdElement.params
 
       elements.push({
-        name: `${this.#parts.previous} ${key}`,
+        name: key,
         meta,
         type: cmdElement instanceof Scope ? `scope` : `executor`,
       })

@@ -403,7 +403,7 @@ export default class CactuDiscordBot {
         const cmds = value.filter( ({ type }) => type == `executor` )
           .map( ({ name, meta }) => {
             const params = meta.params.map( getParamStr )
-            const sygnature = `${name} ${params.join( ` ` )}`
+            const sygnature = `${trigger} *${name}*` + (params.length ? `  \` ${params.join( `  ` )} \`` : ``)
 
             return { name:sygnature, value:(meta.shortDescription || `- - -`) }
           } )
@@ -411,23 +411,22 @@ export default class CactuDiscordBot {
         embed = {
           color: 0x5a9f32,
           title: t9n.help_title,
-          description: `
+          description: trigger.split( ` ` ).length > 1 ? `` : `
             ${t9n.help_showDescription}
 
             ${t9n.help_optionalParam}
             ${t9n.help_restParam}
           `,
-          fields: [
-            { name:`\u200b`, value:`${t9n.label_scopes}:` },
-            ...scopes,
-            { name:`\u200b`, value:`${t9n.label_commands}:` },
-            ...cmds,
-          ],
+          fields: [],
           footer: {
             text: message.member.displayName + `   --   ` + t9n.footer_yourCommands,
             icon_url: message.author.displayAvatarURL(),
           },
         }
+
+        if (scopes.length) embed.fields.push( { name:`\u200b`, value:`${t9n.label_scopes}:` }, ...scopes )
+        if (cmds.length) embed.fields.push( { name:`\u200b`, value:`${t9n.label_commands}:` }, ...cmds )
+
         break
       }
 
