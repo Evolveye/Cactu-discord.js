@@ -6,6 +6,7 @@
 
 
 
+/** @typedef {import("discord.js").Guild} Guild */
 /** @typedef {import("discord.js").Channel} Channel */
 /** @typedef {import("discord.js").Collection<Snowflake,MessageAttachment} Attachments */
 /** @typedef {import("discord.js").MessageAttachment} MessageAttachment */
@@ -26,6 +27,7 @@
 /** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
 /** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
 /** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
+/** @typedef {import("./CommandProcessor.js").Command} Command */
 
 
 /*\

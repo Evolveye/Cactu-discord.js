@@ -496,6 +496,15 @@ export default class CactuDiscordBot {
   }
 
 
+  /** @param {Command}executor */
+  execute( executor ) {
+    const $ = {}
+
+    executor.setParameters([ $, ...executor.parameters ])
+    executor.execute()
+  }
+
+
   /** @param {Discord.Message} message */
   getGguildDatasets( message ) {
     const { guild, author } = message
@@ -542,7 +551,8 @@ export default class CactuDiscordBot {
       logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, content )
     }
 
-    this.performResponse( state, guildDataset, message )
+    if (state.type == `readyToExecute`) this.execute( state.value )
+    else this.performResponse( state, guildDataset, message )
   }
 
 

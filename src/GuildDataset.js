@@ -130,6 +130,7 @@ export default class GuildDataset {
 
   /** @type {string} */
   botOperatorRoleId = ``
+  signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
 
   /**
    * @param {CactuDiscordBot} botInstance
@@ -161,6 +162,7 @@ export default class GuildDataset {
       events = {},
       filters = [],
       commands,
+      signs,
     } = config
     const minified = { commands:{} }
     this.commands = commands
@@ -168,6 +170,7 @@ export default class GuildDataset {
     this.botOperatorRoleName = botOperatorRoleName
 
     Object.assign( this.translation, translation )
+    Object.assign( this.signs, signs )
 
     if (prefix) this.commandsProcessor.setPrefix( prefix )
     if (prefixSpace) this.commandsProcessor.setPrefixSpace( prefixSpace )
@@ -433,7 +436,9 @@ export default class GuildDataset {
   /** @param {UnsafeVariables} $ */
   static predefinedCommands = new Scope( {}, {
     $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
-      load: new Executor( { d:`Clear all modules data and load new module from attached file` }, $ => {} ),
+      load: new Executor( { d:`Clear all modules data and load new module from attached file` }, $ => {
+        console.log( $ )
+      } ),
       setBotOperator: new Executor( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
       getModules: new Executor( { d:`Get the guild module config files` }, $ => {} ),
     } ),

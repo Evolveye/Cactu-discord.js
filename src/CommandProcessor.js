@@ -165,7 +165,7 @@ export class Scope extends CommandElement {
 
       if (prop in targetScope.structure && !override) continue
 
-      if (field instanceof Command) targetScope.structure[ prop ] = field
+      if (field instanceof Executor) targetScope.structure[ prop ] = field
       else if (field instanceof Scope) {
         if (!(prop in targetScope.structure)) targetScope.structure[ prop ] = new Scope( {}, {} )
 
@@ -301,7 +301,7 @@ export class Executor extends CommandElement {
 
 
 
-class Command {
+export class Command {
   #trigger
   #prefix
   #prefixSpace
@@ -433,7 +433,7 @@ class Command {
       case `badParam`: return setIt( this.#parametersData.fail )
       case `noPerms`: return setIt( this.currentlyCheckedPath )
       case `tooManyParams`: return setIt( this.#parametersData.string.split( ` ` )[ 0 ] )
-      case `readyToExecute`: return setIt( this.#parameters )
+      case `readyToExecute`: return setIt( this )
       case `details`: return setIt({
         command: this.currentlyCheckedPath,
         ...this.#foundExecutor.getMeta(),
@@ -444,6 +444,11 @@ class Command {
         console.warn( `Unknown command state used in "#setState" method` )
         break
     }
+  }
+
+  /** @param {any} params */
+  setParameters( params ) {
+    this.#parameters = params
   }
 
 
@@ -546,12 +551,11 @@ class Command {
   }
 
 
-  /** @param {(commandMeta:CommandState) => void} [handleState] */
-  execute( handleState ) {
-    if (this.state) return handleState?.( this.state )
+  execute() {
+    if (this.state.type != `readyToExecute`) return
 
     try {
-      console.log( this.#foundExecutor, this.#parameters ) // .( ...this.#parameters )
+      this.#foundExecutor.trigger( ...this.#parameters )
     } catch (err) {
       // this.setError( `invalidCmd`, err )
     }
