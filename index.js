@@ -6,6 +6,7 @@ import VM2Package from "vm2"
 import GuildDataset from "./src/GuildDataset.js"
 import Logger, { logUnderControl } from "./src/Logger.js"
 import { Scope as CommandScope, Executor as CommandExecutor } from "./src/CommandProcessor.js"
+import { ProcessedMessage } from "./src/processedDiscordData.js"
 
 import "./src/jsdoc.js"
 
@@ -496,9 +497,31 @@ export default class CactuDiscordBot {
   }
 
 
-  /** @param {Command}executor */
-  execute( executor ) {
-    const $ = {}
+  /**
+   * @param {Command} executor
+   * @param {GuildDataset} guildDataset
+   * @param {Discord.Message} message
+   */
+  execute( executor, guildDataset, message ) {
+    const $ = {
+      message: new ProcessedMessage( message ),
+      nativeMessage: message,
+
+      /** @param {string} message */
+      response( message ) {
+        message.channel.send( message )
+      },
+
+      /** @param {string} message */
+      sendOk( message ) {
+        this.response( `${guildDataset.signs.ok}  ${message}` )
+      },
+
+      /** @param {string} message */
+      sendErr( message ) {
+        this.response( `${guildDataset.signs.error}  ${message}` )
+      },
+    }
 
     executor.setParameters([ $, ...executor.parameters ])
     executor.execute()
@@ -551,7 +574,7 @@ export default class CactuDiscordBot {
       logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, content )
     }
 
-    if (state.type == `readyToExecute`) this.execute( state.value )
+    if (state.type == `readyToExecute`) this.execute( state.value, guildDataset, message )
     else this.performResponse( state, guildDataset, message )
   }
 

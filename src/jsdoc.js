@@ -1,13 +1,8 @@
-/*\
- *
- *  IMPORTED TYPES
- *
-\*/
-
-
-
+/** @typedef {import("discord.js")} Discord */
 /** @typedef {import("discord.js").Guild} Guild */
-/** @typedef {import("discord.js").Channel} Channel */
+/** @typedef {import("discord.js").ImageURLOptions} ImageURLOptions */
+/** @typedef {import("discord.js").GuildChannel} GuildChannel */
+/** @typedef {import("discord.js").Message} Message */
 /** @typedef {import("discord.js").Collection<Snowflake,MessageAttachment} Attachments */
 /** @typedef {import("discord.js").MessageAttachment} MessageAttachment */
 /** @typedef {import("discord.js").MessageOptions} MessageOptions */
@@ -16,6 +11,7 @@
 /** @typedef {import("discord.js").Snowflake} Snowflake */
 /** @typedef {import("discord.js").MessageReaction} MessageReaction */
 /** @typedef {import("discord.js").User} User */
+/** @typedef {import("discord.js").GuildMember} GuildMember */
 
 /** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
 /** @typedef {import("./GuildDataset.js").GuildModuleFilters} GuildModuleFilters */
@@ -28,71 +24,6 @@
 /** @typedef {import("./CommandProcessor.js").CommandErrorType} CommandErrorType */
 /** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
 /** @typedef {import("./CommandProcessor.js").Command} Command */
-
-
-/*\
- *
- *  EXECUTOR VARIABLES
- *
-\*/
-
-
-
-/**
- * @typedef {Object} ProcessedGuild
- * @property {Snowflake} id
- * @property {string} name
- * @property {() => Channel[]} getChannels
- * @property {(predicate:(channel:Channel) => boolean) => Channel} getChannel
- * @property {() => ProcessedUser[]} getMembers
- * @property {(predicate:(member:ProcessedUser) => boolean) => ProcessedUser} getMember
- */
-
-/**
- * @typedef {Object} ProcessedChannel
- * @property {Snowflake} id
- * @property {string} name
- * @property {ProcessedGuild} guild
- * @property {(message:string) => void} send
- * @property {(message:MessageOptions|MessageAdditions) => Promise<ProcessedMessage>} sendEmbeded
- * @property {(userOrRoleId:Snowflake options:PermissionOverwriteOptions) => Promise<>} updatePermissions
- */
-
-/**
- * @typedef {Object} ProcessedUser
- * @property {Snowflake} id
- * @property {(id:Snowflake) => void} setRole
- * @property {string} displayName
- * @property {string} name
- * @property {string} mention
- */
-
-/**
- * @typedef {Object} ProcessedMessage
- * @property {string} content
- * @property {Snowflake} id
- * @property {() => voic} delete
- * @property {ProcessedUser} author
- * @property {ProcessedChannel} channel
- * @property {ProcessedGuild} guild
- * @property {Attachments} attachments
- */
-
-/**
- * @typedef {Object} Variables
- * @property {ProcessedMessage} message
- * @property {(message:string) => Promise<ProcessedMessage>} sendOk
- * @property {(message:string) => Promise<ProcessedMessage>} sendErr
- */
-
-
-
-/*\
- *
- *  REST
- *
-\*/
-
 
 
 
