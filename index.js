@@ -1,4 +1,5 @@
 import fs from "fs"
+import https from "https"
 
 import Discord from "discord.js"
 import VM2Package from "vm2"
@@ -8,10 +9,10 @@ import Logger, { logUnderControl } from "./src/Logger.js"
 import { Scope as CommandScope, Executor as CommandExecutor } from "./src/CommandProcessor.js"
 import { ProcessedMessage } from "./src/processedDiscordData.js"
 
-/** @typedef {import("./GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
-/** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
-/** @typedef {import("./CommandProcessor.js").CommandError} CommandError */
-/** @typedef {import("./CommandProcessor.js").Command} Command */
+/** @typedef {import("./src/GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
+/** @typedef {import("./src/CommandProcessor.js").CommandState} CommandState */
+/** @typedef {import("./src/CommandProcessor.js").CommandError} CommandError */
+/** @typedef {import("./src/CommandProcessor.js").Command} Command */
 
 /** @typedef {"@everyone" | "@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} Permission */
 
@@ -22,7 +23,9 @@ import { ProcessedMessage } from "./src/processedDiscordData.js"
 /**
  * @typedef {object} Variables
  * @property {ProcessedMessage} message
- * @property {Discord.Message} nativeMessage
+ * @property {Discord.Message} [nativeMessage] Only for safe uage
+ * @property {GuildDataset} [guildDataset] Only for safe uage
+ * @property {CactuDiscordBot} [bot] Only for safe uage
  * @property {(message:string) => Promise<ProcessedMessage>} response
  * @property {(message:string) => Promise<ProcessedMessage>} sendOk
  * @property {(message:string) => Promise<ProcessedMessage>} sendErr
@@ -121,6 +124,7 @@ export default class CactuDiscordBot {
     ], { separated:true, separateBreakBlock:false } ),
   }
 
+  defaultPrefix = `cc!`
   events = {}
   supportedEvents = {
     /**
@@ -135,7 +139,7 @@ export default class CactuDiscordBot {
 
   /** @param {CactuDiscordBotConfig} config */
   constructor( config ) {
-    if (`prefix`          in config) this.prefix          = config.prefix
+    if (`defaultPrefix`   in config) this.defaultPrefix   = config.defaultPrefix
     if (`prefixSpace`     in config) this.prefixSpace     = config.prefixSpace
     if (`publicVars`      in config) this.publicVars      = config.publicVars
     if (`idOfGuildToCopy` in config) this.idOfGuildToCopy = config.idOfGuildToCopy
@@ -166,9 +170,26 @@ export default class CactuDiscordBot {
 
       try {
         const script = configCode.match( importsAndStartingCommentsTrimmer )[ 1 ]
-        const config = new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` )
+
+        let scriptReturnValue = new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` ) ?? {}
+        let error = null
+
+        if (typeof scriptReturnValue != `object` || Array.isArray( scriptReturnValue )) {
+          scriptReturnValue = {}
+          error = new Error(`Config return datatype is not an object!`)
+        }
+
+        const config = Object.assign(
+          { prefix:this.defaultPrefix, commands:new Scope( {}, {}) },
+          scriptReturnValue,
+        )
+
+        config.commands.setSafety( false )
+        config.commands.merge( CactuDiscordBot.predefinedCommands, true )
 
         guildDataset.loadConfig( config )
+
+        if (error) throw error
       } catch (err) {
         // console.error( err )
         return /** @type {Error} */ (err).message
@@ -522,14 +543,17 @@ export default class CactuDiscordBot {
 
 
   /**
-   * @param {Command} executor
+   * @param {Command} command
    * @param {GuildDataset} guildDataset
    * @param {Discord.Message} message
    */
-  execute( executor, guildDataset, message ) {
+  execute( command, guildDataset, message ) {
     const $ = {
+      /** @type {Discord.Message} */
+      nativeMessage: command.isSafe() ? message : null,
+      guildDataset: command.isSafe() ? guildDataset : null,
+      bot: command.isSafe() ? this : null,
       message: new ProcessedMessage( message ),
-      nativeMessage: message,
 
       /** @param {string} msg */
       response( msg ) {
@@ -547,8 +571,8 @@ export default class CactuDiscordBot {
       },
     }
 
-    executor.setParameters([ $, ...executor.parameters ])
-    executor.execute()
+    command.setParameters([ $, ...command.parameters ])
+    command.execute()
   }
 
 
@@ -661,4 +685,37 @@ export default class CactuDiscordBot {
       this.log( message )
     }
   }
+
+
+  static predefinedCommands = new Scope( {}, {
+    $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
+      load: new Executor( { d:`Clear all modules data and load new module from attached file` }, /** @type {Variables} */ $ => {
+        const { message, bot, guildDataset } = $
+        const t9n = guildDataset.translation
+        const attachment = message.attachments.first()
+        const guildId = message.guild.id
+
+        if (!attachment) $.sendErr( t9n.system_loadWithoutAttachment )
+        if (attachment.url && !attachment.width) {
+          const path = `./guild_configs/${guildId}--${message.guild.name.slice( 0, 20 ).replace( / /g, `-` )}/`
+          const configPath = `${path}config.js`
+          const stream = fs.createWriteStream( `${path}config.js` )
+
+          https.get( attachment.url, res => res.pipe( stream ).on( `finish`, () => {
+            stream.close()
+
+            // bot.clearGuildModules( guildId, configPath )
+            const error = bot.loadModule( configPath )
+
+            message.delete()
+
+            if (error) $.sendErr( error )
+            else $.sendOk( t9n.system_loadSuccess )
+          } ) )
+        }
+      } ),
+      // setBotOperator: new Executor( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
+      // getModules: new Executor( { d:`Get the guild module config files` }, $ => {} ),
+    } ),
+  } )
 }

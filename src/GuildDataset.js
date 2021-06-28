@@ -36,6 +36,8 @@ import https from "https"
  * @property {string} [label_mask] `Mask`,
  * @property {string} [label_yes] `Yes`,
  * @property {string} [label_no] `No`,
+ * @property {string} [system_loadSuccess] `Config has been loaded successfully`,
+ * @property {string} [system_loadWithoutAttachment] `If you want to load configuration, you should attach .js file to the message!`,
  */
 
 /** @typedef {{regExp:RegExp,func:function}[][]} GuildFilters */
@@ -176,9 +178,6 @@ export default class GuildDataset {
     if (prefixSpace) this.commandsProcessor.setPrefixSpace( prefixSpace )
 
     if (commands instanceof Scope) {
-      commands.setSafety( false )
-      commands.merge( GuildDataset.predefinedCommands, true )
-
       minified.commands = commands.getData({ onlyUnsafe:true, meta:false, serialized:false })
 
       this.minifiedCommands = minified.commands
@@ -255,6 +254,8 @@ export default class GuildDataset {
       label_mask: `Mask`,
       label_yes: `Yes`,
       label_no: `No`,
+      system_loadSuccess: `Config has been loaded successfully!`,
+      system_loadWithoutAttachment: `If you want to load configuration, you should attach .js file to the message!`,
     }
 
     this.loadConfig( this.getPredefinedCommands() )
@@ -335,164 +336,6 @@ export default class GuildDataset {
     //   () => log( `Command` ),
     // )
   }
-
-  getPredefinedCommands() {
-    const t = this.translation
-    const { botInstance } = this
-
-    return new Scope( {
-      get description() { return t.help_showMasks + `\n` + t.help_params },
-
-    }, {
-
-      $: new Scope({
-        shortDescription: `Bot administration`,
-        roles: `@server_admin`,
-
-      }, {
-
-        load: new Executor({
-          shortDescription: `Clear all modules data and load new module from attached file`,
-        }, $ => {
-          // const { message } = $
-          // const attachment = message.attachments.first()
-          // const guildId = message.guild.id
-
-          // if (!attachment) throw t.err_attachFile
-          // if (attachment.url && !attachment.width) {
-          //   const path = `./guild_configs/${guildId}--${message.guild.name.slice( 0, 20 ).replace( / /g, `-` )}/`
-          //   const configPath = fs.createWriteStream( `${path}config.js` )
-
-          //   https.get( attachment.url, res => res.pipe( configPath ).on( `finish`, () => {
-          //     modulePath.close()
-
-          //     if ($.message.author.id !== `263736841025355777` && /(?<!\/\*\* @typedef { *)import|require/gi.test( fs.readFileSync( path ) )) {
-          //       console.log( `Matched imports!` )
-          //     }
-
-          //     botInstance.clearGuildModules( guildId, fileName )
-          //     botInstance.loadModule( fileName )
-
-          //     message.delete()
-
-          //     $.sendOk( t.system_loadSucc )
-          //   } ) )
-          // }
-        },
-        ),
-
-      }),
-
-    },
-    )
-  }
-
-  /**
-   * @param {Object<string,*>} target
-   * @param {Object<string,*>} object
-   */
-  static safeCommandsAssign( target, object ) {
-    Object.keys( object ).forEach( key => {
-      switch (typeof object[ key ]) {
-        case `undefined`:
-          break
-
-        case `object`:
-          if (Array.isArray( object[ key ] )) {
-            if (!(key in target)) target[ key ] = object[ key ]
-          } else target[ key ] = this.safeCommandsAssign( target[ key ] || {}, object[ key ] )
-          break
-
-        case `function`:
-          if (key in target) break
-
-        default:
-          target[ key ] = object[ key ]
-      }
-    } )
-
-    return target
-  }
-
-  /**
-   * @param {Object<string,*>} object
-   * @param {string} property
-   */
-  static deletePropertyGlobaly( object, property, maxDeep = Infinity ) {
-    const references = []
-    const deletePropG = (object, deep = 0) => Object.keys( object ).forEach( key => {
-      const prop = object[ key ]
-
-      if ((deep === maxDeep && Object( prop ) === prop) || key === property) delete object[ key ]
-      else if (prop && typeof prop === `object` && !Array.isArray( prop ) && !references.includes( prop )) {
-        object[ key ] = { ...prop }
-
-        deletePropG( object[ key ], deep + 1 )
-      }
-    } )
-
-    deletePropG( object )
-  }
-  /** @param {UnsafeVariables} $ */
-  static predefinedCommands = new Scope( {}, {
-    $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
-      load: new Executor( { d:`Clear all modules data and load new module from attached file` }, $ => {
-        console.log( $ )
-      } ),
-      setBotOperator: new Executor( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
-      getModules: new Executor( { d:`Get the guild module config files` }, $ => {} ),
-    } ),
-  } )
-
-  static DEPRECATED_COMMANDS = $ => ({ commands: {
-    $: { d: `Bot administration`, r: `@owner`, v: {
-      load: { d: `Clear all modules data and load new module from attached file`, v() {
-        const { message, botInstance } = $
-        const attachment = message.attachments.first()
-        const guildId = message.guild.id
-        const { translation } = $.guildModules
-
-        if (!attachment) throw translation.err_attachFile
-        if (attachment.url && !attachment.width) {
-          const extension = attachment.name.match( /.*\.([a-z]+)/ )[ 1 ] || `mjs`
-          const fileName = `${guildId}-${Date.now()}-module.${extension}`
-          const path = `./guilds_modules/${fileName}`
-          const file = fs.createWriteStream( path )
-
-          https.get( attachment.url, res => res.pipe( file ).on( `finish`, () => {
-            file.close()
-
-            if ($.message.author.id !== `263736841025355777` && /eval|(?<!\/\*\* @typedef {)import/gi.test( fs.readFileSync( path ) )) {
-              throw translation.system_loadFail
-            }
-
-            botInstance.clearGuildModules( guildId, fileName )
-            botInstance.loadModule( fileName )
-
-            message.delete()
-
-            $.sendOk( translation.system_loadSucc )
-          } ) )
-        }
-      } },
-      setBotOperator: { d: `Set the ID of bot operator`, v( id = /\d{18}/ ) {
-        $.guildModules.botOperatorId = id
-      } },
-      getModules: { d: `Get the guild module config files`, v() {
-        const pathToModules = `${fs.realpathSync( `.` )}/guilds_modules`
-        const guildId = $.message.guild.id
-        const urls = []
-
-        fs.readdirSync( pathToModules ).forEach( filename => {
-          if (filename.split( /-/g )[ 0 ] === guildId) urls.push( `guilds_modules/${filename}` )
-        } )
-
-        if (urls.length === 0) throw `That guild doesn't have the config file`
-
-        $.message.channel.send({ files:urls })
-      } },
-    } },
-  } })
 }
 
 function getDate( format, date = Date.now() ) {

@@ -146,7 +146,7 @@ export class Scope extends CommandElement {
     for (const prop in scope.structure) {
       const field = scope.structure[ prop ]
 
-      if (field instanceof Command) field.setSafety( isSafe )
+      if (field instanceof Executor) field.setSafety( isSafe )
       else if (field instanceof Scope) this.setSafety( field, isSafe )
     }
   }
@@ -198,7 +198,7 @@ export class Scope extends CommandElement {
     }
 
     Object.entries( scope.structure ).map( ([ key, value ]) => {
-      if (value instanceof Command) {
+      if (value instanceof Executor) {
         if (onlyUnsafe && value.safe) return
 
         result.structure[ key ] = {
@@ -239,7 +239,7 @@ export class Executor extends CommandElement {
 
     this.trigger = fn
 
-    const { params, code } = Executor.extractCommandData( fn )
+    const { params, code } = Executor.extractTriggerData( fn )
     this.params = params.slice( 1 )
     this.code = code
   }
@@ -250,8 +250,8 @@ export class Executor extends CommandElement {
   }
 
 
-  /** @param {Command} command */
-  static extractCommandData( command ) {
+  /** @param {function} executorTrigger */
+  static extractTriggerData( executorTrigger ) {
     const reg = {
       isItArrowFunction: /(?<params>[\s\S]*?) *=>/,
 
@@ -263,7 +263,7 @@ export class Executor extends CommandElement {
       regExp: /\/(?<mask>.*?)\/(?<flags>\w*)?/,
     }
 
-    const commandString = command.toString()
+    const commandString = executorTrigger.toString()
     const parterReg = reg.isItArrowFunction.test( commandString ) ? reg.arrowParter : reg.funcParter
     const { paramsStr, code } = parterReg.exec( commandString ).groups
     const params = []
@@ -474,6 +474,12 @@ export class Command {
     }
   }
 
+
+  isSafe() {
+    return this.#foundExecutor?.safe ?? null
+  }
+
+
   /** @param {any} params */
   setParameters( params ) {
     this.#parameters = params
@@ -583,7 +589,7 @@ export class Command {
     if (this.state.type != `readyToExecute`) return
 
     try {
-      console.log( this.#parameters )
+      // console.log( this.#parameters )
       this.#foundExecutor.trigger( ...this.#parameters )
     } catch (err) {
       // this.setError( `invalidCmd`, err )

@@ -123,6 +123,8 @@ export class ProcessedMessage {
 
   /** @param {Message} message */
   constructor( message ) {
+    this.#message = message
+
     this.id = message.id
     this.content = message.content
     this.author = new ProcessedUser( message.member ?? message.user )
