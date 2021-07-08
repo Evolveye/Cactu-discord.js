@@ -1,13 +1,10 @@
-import fs from "fs"
-
 import Discord from "discord.js"
 
-import BotClientBase, { GuildDataset, logUnderControl, ProcessedMessage } from "./src/botClientBase.js"
+import BotClientBase, { logUnderControl, ProcessedMessage } from "./src/botClientBase.js"
 export { Scope, Executor } from "./src/botClientBase.js"
 
-/** @extends BotClientBase<Discord.Client> */
+/** @extends BotClientBase<Discord.Client,Discord.Guild> */
 export default class CactuDiscordBot extends BotClientBase {
-  initialized = false
   events = {}
   supportedEvents = {
     /**
@@ -445,50 +442,15 @@ export default class CactuDiscordBot extends BotClientBase {
 
 
   onReady = () => {
-    console.log()
-    this.log( `Initialization started!` )
-    console.log()
-
     this.appClient.guilds.cache.forEach( guild => this.onGuildCreate( guild ) )
-
     this.appClient.user.setActivity( this.prefix, { type:`WATCHING` } )
 
-    console.log()
-    this.log( `I have been started!` )
-    this.initialized = true
+    this.endInitialization()
   }
 
 
   /** @param {Discord.Guild} guild */
   onGuildCreate = guild => {
-    const { id, name } = guild
-    const path = `./guild_configs/${id}--${name.slice( 0, 20 ).replace( / /g, `-` )}${name.length > 20 ? `...` : ``}/`
-    const configPath = `${path}config.js`
-
-    this.guildsDatasets.set( id, new GuildDataset( this, guild, this.loggers.guild, this.eventBinder ) )
-
-    if (!fs.existsSync( path )) fs.mkdirSync( path )
-
-    if (!fs.existsSync( configPath )) {
-      if (this.idOfGuildToCopy && this.idOfGuildToCopy != id) {
-        const configToCopyFolderPath = fs.readdirSync( path )
-          .filter( filename => filename.split( `--` )[ 0 ] === this.idOfGuildToCopy )[ 0 ]
-
-        fs.copyFileSync( `${configToCopyFolderPath}config.js`, configPath )
-      } else {
-        fs.writeFileSync( configPath, `` )
-      }
-    }
-
-    const error = this.loadModule( configPath )
-
-    if (this.initialized) this.log( `I have joined to guild named [fgYellow]${name}[]`, `info` )
-    else {
-      let message = `I'm on guild named [fgYellow]${name}[]`
-
-      if (error) message += `\n[fgRed]CONFIG LOADING ERROR[]: ${error}`
-
-      this.log( message )
-    }
+    this.createGuild( guild, guild.id, guild.name )
   }
 }

@@ -5,10 +5,10 @@ import VM2Package from "vm2"
 
 import { Scope as CommandScope, Executor as CommandExecutor } from "./CommandProcessor.js"
 import Logger, { logUnderControl } from "./Logger.js"
+import GuildDataset from "./GuildDataset.js"
 
+export { GuildDataset, Logger, logUnderControl }
 export * from "./processedDiscordData.js"
-export { default as GuildDataset } from "./GuildDataset.js"
-export { Logger, logUnderControl }
 
 /** @typedef {import("./src/GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
 /** @typedef {import("./src/CommandProcessor.js").CommandState} CommandState */
@@ -65,8 +65,12 @@ export const __APPDIRNAME = fs.realpathSync( `.` )
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
 
 
-/** @template T */
+/**
+ * @template TClient
+ * @template TGuild
+ */
 export default class BotClientBase {
+  initialized = false
   /** @type {T} */
   appClient = null
 
@@ -136,6 +140,10 @@ export default class BotClientBase {
    * @param {CactuDiscordBotConfig} config
    */
   constructor( appClient, config ) {
+    console.log()
+    this.log( `Initialization started!` )
+    console.log()
+
     if (`defaultPrefix`       in config) this.defaultPrefix       = config.defaultPrefix
     if (`defaultPrefixSpace`  in config) this.defaultPrefixSpace  = config.defaultPrefixSpace
     if (`idOfGuildToCopy`     in config) this.idOfGuildToCopy     = config.idOfGuildToCopy
@@ -220,6 +228,49 @@ export default class BotClientBase {
     }
 
     logUnderControl( logger, string )
+  }
+
+  /**
+   * @param {TGuild} guild
+   * @param {string} guildId
+   * @param {string} guildName
+   */
+  createGuild = (guild, guildId, guildName) => {
+    const path = `./guild_configs/${guildId}--${guildName.slice( 0, 20 ).replace( / /g, `-` )}${guildName.length > 20 ? `...` : ``}/`
+    const configPath = `${path}config.js`
+
+    this.guildsDatasets.set( guildId, new GuildDataset( this, guild, this.loggers.guild, this.eventBinder ) )
+
+    if (!fs.existsSync( path )) fs.mkdirSync( path )
+
+    if (!fs.existsSync( configPath )) {
+      if (this.idOfGuildToCopy && this.idOfGuildToCopy != guildId) {
+        const configToCopyFolderPath = fs.readdirSync( path )
+          .filter( filename => filename.split( `--` )[ 0 ] === this.idOfGuildToCopy )[ 0 ]
+
+        fs.copyFileSync( `${configToCopyFolderPath}config.js`, configPath )
+      } else {
+        fs.writeFileSync( configPath, `` )
+      }
+    }
+
+    const error = this.loadModule( configPath )
+
+    if (this.initialized) this.log( `I have joined to guild named [fgYellow]${guildName}[]`, `info` )
+    else {
+      let message = `I'm on guild named [fgYellow]${guildName}[]`
+
+      if (error) message += `\n[fgRed]CONFIG LOADING ERROR[]: ${error}`
+
+      this.log( message )
+    }
+  }
+
+
+  endInitialization() {
+    console.log()
+    this.log( `I have been started!` )
+    this.initialized = true
   }
 
 
