@@ -39,6 +39,7 @@ import { ProcessedMessage } from "./src/processedDiscordData.js"
  * @property {Object<string,*>} [publicVars]
  * @property {{ok:string,warn:string,error:string}} [signs]
  * @property {number} [logMaxLength]
+ * @property {Discord.Snowflake} [botOwnerId]
  */
 
 if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
@@ -83,6 +84,7 @@ export default class CactuDiscordBot {
     sandbox: { Scope, Executor },
   }
 
+  botOwnerId = ``
   logMaxLength = 170
   loggers = {
     guild: new Logger( [
@@ -145,6 +147,7 @@ export default class CactuDiscordBot {
     if (`idOfGuildToCopy` in config) this.idOfGuildToCopy = config.idOfGuildToCopy
     if (`signs`           in config) this.signs           = config.signs
     if (`logMaxLength`    in config) this.logMaxLength    = config.logMaxLength
+    if (`botOwnerId`      in config) this.botOwnerId      = config.botOwnerId
 
     this.discordClient
       .on( `message`, this.onMessage )
@@ -688,8 +691,8 @@ export default class CactuDiscordBot {
 
 
   static predefinedCommands = new Scope( {}, {
-    $: new Scope( { d:`Bot administration`, r:`@server_admin` }, {
-      load: new Executor( { d:`Clear all modules data and load new module from attached file` }, /** @type {Variables} */ $ => {
+    $: new Scope( { d:`Bot administration`, r:`@bot_owner` }, {
+      load: new Executor( { d:`Clear all modules data and load new module from attached file`, r:`@bot_owner` }, /** @type {Variables} */ $ => {
         const { message, bot, guildDataset } = $
         const t9n = guildDataset.translation
         const attachment = message.attachments.first()

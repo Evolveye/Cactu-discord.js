@@ -1,7 +1,4 @@
-import CommandProcessor, { Scope, Executor } from "./CommandProcessor.js"
-import CommandWorker from "./CommandsWorker.js"
-import fs from "fs"
-import https from "https"
+import CommandProcessor, { Scope } from "./CommandProcessor.js"
 
 /** @typedef {import("discord.js").Client} Client */
 /** @typedef {import("discord.js").Guild} Guild */
@@ -115,8 +112,6 @@ import https from "https"
 /** @typedef {SafeVariables & {botInstance:BotInstance,guildModules:GuildModules}} UnsafeVariables */
 
 export default class GuildDataset {
-  executiongWorker = new CommandWorker()
-
   /** @type {GuildTranslation} */
   translation = {}
 
@@ -183,11 +178,6 @@ export default class GuildDataset {
       this.minifiedCommands = minified.commands
       this.commandsProcessor.setCommandsStructure( commands )
     }
-
-    this.executiongWorker.emit( `set commands`, {
-      guildId: this.guild.id,
-      config: minified,
-    } )
 
 
     // for (const event in events) {
@@ -257,8 +247,6 @@ export default class GuildDataset {
       system_loadSuccess: `Config has been loaded successfully!`,
       system_loadWithoutAttachment: `If you want to load configuration, you should attach .js file to the message!`,
     }
-
-    this.loadConfig( this.getPredefinedCommands() )
   }
 
   restoreVariablecSharedData() {
