@@ -1,132 +1,13 @@
 import fs from "fs"
-import https from "https"
 
 import Discord from "discord.js"
-import VM2Package from "vm2"
 
-import GuildDataset from "./src/GuildDataset.js"
-import Logger, { logUnderControl } from "./src/Logger.js"
-import { Scope as CommandScope, Executor as CommandExecutor } from "./src/CommandProcessor.js"
-import { ProcessedMessage } from "./src/processedDiscordData.js"
+import BotClientBase, { GuildDataset, logUnderControl, ProcessedMessage } from "./src/botClientBase.js"
+export { Scope, Executor } from "./src/botClientBase.js"
 
-/** @typedef {import("./src/GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
-/** @typedef {import("./src/CommandProcessor.js").CommandState} CommandState */
-/** @typedef {import("./src/CommandProcessor.js").CommandError} CommandError */
-/** @typedef {import("./src/CommandProcessor.js").Command} Command */
-
-/** @typedef {"@everyone" | "@bot_owner" | "@dm" | "@server_admin" | "@bot" | "@<user id>" | "<role name or ID>"} Permission */
-
-/** @typedef {{}} DiscordCommandElementMetaPart */
-
-/** @typedef {CommandState & DiscordCommandElementMetaPart} DiscordCommandState */
-
-/**
- * @typedef {object} Variables
- * @property {ProcessedMessage} message
- * @property {Discord.Message} [nativeMessage] Only for safe uage
- * @property {GuildDataset} [guildDataset] Only for safe uage
- * @property {CactuDiscordBot} [bot] Only for safe uage
- * @property {(message:string) => Promise<ProcessedMessage>} response
- * @property {(message:string) => Promise<ProcessedMessage>} sendOk
- * @property {(message:string) => Promise<ProcessedMessage>} sendErr
- */
-
-/**
- * @typedef {Object} CactuDiscordBotConfig
- * @property {string} token
- * @property {string} [prefix]
- * @property {boolean} [prefixSpace]
- * @property {Object<string,*>} [publicVars]
- * @property {{ok:string,warn:string,error:string}} [signs]
- * @property {number} [logMaxLength]
- * @property {Discord.Snowflake} [botOwnerId]
- */
-
-if (!fs.existsSync( `./guild_configs/` )) fs.mkdirSync( `./guild_configs/` )
-
-const __DIRNAME = import.meta.url.match( /(.*)\// )[ 1 ].slice( 8 )
-const __APPDIRNAME = fs.realpathSync( `.` )
-
-
-export const LoggerClass = Logger
-
-
-/**
- * @constructor
- * @extends {CommandScope<DiscordCommandElementMetaPart,Permission,Variables>}
- */
-export class Scope extends CommandScope {}
-
-
-/**
- * @constructor
- * @extends {CommandExecutor<DiscordCommandElementMetaPart,Permission,Variables>}
- */
-export class Executor extends CommandExecutor {}
-
-
-export default class CactuDiscordBot {
-  discordClient = new Discord.Client(
-    { partials:[ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] },
-  )
-
-  /** @type {Map<string,GuildDataset>} */
-  guildsDatasets = new Map()
+/** @extends BotClientBase<Discord.Client> */
+export default class CactuDiscordBot extends BotClientBase {
   initialized = false
-  vmConfig = {
-    eval: false,
-    wasm: false,
-    require: false,
-    nesting: false,
-    fixAsync: true,
-    timeout: 10,
-    wrapper: `none`,
-    sandbox: { Scope, Executor },
-  }
-
-  botOwnerId = ``
-  logMaxLength = 170
-  loggers = {
-    guild: new Logger( [
-      { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },             // "[hh:mm:ss] "
-      { color:`magenta`, align:`right`, length:24, maxLen:24 },   // Guild name
-      { color:`white`,   value:` :: ` },                          // " :: "
-      { color:`magenta`, align:`left`,  length:20, maxLen:20 },   // Channel name
-      { color:`white`,   value:` :: ` },                          // " :: "
-      { color:`blue`,    align:`right`, length:7 },               // /(Filter|Command)/
-      { color:`white`,   value:`: ` },                            // ": "
-      { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
-      { color:`white`,   value:`: ` },                            // ": "
-      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 80) }, // Message
-    ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
-    dm: new Logger( [
-      { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },             // "[hh:mm:ss] "
-      { color:`magenta`, align:`right`, length:19 },              // Author id
-      { color:`white`,   value:`#` },                             // "#"
-      { color:`magenta`, length:4 },                              // Author discriminator
-      { color:`white`,   value:` :: ` },                          // " :: "
-      { color:`magenta`, value:`DM`, length:20 },                 // "DM"
-      { color:`white`,   value:` :: ` },                          // " :: "
-      { color:`blue`,    align:`right`, length:7 },               // /(Filter|Command)/
-      { color:`white`,   value:`: ` },                            // ": "
-      { color:`yellow`,  align:`right`, length:15, maxLen:25 },   // Member display name
-      { color:`white`,   value:`: ` },                            // ": "
-      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 80) }, // Message
-    ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
-    info: new Logger( [
-      { color:`white`,   value:`[{hh}:{mm}:{ss}] ` },       // "[hh:mm:ss] "
-      { color:`blue`,    value:` info `, bold:true },       // " i "
-      { color:`white`,   value:` ` },                       // " "
-      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
-    ], { separateBreakBlock:true, newLinePrefix:`   -  -  | ` } ),
-    system: new Logger( [
-      { color:`magenta`, value:`  Bot` },                   // "Bot"
-      { color:`white`,   value:`: ` },                      // ": "
-      { color:`white`,   splitLen:this.logMaxLength, firstSplitLen:(this.logMaxLength - 10) }, // Message
-    ], { separated:true, separateBreakBlock:false } ),
-  }
-
-  defaultPrefix = `cc!`
   events = {}
   supportedEvents = {
     /**
@@ -141,15 +22,13 @@ export default class CactuDiscordBot {
 
   /** @param {CactuDiscordBotConfig} config */
   constructor( config ) {
-    if (`defaultPrefix`   in config) this.defaultPrefix   = config.defaultPrefix
-    if (`prefixSpace`     in config) this.prefixSpace     = config.prefixSpace
-    if (`publicVars`      in config) this.publicVars      = config.publicVars
-    if (`idOfGuildToCopy` in config) this.idOfGuildToCopy = config.idOfGuildToCopy
-    if (`signs`           in config) this.signs           = config.signs
-    if (`logMaxLength`    in config) this.logMaxLength    = config.logMaxLength
-    if (`botOwnerId`      in config) this.botOwnerId      = config.botOwnerId
+    const client = new Discord.Client(
+      { partials:[ `USER`, `CHANNEL`, `GUILD_MEMBER`, `MESSAGE`, `REACTION` ] },
+    )
 
-    this.discordClient
+    super( client, config )
+
+    client
       .on( `message`, this.onMessage )
       .on( `ready`, this.onReady )
       .on( `messageUpdate`, this.onMessageUpdate )
@@ -160,79 +39,19 @@ export default class CactuDiscordBot {
   }
 
 
-  /** @param {string} moduleName */
-  loadModule = moduleFolder => {
-    if (!moduleFolder) return
+  /** @param {Discord.Message} message */
+  getGguildDatasets( message ) {
+    const { guild, author } = message
 
-    const guildId = moduleFolder.match( /(\d{18})--(.*)$/ )[ 1 ]
-    const guildDataset = this.guildsDatasets.get( guildId )
+    const id = guild
+      ? guild.id
+      : author
+        ? author.client.guilds.cache.find( ({ id }) => this.appClient.guilds.cache.has( id ) ).id
+        : null
 
-    if (guildDataset) {
-      const configCode = fs.readFileSync( `${__APPDIRNAME}/${moduleFolder}`, { encoding:`utf-8` } )
-      const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
+    if (!id || !author || (author.bot && author.id === this.appClient.user.id)) return
 
-      try {
-        const script = configCode.match( importsAndStartingCommentsTrimmer )[ 1 ]
-
-        let scriptReturnValue = new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` ) ?? {}
-        let error = null
-
-        if (typeof scriptReturnValue != `object` || Array.isArray( scriptReturnValue )) {
-          scriptReturnValue = {}
-          error = new Error(`Config return datatype is not an object!`)
-        }
-
-        const config = Object.assign(
-          { prefix:this.defaultPrefix, commands:new Scope( {}, {}) },
-          scriptReturnValue,
-        )
-
-        config.commands.setSafety( false )
-        config.commands.merge( CactuDiscordBot.predefinedCommands, true )
-
-        guildDataset.loadConfig( config )
-
-        if (error) throw error
-      } catch (err) {
-        // console.error( err )
-        return /** @type {Error} */ (err).message
-      }
-    }
-  }
-
-
-  clearGuildModules( guildIdToRemove, ...excludeNames ) {
-    const dotPath = `${fs.realpathSync( `.` )}`
-
-    fs.readdirSync( `${dotPath}/guilds_modules` ).forEach( filename => {
-      const [ guildId ] = filename.split( `-` )
-
-      try {
-        if (!excludeNames.includes( filename ) && guildId === guildIdToRemove) fs.unlinkSync( `${dotPath}/guilds_modules/${filename}` )
-      } catch (err) {
-        this.log( `I can't remove module file (${filename}).` )
-      }
-    } )
-
-    this.guildsData.get( guildIdToRemove ).clear()
-  }
-
-
-  /** @param {string} string */
-  log( string, type = `system` ) {
-    let logger = null
-
-    switch (type) {
-      case `info`:
-        logger = this.loggers.info
-        break
-
-      case `system`:
-      default:
-        logger = this.loggers.system
-    }
-
-    logUnderControl( logger, string )
+    return this.guildsDatasets.get( id )
   }
 
 
@@ -357,7 +176,7 @@ export default class CactuDiscordBot {
           color: 0x18d818,
           author: {
             name: `CodeCactu`,
-            icon_url: this.discordClient.user.displayAvatarURL(),
+            icon_url: this.appClient.user.displayAvatarURL(),
             url: `https://codecactu.github.io/`,
           },
           footer: {
@@ -405,7 +224,7 @@ export default class CactuDiscordBot {
       color: 0x18d818,
       author: {
         name: `CodeCactu`,
-        icon_url: this.discordClient.user.displayAvatarURL(),
+        icon_url: this.appClient.user.displayAvatarURL(),
         url: `https://codecactu.github.io/`,
       },
       footer: {
@@ -579,22 +398,6 @@ export default class CactuDiscordBot {
   }
 
 
-  /** @param {Discord.Message} message */
-  getGguildDatasets( message ) {
-    const { guild, author } = message
-
-    const id = guild
-      ? guild.id
-      : author
-        ? author.client.guilds.cache.find( ({ id }) => this.discordClient.guilds.cache.has( id ) ).id
-        : null
-
-    if (!id || !author || (author.bot && author.id === this.discordClient.user.id)) return
-
-    return this.guildsDatasets.get( id )
-  }
-
-
   eventBinder = (guild, eventName, listener) => {
     if (!(eventName in this.events)) {
       this.events[ eventName ] = []
@@ -646,9 +449,9 @@ export default class CactuDiscordBot {
     this.log( `Initialization started!` )
     console.log()
 
-    this.discordClient.guilds.cache.forEach( guild => this.onGuildCreate( guild ) )
+    this.appClient.guilds.cache.forEach( guild => this.onGuildCreate( guild ) )
 
-    this.discordClient.user.setActivity( this.prefix, { type:`WATCHING` } )
+    this.appClient.user.setActivity( this.prefix, { type:`WATCHING` } )
 
     console.log()
     this.log( `I have been started!` )
@@ -688,37 +491,4 @@ export default class CactuDiscordBot {
       this.log( message )
     }
   }
-
-
-  static predefinedCommands = new Scope( {}, {
-    $: new Scope( { d:`Bot administration`, r:`@bot_owner` }, {
-      load: new Executor( { d:`Clear all modules data and load new module from attached file`, r:`@bot_owner` }, /** @type {Variables} */ $ => {
-        const { message, bot, guildDataset } = $
-        const t9n = guildDataset.translation
-        const attachment = message.attachments.first()
-        const guildId = message.guild.id
-
-        if (!attachment) $.sendErr( t9n.system_loadWithoutAttachment )
-        if (attachment.url && !attachment.width) {
-          const path = `./guild_configs/${guildId}--${message.guild.name.slice( 0, 20 ).replace( / /g, `-` )}/`
-          const configPath = `${path}config.js`
-          const stream = fs.createWriteStream( `${path}config.js` )
-
-          https.get( attachment.url, res => res.pipe( stream ).on( `finish`, () => {
-            stream.close()
-
-            // bot.clearGuildModules( guildId, configPath )
-            const error = bot.loadModule( configPath )
-
-            message.delete()
-
-            if (error) $.sendErr( error )
-            else $.sendOk( t9n.system_loadSuccess )
-          } ) )
-        }
-      } ),
-      // setBotOperator: new Executor( { d:`Set the ID of bot operator` }, ($, id = /\d{18}/) => {} ),
-      // getModules: new Executor( { d:`Get the guild module config files` }, $ => {} ),
-    } ),
-  } )
 }
