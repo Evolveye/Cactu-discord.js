@@ -8,13 +8,14 @@ import FiltersProcessor from "./FiltersProcessor.js"
 
 /** @typedef {import("../index.js").default} CactuDiscordBot */
 /** @typedef {import("./Logger.js").default} Logger */
-/** @typedef {import("./CommandProcessor.js").Scope} ConfigCommands */
+/** @typedef {import("./CommandProcessor.js").Scope} Scope */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildCommandsField */
 /** @typedef {import("./CommandProcessor.js").Role} Role */
 /** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
 /** @typedef {import("./CommandProcessor.js").Command} Command */
+/** @typedef {import("./FiltersProcessor.js").Filter} Filter */
 
-/** ConfigTranslation
+/** GuildTranslation
  * @typedef {Object} GuildTranslation
  * @property {string} [err_noParam] `Required parameter was not provided!`,
  * @property {string} [err_badParam] `Not valid parameter!`,
@@ -95,24 +96,27 @@ import FiltersProcessor from "./FiltersProcessor.js"
  * @property {function} [webhookUpdate]
 */
 
-/**
- * @typedef {Object} Config
- * @property {ConfigTranslation} translation
- * @property {ConfigSupportedEvents} events
- * @property {ConfigFilters} filters
- * @property {ConfigCommands} commands
- */
+export class Config {
+  /**
+   * @param {Object} data
+   * @param {string} data.prefix
+   * @param {boolean} data.prefixSpace
+   * @param {string} data.botOperatorRoleName
+   * @param {GuildTranslation} data.translation
+   * @param {ConfigSupportedEvents} data.events
+   * @param {(Filter|Filter[])[]} data.filters
+   * @param {Scope} data.commands
+   * @param {object} data.signs
+   * @param {string} data.signs.error
+   * @param {string} data.signs.warn
+   * @param {string} data.signs.ok
+   */
+  constructor( data ) {
+    this.data = data
+  }
+}
 
 
-/**
- * @typedef {Object} SafeVariables
- * @property {Message} message
- * @property {function(string,TextChannel?):Promise<Message>} send
- * @property {function(string,TextChannel?):Promise<Message>} sendOk
- * @property {function(string,Message):void} evalCmd
- * @property {function(string,*):void} setSharedData
- */
-/** @typedef {SafeVariables & {botInstance:BotInstance,guildModules:GuildModules}} UnsafeVariables */
 
 export default class GuildDataset {
   /** @type {GuildTranslation} */
@@ -132,6 +136,7 @@ export default class GuildDataset {
   botOperatorRoleId = ``
   signs = { error:`❌`, warn:`⚠️`, ok:`✅` }
 
+
   /**
    * @param {CactuDiscordBot} botInstance
    * @param {Guild} guild
@@ -149,11 +154,10 @@ export default class GuildDataset {
     this.clear()
   }
 
-  /**
-   * @param {Config} config
-   */
+
+  /** @param {Config} config */
   loadConfig( config ) {
-    if (typeof config !== `object`) return null
+    if (!(config instanceof Config)) return null
 
     const {
       prefix,
@@ -164,7 +168,7 @@ export default class GuildDataset {
       filters = [],
       commands,
       signs,
-    } = config
+    } = config.data
     const minified = { commands:{} }
     this.commands = commands
 
@@ -185,45 +189,8 @@ export default class GuildDataset {
     if (Array.isArray( filters )) {
       this.filtersProcessor.setFilters( filters )
     }
-
-
-    // for (const event in events) {
-    //   if (!(event in this.events)) {
-    //     this.events[ event ] = []
-
-    //     this.eventBinder( event, (...data) => {
-    //       const { guild, message } = data[ 0 ]
-
-    //       if (guild) {
-    //         if (guild.id != this.guildId) return
-    //       } else if (message) {
-    //         if (message.guild.id != this.guildId) return
-    //       } else return
-
-    //       if (event in this.events) this.events[ event ].forEach( f => f( ...data ) )
-    //       else console.log( `Something went wrong with event emmiter!`, event, this.events )
-    //     } )
-    //   }
-
-    //   this.events[ event ].push( events[ event ] )
-    // }
-
-    // this.filters = filters.map( filterScope => Object.entries( filterScope ) )
-    //   .map( filterScope => filterScope.map( ([ regExp, func ]) => {
-    //     const [ regSource, regFlags ] = regExp.split( /\/$|\/(?=[gmiyus]+$)/ )
-
-    //     return {
-    //       regExp: new RegExp( regSource.slice( 1 ), regFlags ),
-    //       func,
-    //     }
-    //   } ) )
-
-    // CommandProcessor.normalizeCommands( commands )
-
-    // GuildDataset.safeCommandsAssign( this.commands, commands )
-    // this.translation = Object.assign( this.translation, translation )
-    // this.botOperatorId = botOperatorId
   }
+
 
   clear() {
     this.filters = new Map()
@@ -256,44 +223,6 @@ export default class GuildDataset {
     }
   }
 
-  restoreVariablecSharedData() {
-    const vars = this.variablesSharedData
-
-    vars.filtering = true
-    vars.filterMatch = false
-  }
-
-  /**
-   * @param {Message} message
-   * @param {BotInstance} botInstance
-   */
-  setVariables( message, botInstance ) {
-    if (!message || !botInstance) throw new Error( `All parameters are required!` )
-
-    for (const variables of [ this.safeVariables, this.unsafeVariables ]) {
-      variables.send = (data, channel = message.channel) => channel.send( data )
-      variables.sendOk = (data, channel = message.channel) => channel.send( `${botInstance.signs.ok} ${data}` )
-      variables.setSharedData = (property, value) =>
-        property in this.variablesSharedData ? (this.variablesSharedData[ property ] = value) : false
-      variables.evalCmd = (commandWithoutPrefix, msg = message) => {
-        const command = `${this.prefix}${this.prefixSpace ? ` ` : ``}${commandWithoutPrefix}`
-
-        new CommandProcessor( false, this.prefix, this.prefixSpace, command, this.commands ).process(
-          roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
-          err => botInstance.handleError( err, this.translation, msg ),
-        )
-      }
-    }
-
-    this.unsafeVariables.botInstance = botInstance
-    this.unsafeVariables.guildModules = this
-    this.unsafeVariables.message = message
-    this.safeVariables.message = { ...message }
-    this.safeVariables.message.guild = { ...message.guild }
-
-    GuildDataset.deletePropertyGlobaly( this.safeVariables.message, `client`, 2 )
-    GuildDataset.deletePropertyGlobaly( this.safeVariables.message.guild, `client`, 1 )
-  }
 
   /**
    * @param {string} message
@@ -326,18 +255,4 @@ export default class GuildDataset {
       cmd.execute([ vars, ...cmd.parameters ])
     }
   }
-}
-
-function getDate( format, date = Date.now() ) {
-  const options = { year:`numeric`, month:`2-digit`, day:`2-digit`, hour:`2-digit`, minute:`2-digit` }
-  const [ { value:DD },, { value:MM },, { value:YYYY },, { value:hh },, { value:mm } ] = new Intl.DateTimeFormat( `pl`, options )
-    .formatToParts( date )
-
-  return format
-    .replace( /YYYY/, YYYY )
-    .replace( /YY/, YYYY.slice( -2 ) )
-    .replace( /MM/, MM )
-    .replace( /DD/, DD )
-    .replace( /hh/, hh )
-    .replace( /mm/, mm )
 }

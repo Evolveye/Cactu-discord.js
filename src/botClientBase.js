@@ -5,10 +5,10 @@ import VM2Package from "vm2"
 
 import { Scope as _Scope, Executor as _Executor } from "./CommandProcessor.js"
 import Logger, { logUnderControl } from "./Logger.js"
-import GuildDataset from "./GuildDataset.js"
+import GuildDataset, { Config } from "./GuildDataset.js"
 import { Filter as _Filter } from "./FiltersProcessor.js"
 
-export { GuildDataset, Logger, logUnderControl }
+export { GuildDataset, Config,  Logger, logUnderControl }
 export * from "./processedDiscordData.js"
 
 /** @typedef {import("./src/GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
@@ -81,7 +81,7 @@ export default class BotClientBase {
     fixAsync: true,
     timeout: 10,
     wrapper: `none`,
-    sandbox: { Scope, Executor, Filter },
+    sandbox: { Config, Scope, Executor, Filter },
   }
   loggers = {
     guild: new Logger( [
@@ -166,23 +166,24 @@ export default class BotClientBase {
       try {
         const script = configCode.match( importsAndStartingCommentsTrimmer )[ 1 ]
 
+        /** @type {Config} */
         let scriptReturnValue = new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` ) ?? {}
         let error = null
 
-        if (typeof scriptReturnValue != `object` || Array.isArray( scriptReturnValue )) {
+        if (!(scriptReturnValue instanceof Config) || Array.isArray( scriptReturnValue )) {
           scriptReturnValue = {}
           error = new Error(`Config return datatype is not an object!`)
         }
 
-        const config = Object.assign(
-          { prefix:this.defaultPrefix, commands:new Scope( {}, {}) },
-          scriptReturnValue,
-        )
+        const config = scriptReturnValue.data
+
+        if (!config.prefix) config.prefix = this.defaultPrefix
+        if (!config.commands) config.commands = new Scope( {}, {} )
 
         config.commands.setSafety( false )
         config.commands.merge( BotClientBase.predefinedCommands, true )
 
-        guildDataset.loadConfig( config )
+        guildDataset.loadConfig( scriptReturnValue )
 
         if (error) throw error
       } catch (err) {

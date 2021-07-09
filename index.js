@@ -1,7 +1,7 @@
 import Discord from "discord.js"
 
 import BotClientBase, { logUnderControl, ProcessedMessage } from "./src/botClientBase.js"
-export { Scope, Executor, Filter } from "./src/botClientBase.js"
+export { Config, Scope, Executor, Filter } from "./src/botClientBase.js"
 
 /** @extends BotClientBase<Discord.Client,Discord.Guild> */
 export default class CactuDiscordBot extends BotClientBase {
