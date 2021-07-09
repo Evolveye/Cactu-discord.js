@@ -228,6 +228,17 @@ export default class BotClientBase {
   }
 
   /**
+   * @param {"command"|"filter"|"<any string>"} action
+   * @param {string} guildName
+   * @param {string} channelName
+   * @param {string} memberName
+   * @param {string} content
+   */
+  logAction( action, guildName, channelName, memberName, content ) {
+    logUnderControl( this.loggers.guild, guildName, channelName, action, memberName, content )
+  }
+
+  /**
    * @param {TGuild} guild
    * @param {string} guildId
    * @param {string} guildName

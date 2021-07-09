@@ -54,6 +54,7 @@ export default class Logger {
   static defaultColor = `white`
   static defaultBackground = ``
   static colorsReg = new RegExp( `\\[(?<color>${Object.keys( this.colors ).join( `|` )})](?<data>.*?)\\[]`, `gs` )
+  static coloredPartReg = new RegExp( `(?:\\[(?:|^|${Object.keys( this.colors ).join( `|` )})]|^).*?(?=\\[|$)`, `gs` )
 
   /** @type {(items:string[]) => void} */
   #logger = null
@@ -65,12 +66,12 @@ export default class Logger {
   constructor( parts, options = {} ) {
     let pattern = ``
 
-    for (const { color = Logger.defaultColor, background = Logger.defaultBackground, bold = false } of parts) pattern += `${
-      Logger.colors[ `bg${  background.charAt( 0 ).toUpperCase()  }${background.slice( 1 )}` ] || ``
-    }${Logger.colors[ `fg${  color.charAt( 0 ).toUpperCase()  }${color.slice( 1 )}` ] || ``
-    }${bold ? Logger.colors.bright : ``
-    }%s${
-      Logger.colors.reset}`
+    for (const { color = Logger.defaultColor, background = Logger.defaultBackground, bold = false } of parts) pattern += ``
+        + (Logger.colors[ `bg${  background.charAt( 0 ).toUpperCase()  }${background.slice( 1 )}` ] || ``)
+        + (Logger.colors[ `fg${  color.charAt( 0 ).toUpperCase()  }${color.slice( 1 )}` ] || ``)
+        + (bold ? Logger.colors.bright : ``)
+        + `%s`
+        + Logger.colors.reset
 
     const nonStaticPartsCount = parts.filter( ({ value }) => !value ).length
 
@@ -89,7 +90,7 @@ export default class Logger {
           align = `left`,
           value = items.shift(),
           length,
-          maxLen,
+          maxLen = Infinity,
           splitLen,
           firstSplitLen,
         } = part
@@ -97,22 +98,87 @@ export default class Logger {
         const mainColor = color
           ? `fg${  color.charAt( 0 ).toUpperCase()  }${color.slice( 1 )}`
           : Logger.defaultColor
-        let fieldLength = Math.max( length - value.length, 0 )
-        let fieldValue = maxLen && value.length > maxLen
-          ? `${value.slice( 0, maxLen - 3 )}...`
-          : value
+
+        let fieldLength = 0
+        // let stopReplacing = false
+        let fieldValue = value.replace( /\n/g, `\n${  options.newLinePrefix || `     | `}` )
+          .replace( `{YYYY}`, date.YYYY )
+          .replace( `{MM}`, date.MM )
+          .replace( `{DD}`, date.DD )
+          .replace( `{hh}`, date.hh )
+          .replace( `{mm}`, date.mm )
+          .replace( `{ss}`, date.ss )
+          // .replace( Logger.colorsReg, (...match) => {
+          //   if (stopReplacing) return ``
+
+        //   let text
+        //   let { color, data } = match[ match.length - 1 ]
+        //   const index = match[ match.length - 3 ]
+
+        //   fieldLength += (index - fieldLength) + data
+
+        //   if (maxLen && fieldLength > maxLen) {
+        //     if (data.length <= 3) text = `...`
+        //     else {
+        //       data = data.slice( 0, data.length - 3 ) + `...`
+        //       text = data.replace( /\n {5}\| /g, `\n     ${Logger.colors[ mainColor ]}| ${Logger.colors[ color ]}` )
+        //     }
+
+        //     stopReplacing = true
+        //   } else {
+        //     text = data.replace( /\n {5}\| /g, `\n     ${Logger.colors[ mainColor ]}| ${Logger.colors[ color ]}` )
+        //   }
+
+        //   return `${Logger.colors[ color ]}${text}${Logger.colors[ mainColor ]}`
+        // } )
+
+        const coloredParts = fieldValue.match( Logger.coloredPartReg )
+        let colorOpened = false
+
+        fieldValue = ``
+
+        for (const part of coloredParts) {
+          const { color, str } = part.match( /(?:\[(?<color>.*)])?(?<str>.*)/ ).groups
+
+          fieldLength += str.length
+
+          const lengthDiff = maxLen - fieldLength
+
+          if (color) colorOpened = true
+          if (lengthDiff >= 0) {
+            fieldValue += colorOpened
+              ? (color ? Logger.colors[ color ] : Logger.colors[ mainColor ]) + str
+              : color ? color + str : str
+            continue
+          }
+
+          if (str.length > -lengthDiff + 3) {
+            fieldValue += colorOpened
+              ? (color ? Logger.colors[ color ] : Logger.colors[ mainColor ])
+              : (color || ``) + str.slice( 0, lengthDiff - 3 )
+
+            fieldValue += `...`
+          } else if (str.length + lengthDiff - 3 < 0) fieldValue = fieldValue.slice( 0, str.length + lengthDiff - 3 ) + `...`
+          else fieldValue += `...`
+
+          fieldLength = maxLen
+          break
+        }
+
+
+        const requiredSpacesCount = Math.max( length - fieldLength, 0 )
 
         switch (align) {
           case `left`:
-            fieldValue += ` `.repeat( fieldLength )
+            fieldValue += ` `.repeat( requiredSpacesCount )
             break
 
           case `right`:
-            fieldValue = ` `.repeat( fieldLength ) + fieldValue
+            fieldValue = ` `.repeat( requiredSpacesCount ) + fieldValue
             break
 
           case `center`:
-            for (let i = fieldLength;  i;  i--)
+            for (let i = requiredSpacesCount;  i;  i--)
               if (i % 2) fieldValue += ` `
               else fieldValue = ` ${  fieldValue}`
             break
@@ -124,20 +190,7 @@ export default class Logger {
           firstSplitLen,
         } )
 
-        preparedItems.push( fieldValue.replace( /\n/g, `\n${  options.newLinePrefix || `     | `}` )
-          .replace( `{YYYY}`, date.YYYY )
-          .replace( `{MM}`, date.MM )
-          .replace( `{DD}`, date.DD )
-          .replace( `{hh}`, date.hh )
-          .replace( `{mm}`, date.mm )
-          .replace( `{ss}`, date.ss )
-          .replace( Logger.colorsReg, (...match) => {
-            const { color, data } = match[ match.length - 1 ]
-            const text = data.replace( /\n {5}\| /g, `\n     ${Logger.colors[ mainColor ]}| ${Logger.colors[ color ]}` )
-
-            return `${Logger.colors[ color ]}${text}${Logger.colors[ mainColor ]}`
-          } ),
-        )
+        preparedItems.push( fieldValue )
       }
 
       console.log( pattern, ...preparedItems )

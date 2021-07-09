@@ -247,11 +247,12 @@ export default class CactuDiscordBot extends BotClientBase {
     const t9n = guildDataset.translation
     const { trigger, type, value } = state
     const processedTrigger = trigger.split( / +/ ).map( processUserString ).join( ` ` )
+    const username = message.member?.displayName ?? message.author.username
 
     let embed = {
       color: 0x2f3136,
       footer: {
-        text: message.member.displayName + `   --   ` + (processedTrigger.length > 50 ? processedTrigger.slice( 0, 50 ) + `...` : processedTrigger),
+        text: username + `   --   ` + (processedTrigger.length > 50 ? processedTrigger.slice( 0, 50 ) + `...` : processedTrigger),
         icon_url: message.author.displayAvatarURL(),
       },
       // timestamp: new Date(),
@@ -284,7 +285,7 @@ export default class CactuDiscordBot extends BotClientBase {
           `,
           fields: [],
           footer: {
-            text: message.member.displayName + `   --   ` + t9n.footer_yourCommands,
+            text: username + `   --   ` + t9n.footer_yourCommands,
             icon_url: message.author.displayAvatarURL(),
           },
         }
@@ -355,8 +356,8 @@ export default class CactuDiscordBot extends BotClientBase {
     }
 
     if (!embed) return
+    if (message.deletable) message.delete()
 
-    message.delete()
     message.channel.send({ embed })
   }
 
@@ -400,9 +401,9 @@ export default class CactuDiscordBot extends BotClientBase {
 
     if (guild) {
       if (guild.id != `315215466215899146`) return
-      logUnderControl( this.loggers.guild, guild.name, channel.name, `command`, member.displayName, content )
+      this.logAction( `command`, guild.name, channel.name, member.displayName, content )
     } else {
-      logUnderControl( this.loggers.dm, author.id, author.discriminator, `command`, author.username, content )
+      this.logAction( `command`, `[fgWhite](DM)[] ${author.id}`, author.discriminator, author.username, content )
     }
 
     return this.getVariables( guildDataset, message )
@@ -417,7 +418,7 @@ export default class CactuDiscordBot extends BotClientBase {
   getFiltersVariables( matches, guildDataset, message ) {
     const { guild, channel, member, content } = message
 
-    logUnderControl( this.loggers.guild, guild.name, channel.name, `filter`, member.displayName, content )
+    this.logAction( `filter`, guild.name, channel.name, member.displayName, content )
 
     return { ...this.getVariables( guildDataset, message ), matches }
   }

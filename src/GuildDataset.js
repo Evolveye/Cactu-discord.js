@@ -313,13 +313,17 @@ export default class GuildDataset {
     if (commands) {
       const commandState = this.commandsProcessor.process( message, roles => checkPermissions( roles, this.botOperatorRoleName ) )
 
-      if (!commandState || commandState.type == `noPrefix`) return
+      if (!commandState) return
+
+      const vars = getCommandVariables( commandState )
+
+      if (commandState.type == `noPrefix`) return
       if (commandState.type != `readyToExecute`) return performResponse( commandState )
 
       /** @type {Command} */
       const cmd = commandState.value
 
-      cmd.execute([ getCommandVariables( commandState ), cmd.parameters ])
+      cmd.execute([ vars, ...cmd.parameters ])
     }
   }
 }

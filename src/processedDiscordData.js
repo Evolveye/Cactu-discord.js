@@ -63,7 +63,7 @@ export class ProcessedChannel {
 
     this.id = channel.id
     this.name = channel.name
-    this.guild = new ProcessedGuild( channel.guild )
+    this.guild = channel.guild ? new ProcessedGuild( channel.guild ) : null
   }
 
 
@@ -127,9 +127,9 @@ export class ProcessedMessage {
 
     this.id = message.id
     this.content = message.content
-    this.author = new ProcessedUser( message.member ?? message.user )
+    this.author = new ProcessedUser( message.member ?? message.author )
     this.channel = new ProcessedChannel( message.channel )
-    this.guild = new ProcessedGuild( message.guild )
+    this.guild = message.guild ? new ProcessedGuild( message.guild ) : null
     this.attachments = message.attachments
   }
 
