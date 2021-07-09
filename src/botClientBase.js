@@ -171,11 +171,11 @@ export default class BotClientBase {
         let error = null
 
         if (!(scriptReturnValue instanceof Config) || Array.isArray( scriptReturnValue )) {
-          scriptReturnValue = {}
+          scriptReturnValue = new Config({})
           error = new Error(`Config return datatype is not an object!`)
         }
 
-        const config = scriptReturnValue.data
+        const config = scriptReturnValue?.data
 
         if (!config.prefix) config.prefix = this.defaultPrefix
         if (!config.commands) config.commands = new Scope( {}, {} )

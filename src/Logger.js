@@ -96,7 +96,7 @@ export default class Logger {
         } = part
 
         const mainColor = color
-          ? `fg${  color.charAt( 0 ).toUpperCase()  }${color.slice( 1 )}`
+          ? `fg${color.charAt( 0 ).toUpperCase()}${color.slice( 1 )}`
           : Logger.defaultColor
 
         let fieldLength = 0
@@ -138,7 +138,7 @@ export default class Logger {
         fieldValue = ``
 
         for (const part of coloredParts) {
-          const { color, str } = part.match( /(?:\[(?<color>.*)])?(?<str>.*)/ ).groups
+          const { color, str } = part.match( /(?:\[(?<color>.*)])?(?<str>.*)/s ).groups
 
           fieldLength += str.length
 
