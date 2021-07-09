@@ -1,4 +1,5 @@
 import CommandProcessor, { Scope } from "./CommandProcessor.js"
+import FiltersProcessor from "./FiltersProcessor.js"
 
 /** @typedef {import("discord.js").Client} Client */
 /** @typedef {import("discord.js").Guild} Guild */
@@ -141,6 +142,7 @@ export default class GuildDataset {
     this.logger = logger
     this.eventBinder = eventBinder
     this.commandsProcessor = new CommandProcessor()
+    this.filtersProcessor = new FiltersProcessor()
 
     this.clear()
   }
@@ -173,10 +175,13 @@ export default class GuildDataset {
     if (prefixSpace) this.commandsProcessor.setPrefixSpace( prefixSpace )
 
     if (commands instanceof Scope) {
-      minified.commands = commands.getData({ onlyUnsafe:true, meta:false, serialized:false })
+      // minified.commands = commands.getData({ onlyUnsafe:true, meta:false, serialized:false })
 
-      this.minifiedCommands = minified.commands
+      // this.minifiedCommands = minified.commands
       this.commandsProcessor.setCommandsStructure( commands )
+    }
+    if (Array.isArray( filters )) {
+      this.filtersProcessor.setFilters( filters )
     }
 
 
@@ -294,35 +299,11 @@ export default class GuildDataset {
    * @param {{ filters:boolean commands:boolean }} param3
    */
   processMessage( message, checkPermissions, handleState, { filters = true, commands = true } = {} ) {
+    const filtersMatch = this.filtersProcessor.process( message )
+
+    if (filtersMatch) return
+
     return this.commandsProcessor.process( message, roles => checkPermissions( roles, this.botOperatorRoleName ) )
-    // const { guild, content } = message
-    // const username = message.member ? message.member.displayName : message.author.username
-    // const log = (type, log = content) => this.logger( guild.name, message.channel.name, type, username, log )
-
-    // if (filters) {
-    //   let filteringContent = content
-
-    //   for (const filterScope of this.filters) {
-    //     for (const { regExp, func } of filterScope) if (regExp.test( content )) {
-    //       varsData.filterMatch = true
-    //       func()
-
-    //       if (varsData.filterMatch) filteringContent = filteringContent.replace( regExp, match => `[fgRed]${match}[]` )
-
-    //       break
-    //     }
-
-    //     if (!varsData.filtering) break
-    //   }
-
-    //   if (varsData.filterMatch) log( `Filter`, filteringContent )
-    // }
-
-    // if (commands) new CommandProcessor( !guild, this.prefix, this.prefixSpace, content, this.commands ).process(
-    //   roles => botInstance.checkPermissions( roles, this.botOperatorId, message ),
-    //   err => botInstance.handleError( err, this.translation, message ),
-    //   () => log( `Command` ),
-    // )
   }
 }
 

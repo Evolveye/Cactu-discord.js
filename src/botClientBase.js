@@ -6,8 +6,9 @@ import VM2Package from "vm2"
 import { Scope as CommandScope, Executor as CommandExecutor } from "./CommandProcessor.js"
 import Logger, { logUnderControl } from "./Logger.js"
 import GuildDataset from "./GuildDataset.js"
+import { Filter } from "./FiltersProcessor.js"
 
-export { GuildDataset, Logger, logUnderControl }
+export { Filter, GuildDataset, Logger, logUnderControl }
 export * from "./processedDiscordData.js"
 
 /** @typedef {import("./src/GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
@@ -44,17 +45,11 @@ export * from "./processedDiscordData.js"
  */
 
 
-/**
- * @constructor
- * @extends {CommandScope<DiscordCommandElementMetaPart,Permission,Variables>}
- */
+/** @extends {CommandScope<DiscordCommandElementMetaPart,Permission,Variables>} */
 export class Scope extends CommandScope {}
 
 
-/**
- * @constructor
- * @extends {CommandExecutor<DiscordCommandElementMetaPart,Permission,Variables>}
- */
+/** @extends {CommandExecutor<DiscordCommandElementMetaPart,Permission,Variables>} */
 export class Executor extends CommandExecutor {}
 
 
@@ -84,7 +79,7 @@ export default class BotClientBase {
     fixAsync: true,
     timeout: 10,
     wrapper: `none`,
-    sandbox: { Scope, Executor },
+    sandbox: { Scope, Executor, Filter },
   }
   loggers = {
     guild: new Logger( [
