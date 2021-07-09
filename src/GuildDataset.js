@@ -11,6 +11,8 @@ import FiltersProcessor from "./FiltersProcessor.js"
 /** @typedef {import("./CommandProcessor.js").Scope} ConfigCommands */
 /** @typedef {import("./CommandProcessor.js").CommandsField} GuildCommandsField */
 /** @typedef {import("./CommandProcessor.js").Role} Role */
+/** @typedef {import("./CommandProcessor.js").CommandState} CommandState */
+/** @typedef {import("./CommandProcessor.js").Command} Command */
 
 /** ConfigTranslation
  * @typedef {Object} GuildTranslation
@@ -295,15 +297,30 @@ export default class GuildDataset {
 
   /**
    * @param {string} message
+   * @param {(matches:string[]) => object} getFiltersVariables
+   * @param {(state:CommandState) => object} getCommandVariables
+   * @param {(state:CommandState) => void} performResponse
    * @param {(roles:Role[] botOperatorId:string) => boolean} checkPermissions
    * @param {{ filters:boolean commands:boolean }} param3
    */
-  processMessage( message, checkPermissions, handleState, { filters = true, commands = true } = {} ) {
-    const filtersMatch = this.filtersProcessor.process( message )
+  processMessage( message, getFiltersVariables, getCommandVariables, performResponse, checkPermissions, { filters = true, commands = true } = {} ) {
+    if (filters) {
+      const filtersMatch = this.filtersProcessor.process( message, getFiltersVariables )
 
-    if (filtersMatch) return
+      if (filtersMatch) return
+    }
 
-    return this.commandsProcessor.process( message, roles => checkPermissions( roles, this.botOperatorRoleName ) )
+    if (commands) {
+      const commandState = this.commandsProcessor.process( message, roles => checkPermissions( roles, this.botOperatorRoleName ) )
+
+      if (!commandState || commandState.type == `noPrefix`) return
+      if (commandState.type != `readyToExecute`) return performResponse( commandState )
+
+      /** @type {Command} */
+      const cmd = commandState.value
+
+      cmd.execute([ getCommandVariables( commandState ), cmd.parameters ])
+    }
   }
 }
 

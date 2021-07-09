@@ -585,12 +585,12 @@ export class Command {
   }
 
 
-  execute() {
+  execute( parameters = this.#parameters ) {
     if (this.state.type != `readyToExecute`) return
 
     try {
       // console.log( this.#parameters )
-      this.#foundExecutor.trigger( ...this.#parameters )
+      this.#foundExecutor.trigger( ...parameters )
     } catch (err) {
       // this.setError( `invalidCmd`, err )
     }

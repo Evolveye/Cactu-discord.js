@@ -362,16 +362,14 @@ export default class CactuDiscordBot extends BotClientBase {
 
 
   /**
-   * @param {Command} command
    * @param {GuildDataset} guildDataset
    * @param {Discord.Message} message
    */
-  execute( command, guildDataset, message ) {
-    const $ = {
-      /** @type {Discord.Message} */
-      nativeMessage: command.isSafe() ? message : null,
-      guildDataset: command.isSafe() ? guildDataset : null,
-      bot: command.isSafe() ? this : null,
+  getVariables( guildDataset, message ) {
+    return {
+      nativeMessage: message,
+      guildDataset: guildDataset,
+      bot: this,
       message: new ProcessedMessage( message ),
 
       /** @param {string} msg */
@@ -389,9 +387,39 @@ export default class CactuDiscordBot extends BotClientBase {
         return this.response( `${guildDataset.signs.error}  ${msg}` )
       },
     }
+  }
 
-    command.setParameters([ $, ...command.parameters ])
-    command.execute()
+
+  /**
+   * @param {Command} command
+   * @param {GuildDataset} guildDataset
+   * @param {Discord.Message} message
+   */
+  getCommandVariables( command, guildDataset, message ) {
+    const { guild, channel, member, author, content } = message
+
+    if (guild) {
+      if (guild.id != `315215466215899146`) return
+      logUnderControl( this.loggers.guild, guild.name, channel.name, `command`, member.displayName, content )
+    } else {
+      logUnderControl( this.loggers.dm, author.id, author.discriminator, `command`, author.username, content )
+    }
+
+    return this.getVariables( guildDataset, message )
+  }
+
+
+  /**
+   * @param {string[]} matches
+   * @param {GuildDataset} guildDataset
+   * @param {Discord.Message} message
+   */
+  getFiltersVariables( matches, guildDataset, message ) {
+    const { guild, channel, member, content } = message
+
+    logUnderControl( this.loggers.guild, guild.name, channel.name, `filter`, member.displayName, content )
+
+    return { ...this.getVariables( guildDataset, message ), matches }
   }
 
 
@@ -406,27 +434,18 @@ export default class CactuDiscordBot extends BotClientBase {
 
   /** @param {Discord.Message} message */
   onMessage = message => {
-    const { guild, channel, member, author, content } = message
-
-    if (!content) return
+    if (!message.content) return
 
     const guildDataset = this.getGguildDatasets( message )
-    const state = guildDataset?.processMessage(
-      content,
+
+    guildDataset?.processMessage(
+      message.content,
+      matches => this.getFiltersVariables( matches, guildDataset, message ),
+      ({ value }) => this.getCommandVariables( value, guildDataset, message ),
+      state => this.performResponse( state, guildDataset, message ),
       (roles, botOperatorRoleId) => this.checkPermissions( roles, botOperatorRoleId, message ),
+      { filters:!!message.guild, commands:true },
     )
-
-    if (!state || state.type == `noPrefix`) return
-
-    if (guild) {
-      if (guild.id != `315215466215899146`) return
-      logUnderControl( this.loggers.guild, guild.name, channel.name, `type`, member.displayName, content )
-    } else {
-      logUnderControl( this.loggers.dm, author.id, author.discriminator, `type`, author.username, content )
-    }
-
-    if (state.type == `readyToExecute`) this.execute( state.value, guildDataset, message )
-    else this.performResponse( state, guildDataset, message )
   }
 
 

@@ -20,7 +20,11 @@ export class Filter {
 
   /** @param {string} string */
   match( string ) {
-    return this.#regExp.test( string )
+    const match = string.match( this.#regExp )
+
+    if (match === null) return null
+
+    return this.#regExp.global ? match : [ match[ 0 ] ]
   }
 
 
@@ -38,7 +42,7 @@ export class Filter {
 }
 
 export default class FiltersProcessor {
-  /** @type {Filter[][]} */
+  /** @type {Filter<object>[][]} */
   #filters = []
 
 
@@ -62,17 +66,20 @@ export default class FiltersProcessor {
   }
 
 
-  /** @param {string} string */
-  process( string ) {
+  /**
+   * @param {string} string
+   * @param {(matches:string[]) => object} getVariables
+   */
+  process( string, getVariables ) {
     let matched = false
 
     for (const branch of this.#filters) {
       for (const filter of branch) {
-        const match = filter.match( string )
+        const matches = filter.match( string )
 
-        if (!match) continue
+        if (!matches) continue
 
-        switch (filter.execute()) {
+        switch (filter.execute( getVariables( matches ) )) {
           case Filter.State.STOP_FILTERING: return
           case Filter.State.NOT_MATCHED: continue
         }

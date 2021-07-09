@@ -3,12 +3,12 @@ import https from "https"
 
 import VM2Package from "vm2"
 
-import { Scope as CommandScope, Executor as CommandExecutor } from "./CommandProcessor.js"
+import { Scope as _Scope, Executor as _Executor } from "./CommandProcessor.js"
 import Logger, { logUnderControl } from "./Logger.js"
 import GuildDataset from "./GuildDataset.js"
-import { Filter } from "./FiltersProcessor.js"
+import { Filter as _Filter } from "./FiltersProcessor.js"
 
-export { Filter, GuildDataset, Logger, logUnderControl }
+export { GuildDataset, Logger, logUnderControl }
 export * from "./processedDiscordData.js"
 
 /** @typedef {import("./src/GuildDataset.js").GuildModuleTranslation} GuildModuleTranslation */
@@ -45,13 +45,15 @@ export * from "./processedDiscordData.js"
  */
 
 
-/** @extends {CommandScope<DiscordCommandElementMetaPart,Permission,Variables>} */
-export class Scope extends CommandScope {}
+/** @extends {_Scope<DiscordCommandElementMetaPart,Permission,Variables>} */
+export class Scope extends _Scope {}
 
 
-/** @extends {CommandExecutor<DiscordCommandElementMetaPart,Permission,Variables>} */
-export class Executor extends CommandExecutor {}
+/** @extends {_Executor<DiscordCommandElementMetaPart,Permission,Variables>} */
+export class Executor extends _Executor {}
 
+/** @extends {_Filter<Variables & { match:any }>} */
+export class Filter extends _Filter {}
 
 export const __DIRNAME = import.meta.url.match( /(.*)\// )[ 1 ].slice( 8 )
 export const __APPDIRNAME = fs.realpathSync( `.` )
