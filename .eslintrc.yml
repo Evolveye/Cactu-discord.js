@@ -1,5 +1,10 @@
-extends: eye
+extends:
+  - plugin:@typescript-eslint/recommended
+  - eye
+parser: "@typescript-eslint/parser"
 rules:
+  "@typescript-eslint/explicit-module-boundary-types":
+    - off
   react/jsx-curly-newline:
     - error
     - multiline: consistent

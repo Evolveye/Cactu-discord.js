@@ -3,9 +3,10 @@
   "version": "4.0.0-SNAPSHOT",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js."
+    "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js.",
+    "start": "tsc && node ./lib/index.js",
+    "build": "tsc"
   },
   "keywords": [
     "codecactu",
@@ -30,9 +31,13 @@
     "node-fetch": "^2.6.1",
     "rss": "^1.2.2",
     "rss-parser": "^3.12.0",
-    "vm2": "^3.9.2"
+    "vm2": "^3.9.2",
+    "zod": "^3.8.2"
   },
   "devDependencies": {
-    "eslint-config-eye": "^1.1.0"
+    "@typescript-eslint/eslint-plugin": "^4.30.0",
+    "@typescript-eslint/parser": "^4.30.0",
+    "eslint-config-eye": "^1.1.0",
+    "typescript": "^4.4.2"
   }
 }
