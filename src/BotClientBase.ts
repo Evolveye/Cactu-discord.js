@@ -1,4 +1,6 @@
-type Config = {
+import GuildDataset from "./GuildDataset"
+
+export type BotBaseConfig = {
   defaultPrefix?: string,
   defaultPrefixSpace?: boolean,
   logMaxLength?: number
@@ -8,7 +10,7 @@ type Config = {
 export default class BotClientBase<TClient> {
   #initialized = false
   #appClient?:TClient
-  #guildsDatasets = new Map()
+  #guildsDatasets = new Map<string, GuildDataset>()
 
   #loggers = {
     guild: null,
@@ -25,14 +27,22 @@ export default class BotClientBase<TClient> {
   }
 
 
-  constructor( appClient:TClient, config:Config = {} ) {
+  get appClient() {
+    return this.#appClient!
+  }
+  get guildsDatasets() {
+    return this.#guildsDatasets
+  }
+
+
+  constructor( appClient:TClient, config:BotBaseConfig = {} ) {
     this.handleConfig( config )
 
     this.#appClient = appClient
   }
 
 
-  handleConfig( config:Config ) {
+  handleConfig( config:BotBaseConfig ) {
     if (`defaultPrefix` in config && typeof config.defaultPrefix === `string`) {
       this.#config.defaultPrefix = config.defaultPrefix
     }
@@ -44,5 +54,19 @@ export default class BotClientBase<TClient> {
     if (`logMaxLength` in config && typeof config.logMaxLength === `number`) {
       this.#config.logMaxLength = config.logMaxLength
     }
+  }
+
+
+  log( data ) {
+    console.log( data )
+  }
+
+
+  endInitialization() {
+    this.#initialized = true
+
+    console.log()
+
+    this.log( `I have been started!` )
   }
 }

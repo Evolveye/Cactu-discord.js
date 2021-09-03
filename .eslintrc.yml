@@ -2,8 +2,12 @@ extends:
   - plugin:@typescript-eslint/recommended
   - eye
 parser: "@typescript-eslint/parser"
+ignorePatterns:
+  - lib
 rules:
   "@typescript-eslint/explicit-module-boundary-types":
+    - off
+  "@typescript-eslint/no-non-null-assertion":
     - off
   react/jsx-curly-newline:
     - error
