@@ -1,5 +1,7 @@
-import Discord, { Intents } from "discord.js"
+import Discord, { ActivityType } from "discord.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
+
+export * from "./src/moduleStructure/index.js"
 
 type Config = BotBaseConfig & {
   token: string
@@ -7,10 +9,13 @@ type Config = BotBaseConfig & {
 
 export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Guild> {
   constructor( config:Config ) {
-    super( new Discord.Client({ intents:[ Intents.FLAGS.GUILDS ] }) )
+    super( new Discord.Client({
+      intents: (2 ** 22 - 1), // All intents
+    }) )
 
     this.appClient
-      .on( `message`, this.handleMessage )
+      // .on( `messageCreate`, () => console.log( `msg` ) )
+      .on( `messageCreate`, this.handleMessage )
       // .on( `messageUpdate`, this.onMessageUpdate )
       .on( `guildCreate`, this.handleGuild )
       .on( `guildDelete`, ({ name }) => this.log( `I left from guild named [fgYellow]${name}[]` ) )
@@ -20,7 +25,7 @@ export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Gui
   }
 
 
-  getGguildDatasets = (message:Discord.Message) => {
+  getGuildDatasets = (message:Discord.Message) => {
     const { guild, author } = message
 
     const id = guild
@@ -38,11 +43,13 @@ export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Gui
   handleMessage = (message:Discord.Message) => {
     if (!message.content) return
 
-    const guildDataset = this.getGguildDatasets( message )
+    this.log( message.content )
 
-    guildDataset?.processMessage({
-      message: message.content,
-    })
+    // const guildDataset = this.getGuildDatasets( message )
+
+    // guildDataset?.processMessage({
+    //   message: message.content,
+    // })
   }
 
 
@@ -53,7 +60,7 @@ export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Gui
 
   onReady = () => {
     this.appClient.guilds.cache.forEach( guild => this.handleGuild( guild ) )
-    this.appClient.user?.setActivity({ name:`my pings`, type:`WATCHING` })
+    this.appClient.user?.setActivity({ name:`My pings`, type:ActivityType.Watching })
 
     this.endInitialization()
   }

@@ -1,28 +1,32 @@
 {
   "compilerOptions": {
-    "target": "ES2021",
+    "strict": true,
+    "noEmit": false,
+    "sourceMap": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "removeComments": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
     "declaration": true,
-    "outDir": "./lib",
-    // "strict": true,
-
-
+    "noImplicitAny": false,
+    "preserveConstEnums": true,
     "lib": ["dom", "dom.iterable", "esnext"],
     "baseUrl": "./",
-    "allowJs": true,
-    "strict": false,
-    "skipLibCheck": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": false,
-    "noUncheckedIndexedAccess": true,
-    "esModuleInterop": true,
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
+    "outDir": "./lib",
+    "tsBuildInfoFile": ".tsbuildinfo",
     "jsx": "preserve",
-    "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo"
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "target": "ES2017",
+    "paths": {
+      // "@lib/*": [ "src/features/lib/*" ],
+      // "@fet/*": [ "src/features/*" ]
+    }
   },
   "include": [ "index.ts", "src" ],
   "exclude": [ "node_modules" ]
