@@ -1,5 +1,7 @@
+import { ModuleConfig } from "./moduleStructure/Module.js"
+
 type ProcessorParam = {
-  message?: string,
+  message?: string
   processFilters?: boolean
   processCommands?: boolean
   filtersVariablesGetter?: (matches:string[]) => void
@@ -8,39 +10,18 @@ type ProcessorParam = {
   checkPermissions?: () => void
 }
 
-type Translation = {
-
-}
-
-type Filter = {
-
-}
-
-type Scope = {
-
-}
-
-type ConfigConstructorParam = {
-  prefix?: string
-  prefixSpace?: boolean
-  translation?: Translation
-  filters?: Filter[]
-  commands?: Scope
-  // events: any
-}
-
 export class Config {
   data
 
-  constructor( data:ConfigConstructorParam ) {
+  constructor( data:ModuleConfig ) {
     this.data = data
   }
 }
 
 export default class GuildDataset<T> {
-  #guild:T
+  #guild: T
 
-  name:string
+  name: string
 
   constructor( name:string, guild:T ) {
     this.name = name

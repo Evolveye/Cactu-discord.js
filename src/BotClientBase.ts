@@ -1,25 +1,25 @@
-import fs from "fs"
+import fs from "fs/promises"
+import Logger from "./logger/index.js"
 import GuildDataset, { Config } from "./GuildDataset.js"
 import { Scope } from "./CommandProcessor.js"
 
 
-export const __APPDIRNAME = fs.realpathSync( `.` )
+export const __APPDIRNAME = await fs.realpath( `.` )
 
 export type BotBaseConfig = {
-  defaultPrefix?: string,
-  idOfGuildToCopy?: string,
-  defaultPrefixSpace?: boolean,
+  defaultPrefix?: string
+  defaultPrefixSpace?: boolean
   logMaxLength?: number
 }
 
 
 export default class BotClientBase<TClient, TGuild> {
   #initialized = false
-  #appClient?:TClient
+  #appClient?: TClient
   #guildsDatasets = new Map<string, GuildDataset<TGuild>>()
 
   #loggers = {
-    guild: null,
+    guild: new Logger( [ { color:`fgWhite` } ], { maxLineLength:10 } ),
     dm: null,
     info: null,
     system: null,
@@ -69,11 +69,11 @@ export default class BotClientBase<TClient, TGuild> {
 
 
   log( data, type?:string ) {
-    console.log( data )
+    this.#loggers.guild.log( data )
   }
 
 
-  async loadModule( modulePath:string ):Promise<string|void> {
+  async loadModule( modulePath:string ): Promise<string | void> {
     if (!modulePath) return `Module path not provided`
 
     const guildId = modulePath.match( /([^-]+)--(.*)$/ )?.[ 1 ]
@@ -84,7 +84,7 @@ export default class BotClientBase<TClient, TGuild> {
 
     if (!guildDataset) return `Guild dataset not found`
 
-    const configCode = await fs.promises.readFile( `${__APPDIRNAME}/${modulePath}`, { encoding:`utf-8` } )
+    const configCode = await fs.readFile( `${__APPDIRNAME}/${modulePath}`, { encoding:`utf-8` } )
     // const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
 
     try {
@@ -97,7 +97,7 @@ export default class BotClientBase<TClient, TGuild> {
 
       if (!(scriptReturnValue instanceof Config) || Array.isArray( scriptReturnValue )) {
         scriptReturnValue = new Config({})
-        error = new Error(`Config return datatype is not an object!`)
+        error = new Error( `Config return datatype is not an object!` )
       }
 
       const config = scriptReturnValue?.data
@@ -112,13 +112,16 @@ export default class BotClientBase<TClient, TGuild> {
 
       if (error) throw error
     } catch (err) {
-      // console.error( err )
-      return /** @type {Error} */ (err).message
+      console.error( err )
+
+      if (err instanceof Error) {
+        return err.message
+      }
     }
   }
 
 
-  createGuild = (guildId:string, guildName:string, guild:TGuild) => {
+  createGuild = async(guildId:string, guildName:string, guild:TGuild) => {
     const path = `./guild_configs/${guildId}--${guildName.slice( 0, 20 ).replace( / /g, `-` )}${guildName.length > 20 ? `...` : ``}/`
     const configPath = `${path}config.js`
     const idOfGuildToCopy = this.#config.idOfGuildToCopy
@@ -126,20 +129,23 @@ export default class BotClientBase<TClient, TGuild> {
     this.guildsDatasets.set( guildId, new GuildDataset( guildName, guild ) )
     // this.guildsDatasets.set( guildId, new GuildDataset( guildName, guild, this.loggers.guild, this.eventBinder ) )
 
-    if (!fs.existsSync( path )) fs.mkdirSync( path )
+    const pathExists = await fs.access( path ).then( () => true ).catch( () => false )
+    if (!pathExists) fs.mkdir( path )
 
-    if (!fs.existsSync( configPath )) {
+    const configExists = await fs.access( configPath ).then( () => true ).catch( () => false )
+    if (!configExists && idOfGuildToCopy) {
       if (idOfGuildToCopy !== guildId) {
-        const configToCopyFolderPath = fs.readdirSync( path )
-          .filter( filename => filename.split( `--` )[ 0 ] === idOfGuildToCopy )[ 0 ]
+        const configToCopyFolderPath = await fs.readdir( path ).then( filenames =>
+          filenames.filter( filename => filename.split( `--` )[ 0 ] === idOfGuildToCopy )[ 0 ],
+        )
 
-        fs.copyFileSync( `${configToCopyFolderPath}config.js`, configPath )
+        await fs.copyFile( `${configToCopyFolderPath}config.js`, configPath )
       } else {
-        fs.writeFileSync( configPath, `` )
+        await fs.writeFile( configPath, `` )
       }
     }
 
-    const error = this.loadModule( configPath )
+    const error = await this.loadModule( configPath )
 
     if (this.#initialized) this.log( `I have joined to guild named [fgYellow]${guildName}[]`, `info` )
     else {
