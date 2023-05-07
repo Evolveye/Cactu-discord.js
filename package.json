@@ -1,6 +1,6 @@
 {
   "name": "cactu-discord.js",
-  "version": "4.0.0-SNAPSHOT",
+  "version": "4.0.0-pr.1",
   "description": "Transformed discord.js library into Cactu framework",
   "main": "index.js",
   "type": "module",

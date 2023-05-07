@@ -1,5 +1,6 @@
 import fs from "fs/promises"
 import Logger, { LoggerPart } from "./logger/index.js"
+import formatDate from "./logger/formatDate.js"
 import GuildDataset, { Config } from "./GuildDataset.js"
 import { Scope } from "./CommandProcessor.js"
 
@@ -20,21 +21,23 @@ export default class BotClientBase<TClient, TGuild> {
 
   static loggers = {
     system: new Logger( [
-      { color:`fgWhite`, value:() => `[HH:MM:SS:MS]` },
-      { color:`fgMagenta`, value:`System` },
-      { color:`fgBlack`, value:` :: ` },
+      { color:`fgBlack`, value:() => formatDate( Date.now(), `[hh:mm:ss:ms] ` ) },
+      { color:`fgRed`, value:`System` },
+      { color:`fgBlack`, value:` : ` },
       { color:`fgWhite` },
-    ] as const satisfies readonly LoggerPart[] ),
+    ] as const satisfies readonly LoggerPart[], { separated:true } ),
 
     server: new Logger( [
-      { color:`fgWhite`, value:() => `[HH:MM:SS:MS]` },
-      { color:`fgMagenta`, minLength:20, maxLength:20 }, // Server name
+      { color:`fgBlack`, value:() => formatDate( Date.now(), `[hh:mm:ss:ms] ` )  },
+      { color:`fgBlue`, minLength:20, maxLength:20, align:`right` },    // Server name
       { color:`fgBlack`, value:` :: ` },
-      { color:`fgMagenta`, minLength:15, maxLength:15 }, // Channel name
-      { color:`fgBlack`, value:` :: ` },
-      { color:`fgMagenta`, minLength:10, maxLength:10 }, // Action type
-      { color:`fgWhite` },
-    ] as const satisfies readonly LoggerPart[] ),
+      { color:`fgBlue`, minLength:15, maxLength:15 },                   // Channel name
+      { color:`fgYellow`, minLength:10, maxLength:10, align:`right` },  // Nickname
+      { color:`fgBlack`, value:`: ` },
+      { color:`fgBlue`, minLength:10, maxLength:10 },                   // Action type
+      { color:`fgBlack`, value:` | ` },
+      { color:`fgWhite` },                                              // Message
+    ] as const satisfies readonly LoggerPart[], { maxLineLength:100 } ),
   }
 
   #config = {

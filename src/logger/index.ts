@@ -1,5 +1,5 @@
 import { Color, colors, colorsReg } from "./colors.js"
-import { TupleCount, NegativeTupleCount, Tuple } from "./CountTuple.js"
+import { NegativeTupleCount, Tuple } from "./CountTuple.js"
 
 type FixedLogDataPart = {
   value: string | (() => string)
@@ -13,12 +13,20 @@ export type LoggerPart = Partial<FixedLogDataPart> & {
 
 export type LoggerConfig = {
   maxLineLength?: number
+  newLineStarter?: string
+  separated?: boolean
+}
+
+export type LastLogInfo = {
+  instance: Logger<[]>
+  separated: boolean
 }
 
 export default class Logger<Parts extends readonly LoggerPart[]> {
   static breakLineChars = ` ,:;-.`
-  static defaultColor: null | Color = `fgWhite`
+  static defaultColor: Color = `fgWhite`
   static defaultBackground: null | Color = null
+  static #lastLogsInfo: null | LastLogInfo = null
 
   #pattern: string = ``
   #parts: readonly LoggerPart[]
@@ -37,72 +45,95 @@ export default class Logger<Parts extends readonly LoggerPart[]> {
   }
 
   log( ...items:Tuple<string, NegativeTupleCount<Parts, FixedLogDataPart>> ) {
-  // log( items:NegativeTupleCount<Parts, FixedLogDataPart> ) {
-  // log( ...items:Tuple<string, NegativeTupleCount<Parts, FixedLogDataPart>> ) {
-    const { maxLineLength } = this.config
+    const itemsCopy = [ ...items ] as string[]
+    const { maxLineLength, newLineStarter = `   | ` } = this.config
+    const outputValues:string[] = []
+    const parts = [ ...this.#parts ]
+    const lineBreak = `\n` + newLineStarter
+    let logLength = 0
 
-    for (let i = 0;  i < items.length;  i++) {
-      const part = this.#parts[ i ]
-      let item = items[ i ]
+    for (let i = 0;  i < parts.length;  i++) {
+      const part = parts[ i ]
+      let value = ``
 
-      if (!item || !part) break
+      if (part?.value) value = typeof part.value === `function` ? part.value() : part.value
+      else value = itemsCopy.shift()!
 
+      if (!part || !value) break
+
+      const mainColor = Logger.defaultColor
       const { align = `left`, minLength = 0, color } = part
-      const mainColor = Logger.defaultColor ?? `fgWhite`
+      const regExp = new RegExp( lineBreak.replace( /\|/g, `\\|` ), `g` )
 
-      let len = minLength - item.length
+      let valueLen = value.length
 
-      if (len < 0) len = 0
+      if (value.includes( `[]` )) valueLen = value.replace( colorsReg, (...m) => m[ m.length - 1 ].data ).length
+
+      let additionalSpace = minLength - value.length
+
+      if (additionalSpace < 0) additionalSpace = 0
 
       switch (align) {
         case `left`:
-          item += ` `.repeat( len )
+          value += ` `.repeat( additionalSpace )
           break
 
         case `right`:
-          item = ` `.repeat( len ) + item
+          value = ` `.repeat( additionalSpace ) + value
           break
 
         case `center`:
-          for (let j = len;  j;  j--)
-            if (j % 2) item += ` `
-            else item = ` ` + item
+          for (let j = additionalSpace;  j;  j--)
+            if (j % 2) value += ` `
+            else value = ` ` + value
           break
       }
 
-      if (maxLineLength) item = Logger.split( item, maxLineLength )
+      if (maxLineLength) value = Logger.split( value, maxLineLength, { initialLength:logLength, notFirstLineMaxLength:maxLineLength - lineBreak.length } )
 
-      const lineBreak = `\n     | `
-      items[ i ] = item
+      const finalValue = value
         .replace( /\n/g, lineBreak )
-        // .replace( colorsReg, (...match) => {
-        //   const { fragColor, data } = match[ match.length - 1 ]
-        //   const text = data.replace( new RegExp( lineBreak.replace( /\|/g, `\\|` ), `g` ), `\n     ${colors[ mainColor ]}| ${colors[ fragColor ]}` )
+        .replace( colorsReg, (...match) => {
+          const { fragColor, data } = match[ match.length - 1 ]
+          const text = data.replace( regExp, `\n` + colors[ mainColor ] + newLineStarter + colors[ fragColor ] )
 
-      //   return `${colors[ fragColor ]}${text}${colors[ color ?? `fgWhite` ]}`
-      // } )
+          return `${colors[ fragColor ]}${text}${colors[ color ?? `fgWhite` ]}`
+        } )
+
+      logLength += valueLen + additionalSpace
+      outputValues.push( finalValue )
     }
 
-    console.log( this.#pattern, ...items )
+    const lastLoggerInfo = Logger.#lastLogsInfo
+    const itsSeparated = this.config.separated ?? false
+
+    if (lastLoggerInfo) {
+      if ((lastLoggerInfo.separated || itsSeparated) && lastLoggerInfo.instance !== this) console.log( ` ` )
+    }
+
+    Logger.#lastLogsInfo = { instance:this, separated:itsSeparated }
+    console.log( this.#pattern, ...outputValues )
   }
 
-  static split( logString:string, lineLength:number ) {
+  static split( logString:string, lineLength:number, { initialLength = 0, notFirstLineMaxLength = lineLength } = {} ) {
     const { breakLineChars } = Logger
     let lastLineBreak = { charIndex:0, prevCharIndex:0, char:`` }
-    let currentLineLength = 0
+    let currentLineLength = initialLength
 
     for (let i = 0;  i < logString.length;  i++) {
       const char = logString[ i ]
+      const currentLineMaxLength = lastLineBreak.prevCharIndex === 0 ? lineLength : notFirstLineMaxLength
 
       if (!char) break
-      if (breakLineChars.includes( char ) && logString[ i - 1 ] != `\n` && currentLineLength != lineLength) {
+      if (breakLineChars.includes( char ) && logString[ i - 1 ] != `\n` && currentLineLength != currentLineMaxLength) {
         lastLineBreak.charIndex = i
         lastLineBreak.char = char
       }
 
       currentLineLength++
 
-      if (currentLineLength <= lineLength) continue
+
+      if (currentLineLength <= currentLineMaxLength) continue
       if (!lastLineBreak.charIndex || i - lastLineBreak.charIndex > 15 || lastLineBreak.charIndex == lastLineBreak.prevCharIndex) {
         logString = `${logString.slice( 0, i )}\n${logString.slice( i )}`
         currentLineLength = 0

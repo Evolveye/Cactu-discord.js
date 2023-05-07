@@ -24,7 +24,6 @@ type NegativeTupleCounter<Tuple extends readonly unknown[], ToFind extends unkno
 export type TupleCount<Tuple extends readonly unknown[], ToFind extends unknown> = TupleCounter<Tuple, ToFind>
 export type NegativeTupleCount<Tuple extends readonly unknown[], ToFind extends unknown> = NegativeTupleCounter<Tuple, ToFind>
 
-
 // Primitive tests below
 
 

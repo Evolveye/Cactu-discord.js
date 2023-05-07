@@ -69,5 +69,18 @@ export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Gui
   }
 }
 
-CactuDiscordBot.loggers.system.log( `Hello [fg Red]world world world world world world[] world world world!` )
-CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Commands /`, `Hello` )
+CactuDiscordBot.loggers.system.log( `Hello [fgRed]IMPORTANT[] world and [fgGreen]Cactu[]!` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Evovleye`, `Commands [fgRed]/[]`, `Hello` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Evovleye`, `Commands [fgRed]/[]`, `Hello` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Evovleye`, `Commands`, `Hello` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Evovleye`, `Commands`, `Hello` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Evovleye`, `Commands [fgRed]/[]`, `Hello` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Evovleye`, `Commands`, `Hello` )
+CactuDiscordBot.loggers.system.log( `New update available` )
+CactuDiscordBot.loggers.system.log( `Error or something` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Somka`, `Filters`, `żopa` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Somka`, `Commands`,
+  `Lorem [fgRed]ipsum dolor sit[] amet, consectetur adipisicing elit. Numquam nihil minima obcaecati odit tenetur dolorem culpa eveniet beatae animi exercitationem earum deleniti accusamus, necessitatibus quidem, aperiam laborum omnis repellat dolorum veritatis doloremque in reiciendis consectetur pariatur. Natus quos obcaecati saepe nostrum molestiae alias maxime esse? Eaque aliquid fugiat saepe quo?`,
+)
+
+console.log( ` ` )
