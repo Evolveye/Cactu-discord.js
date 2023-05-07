@@ -1,4 +1,5 @@
 import Discord, { ActivityType } from "discord.js"
+import Logger, { LoggerPart } from "./src/logger/index.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
 export * from "./src/moduleStructure/index.js"
@@ -12,6 +13,8 @@ export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Gui
     super( new Discord.Client({
       intents: (2 ** 22 - 1), // All intents
     }) )
+
+    if (!config?.token) throw new Error( `Config object have to have "token" field` )
 
     this.appClient
       // .on( `messageCreate`, () => console.log( `msg` ) )
@@ -65,3 +68,6 @@ export default class CactuDiscordBot extends BotBase<Discord.Client, Discord.Gui
     this.endInitialization()
   }
 }
+
+CactuDiscordBot.loggers.system.log( `Hello [fg Red]world world world world world world[] world world world!` )
+CactuDiscordBot.loggers.server.log( `Kaktus Intranetowy`, `oaza`, `Commands /`, `Hello` )

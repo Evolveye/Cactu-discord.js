@@ -1,5 +1,5 @@
 import fs from "fs/promises"
-import Logger from "./logger/index.js"
+import Logger, { LoggerPart } from "./logger/index.js"
 import GuildDataset, { Config } from "./GuildDataset.js"
 import { Scope } from "./CommandProcessor.js"
 
@@ -18,11 +18,23 @@ export default class BotClientBase<TClient, TGuild> {
   #appClient?: TClient
   #guildsDatasets = new Map<string, GuildDataset<TGuild>>()
 
-  #loggers = {
-    guild: new Logger( [ { color:`fgWhite` } ], { maxLineLength:10 } ),
-    dm: null,
-    info: null,
-    system: null,
+  static loggers = {
+    system: new Logger( [
+      { color:`fgWhite`, value:() => `[HH:MM:SS:MS]` },
+      { color:`fgMagenta`, value:`System` },
+      { color:`fgBlack`, value:` :: ` },
+      { color:`fgWhite` },
+    ] as const satisfies readonly LoggerPart[] ),
+
+    server: new Logger( [
+      { color:`fgWhite`, value:() => `[HH:MM:SS:MS]` },
+      { color:`fgMagenta`, minLength:20, maxLength:20 }, // Server name
+      { color:`fgBlack`, value:` :: ` },
+      { color:`fgMagenta`, minLength:15, maxLength:15 }, // Channel name
+      { color:`fgBlack`, value:` :: ` },
+      { color:`fgMagenta`, minLength:10, maxLength:10 }, // Action type
+      { color:`fgWhite` },
+    ] as const satisfies readonly LoggerPart[] ),
   }
 
   #config = {
@@ -69,7 +81,7 @@ export default class BotClientBase<TClient, TGuild> {
 
 
   log( data, type?:string ) {
-    this.#loggers.guild.log( data )
+    // this.#loggers.guild.log( data )
   }
 
 

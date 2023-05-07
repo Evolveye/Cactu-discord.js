@@ -1,33 +1,44 @@
-export type LoggerPart = {
+import { Color, colors, colorsReg } from "./colors.js"
+import { TupleCount, NegativeTupleCount, Tuple } from "./CountTuple.js"
+
+type FixedLogDataPart = {
+  value: string | (() => string)
+}
+export type LoggerPart = Partial<FixedLogDataPart> & {
   align?: "left" | "center" | "right"
-  color?: keyof typeof Logger.colors
+  color?: Color
   minLength?: number
+  maxLength?: number
 }
 
 export type LoggerConfig = {
   maxLineLength?: number
 }
 
-export default class Logger {
+export default class Logger<Parts extends readonly LoggerPart[]> {
   static breakLineChars = ` ,:;-.`
+  static defaultColor: null | Color = `fgWhite`
+  static defaultBackground: null | Color = null
 
   #pattern: string = ``
-  #parts: LoggerPart[]
+  #parts: readonly LoggerPart[]
   config: LoggerConfig
 
-  constructor( parts:LoggerPart[], config:LoggerConfig = {} ) {
+  constructor( parts:Parts, config:LoggerConfig = {} ) {
     this.#parts = parts
     this.config = config
 
     for (const { color = `fgWhite` } of parts) {
       this.#pattern += ``
-        + (Logger.colors[ color ] || ``)
+        + (colors[ color ] || ``)
         + `%s`
-        + Logger.colors.reset
+        + colors.reset
     }
   }
 
-  log = (...items:string[]) => {
+  log( ...items:Tuple<string, NegativeTupleCount<Parts, FixedLogDataPart>> ) {
+  // log( items:NegativeTupleCount<Parts, FixedLogDataPart> ) {
+  // log( ...items:Tuple<string, NegativeTupleCount<Parts, FixedLogDataPart>> ) {
     const { maxLineLength } = this.config
 
     for (let i = 0;  i < items.length;  i++) {
@@ -36,7 +47,9 @@ export default class Logger {
 
       if (!item || !part) break
 
-      const { align = `left`, minLength = 0 } = part
+      const { align = `left`, minLength = 0, color } = part
+      const mainColor = Logger.defaultColor ?? `fgWhite`
+
       let len = minLength - item.length
 
       if (len < 0) len = 0
@@ -59,7 +72,15 @@ export default class Logger {
 
       if (maxLineLength) item = Logger.split( item, maxLineLength )
 
-      items[ i ] = item.replace( /\n/g, `\n     |` )
+      const lineBreak = `\n     | `
+      items[ i ] = item
+        .replace( /\n/g, lineBreak )
+        // .replace( colorsReg, (...match) => {
+        //   const { fragColor, data } = match[ match.length - 1 ]
+        //   const text = data.replace( new RegExp( lineBreak.replace( /\|/g, `\\|` ), `g` ), `\n     ${colors[ mainColor ]}| ${colors[ fragColor ]}` )
+
+      //   return `${colors[ fragColor ]}${text}${colors[ color ?? `fgWhite` ]}`
+      // } )
     }
 
     console.log( this.#pattern, ...items )
@@ -111,33 +132,5 @@ export default class Logger {
     }
 
     return logString
-  }
-
-  static colors = {
-    reset: `\x1b[0m`,
-    bright: `\x1b[1m`,
-    dim: `\x1b[2m`,
-    underscore: `\x1b[4m`,
-    blink: `\x1b[5m`,
-    reverse: `\x1b[7m`,
-    hidden: `\x1b[8m`,
-
-    fgBlack: `\x1b[30m`,
-    fgRed: `\x1b[31m`,
-    fgGreen: `\x1b[32m`,
-    fgYellow: `\x1b[33m`,
-    fgBlue: `\x1b[34m`,
-    fgMagenta: `\x1b[35m`,
-    fgCyan: `\x1b[36m`,
-    fgWhite: `\x1b[37m`,
-
-    bgBlack: `\x1b[40m`,
-    bgRed: `\x1b[41m`,
-    bgGreen: `\x1b[42m`,
-    bgYellow: `\x1b[43m`,
-    bgBlue: `\x1b[44m`,
-    bgMagenta: `\x1b[45m`,
-    bgCyan: `\x1b[46m`,
-    bgWhite: `\x1b[47m`,
   }
 }
