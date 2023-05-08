@@ -14,16 +14,15 @@ export type BotBaseConfig = {
 }
 
 
-export default class BotClientBase<TClient, TGuild> {
+export default class BotClientBase<TGuild> {
   #initialized = false
-  #appClient?: TClient
   #guildsDatasets = new Map<string, GuildDataset<TGuild>>()
 
   static loggers = {
     system: new Logger( [
       { color:`fgBlack`, value:() => formatDate( Date.now(), `[hh:mm:ss:ms] ` ) },
       { color:`fgRed`, value:`System` },
-      { color:`fgBlack`, value:` : ` },
+      { color:`fgBlack`, value:`: ` },
       { color:`fgWhite` },
     ] as const satisfies readonly LoggerPart[], { separated:true } ),
 
@@ -37,7 +36,17 @@ export default class BotClientBase<TClient, TGuild> {
       { color:`fgBlue`, minLength:10, maxLength:10 },                   // Action type
       { color:`fgBlack`, value:` | ` },
       { color:`fgWhite` },                                              // Message
-    ] as const satisfies readonly LoggerPart[], { maxLineLength:100 } ),
+    ] as const satisfies readonly LoggerPart[], { maxLineLength:180 } ),
+    dm: new Logger( [
+      { color:`fgBlack`, value:() => formatDate( Date.now(), `[hh:mm:ss:ms] ` )  },
+      { color:`fgBlue`, minLength:39, maxLength:39, align:`right` },    // User
+      { color:`fgBlack`, value:` :: ` },
+      { color:`fgYellow`, minLength:10, maxLength:10, align:`right` },  // Nickname
+      { color:`fgBlack`, value:`: ` },
+      { color:`fgBlue`, minLength:10, maxLength:10 },                   // Action type
+      { color:`fgBlack`, value:` | ` },
+      { color:`fgWhite` },                                              // Message
+    ] as const satisfies readonly LoggerPart[], { maxLineLength:180 } ),
   }
 
   #config = {
@@ -49,18 +58,13 @@ export default class BotClientBase<TClient, TGuild> {
   }
 
 
-  get appClient() {
-    return this.#appClient!
-  }
   get guildsDatasets() {
     return this.#guildsDatasets
   }
 
 
-  constructor( appClient:TClient, config:BotBaseConfig = {} ) {
+  constructor( config:BotBaseConfig = {} ) {
     this.handleConfig( config )
-
-    this.#appClient = appClient
   }
 
 
@@ -83,8 +87,14 @@ export default class BotClientBase<TClient, TGuild> {
   }
 
 
-  log( data, type?:string ) {
-    // this.#loggers.guild.log( data )
+  logServer( server:string, channel:string, username:string, action:string, message:string ) {
+    BotClientBase.loggers.server.log( server, channel, username, action, message )
+  }
+  logDM( recipient:string, username:string, action:string, message:string ) {
+    BotClientBase.loggers.dm.log( recipient, username, action, message )
+  }
+  logSystem( message:string ) {
+    BotClientBase.loggers.system.log( message )
   }
 
 
@@ -162,13 +172,13 @@ export default class BotClientBase<TClient, TGuild> {
 
     const error = await this.loadModule( configPath )
 
-    if (this.#initialized) this.log( `I have joined to guild named [fgYellow]${guildName}[]`, `info` )
+    if (this.#initialized) this.logSystem( `I have joined to guild named [fgYellow]${guildName}[]` )
     else {
       let message = `I'm on guild named [fgYellow]${guildName}[]`
 
       if (error) message += `\n[fgRed]CONFIG LOADING ERROR[]: ${error}`
 
-      this.log( message )
+      this.logSystem( message )
     }
   }
 
@@ -178,7 +188,7 @@ export default class BotClientBase<TClient, TGuild> {
 
     console.log()
 
-    this.log( `I have been started!` )
+    this.logSystem( `I have been started!` )
   }
 
 
