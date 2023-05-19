@@ -16,7 +16,7 @@ export type BotBaseConfig = {
 
 export default class BotClientBase<TGuild> {
   #initialized = false
-  #guildsDatasets = new Map<string, GuildDataset<TGuild>>()
+  #serversDatasets = new Map<string, GuildDataset<TGuild>>()
 
   static loggers = {
     system: new Logger( [
@@ -58,8 +58,8 @@ export default class BotClientBase<TGuild> {
   }
 
 
-  get guildsDatasets() {
-    return this.#guildsDatasets
+  get serversDatasets() {
+    return this.#serversDatasets
   }
 
 
@@ -105,7 +105,7 @@ export default class BotClientBase<TGuild> {
 
     if (!guildId) return `Wrong module path (guild id not found)`
 
-    const guildDataset = this.guildsDatasets.get( guildId )
+    const guildDataset = this.serversDatasets.get( guildId )
 
     if (!guildDataset) return `Guild dataset not found`
 
@@ -151,7 +151,7 @@ export default class BotClientBase<TGuild> {
     const configPath = `${path}config.js`
     const idOfGuildToCopy = this.#config.idOfGuildToCopy
 
-    this.guildsDatasets.set( guildId, new GuildDataset( guildName, guild ) )
+    this.serversDatasets.set( guildId, new GuildDataset( guildName, guild ) )
     // this.guildsDatasets.set( guildId, new GuildDataset( guildName, guild, this.loggers.guild, this.eventBinder ) )
 
     const pathExists = await fs.access( path ).then( () => true ).catch( () => false )

@@ -46,7 +46,7 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
 
     if (!id || !author || (author.bot && author.id === this.client.user?.id)) return
 
-    return this.guildsDatasets.get( id )
+    return this.serversDatasets.get( id )
   }
 
 
@@ -67,11 +67,11 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
       }
     }
 
-    // const guildDataset = this.getGuildDatasets( message )
+    const guildDataset = this.getGuildDatasets( message )
 
-    // guildDataset?.processMessage({
-    //   message: message.content,
-    // })
+    guildDataset?.processMessage({
+      message: message.content,
+    })
   }
 
 

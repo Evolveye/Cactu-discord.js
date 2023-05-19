@@ -62,7 +62,7 @@ export default class Logger<Parts extends readonly LoggerPart[]> {
       if (!part || !value) break
 
       const mainColor = Logger.defaultColor
-      const { align = `left`, minLength = 0, color } = part
+      const { align = `left`, minLength = 0, maxLength, color } = part
       const regExp = new RegExp( lineBreak.replace( /\|/g, `\\|` ), `g` )
 
       let valueLen = value.length
@@ -73,7 +73,8 @@ export default class Logger<Parts extends readonly LoggerPart[]> {
 
       if (additionalSpace < 0) additionalSpace = 0
 
-      switch (align) {
+      if (maxLength && value.length >= maxLength) value = value.slice( 0, maxLength - 3 ) + `...`
+      else switch (align) {
         case `left`:
           value += ` `.repeat( additionalSpace )
           break
