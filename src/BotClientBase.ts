@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import Logger, { LoggerPart } from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
-import GuildDataset, { Config } from "./GuildDataset.js"
+import Namespace from "./Namespace.js"
 import { Scope } from "./CommandProcessor.js"
 
 
@@ -13,10 +13,11 @@ export type BotBaseConfig = {
   logMaxLength?: number
 }
 
-
-export default class BotClientBase<TGuild> {
+export default class BotClientBase<TNamespace> {
+  #dataFolderPath = `./namespaces_data/`
+  #defaultConfigSubpath = `_default_config/`
   #initialized = false
-  #serversDatasets = new Map<string, GuildDataset<TGuild>>()
+  #namespacesData = new Map<string, Namespace>()
 
   static loggers = {
     system: new Logger( [
@@ -58,13 +59,15 @@ export default class BotClientBase<TGuild> {
   }
 
 
-  get serversDatasets() {
-    return this.#serversDatasets
+  get namespacesData() {
+    return this.#namespacesData
   }
 
 
   constructor( config:BotBaseConfig = {} ) {
     this.handleConfig( config )
+
+    fs.mkdir( this.#dataFolderPath, { recursive:true } )
   }
 
 
@@ -98,85 +101,80 @@ export default class BotClientBase<TGuild> {
   }
 
 
-  async loadModule( modulePath:string ): Promise<string | void> {
-    if (!modulePath) return `Module path not provided`
+  // async loadModule( modulePath:string ): Promise<string | void> {
+  //   if (!modulePath) return `Module path not provided`
 
-    const guildId = modulePath.match( /([^-]+)--(.*)$/ )?.[ 1 ]
+  //   const guildId = modulePath.match( /([^-]+)--(.*)$/ )?.[ 1 ]
 
-    if (!guildId) return `Wrong module path (guild id not found)`
+  //   if (!guildId) return `Wrong module path (guild id not found)`
 
-    const guildDataset = this.serversDatasets.get( guildId )
+  //   const guildDataset = this.namespacesData.get( guildId )
 
-    if (!guildDataset) return `Guild dataset not found`
+  //   if (!guildDataset) return `Guild dataset not found`
 
-    const configCode = await fs.readFile( `${__APPDIRNAME}/${modulePath}`, { encoding:`utf-8` } )
-    // const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
+  //   const configCode = await fs.readFile( `${__APPDIRNAME}/${modulePath}`, { encoding:`utf-8` } )
+  //   // const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
 
-    try {
-      // TODO Loading every script (unsafe too; with infinite loops etc) and validate its return object
-      // const script = configCode.match( importsAndStartingCommentsTrimmer )?.[ 1 ]
-      // let scriptReturnValue =  new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` ) ?? {}
+  //   try {
+  //     // TODO Loading every script (unsafe too; with infinite loops etc) and validate its return object
+  //     // const script = configCode.match( importsAndStartingCommentsTrimmer )?.[ 1 ]
+  //     // let scriptReturnValue =  new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` ) ?? {}
 
-      let scriptReturnValue = eval( `(() => {${configCode}})()` ) ?? {}
-      let error:Error | null = null
+  //     let scriptReturnValue = eval( `(() => {${configCode}})()` ) ?? {}
+  //     let error:Error | null = null
 
-      if (!(scriptReturnValue instanceof Config) || Array.isArray( scriptReturnValue )) {
-        scriptReturnValue = new Config({})
-        error = new Error( `Config return datatype is not an object!` )
-      }
+  //     if (!(scriptReturnValue instanceof Config) || Array.isArray( scriptReturnValue )) {
+  //       scriptReturnValue = new Config({})
+  //       error = new Error( `Config return datatype is not an object!` )
+  //     }
 
-      const config = scriptReturnValue?.data
+  //     const config = scriptReturnValue?.data
 
-      if (!config.prefix) config.prefix = this.#config.defaultPrefix
-      if (!config.commands) config.commands = new Scope( {}, {} )
+  //     if (!config.prefix) config.prefix = this.#config.defaultPrefix
+  //     if (!config.commands) config.commands = new Scope( {}, {} )
 
-      config.commands.setSafety( false )
-      config.commands.merge( BotClientBase.predefinedCommands, true )
+  //     config.commands.setSafety( false )
+  //     config.commands.merge( BotClientBase.predefinedCommands, true )
 
-      guildDataset.loadConfig( scriptReturnValue )
+  //     guildDataset.loadConfig( scriptReturnValue )
 
-      if (error) throw error
-    } catch (err) {
-      console.error( err )
+  //     if (error) throw error
+  //   } catch (err) {
+  //     console.error( err )
 
-      if (err instanceof Error) {
-        return err.message
-      }
-    }
-  }
+  //     if (err instanceof Error) {
+  //       return err.message
+  //     }
+  //   }
+  // }
 
 
-  createGuild = async(guildId:string, guildName:string, guild:TGuild) => {
-    const path = `./guild_configs/${guildId}--${guildName.slice( 0, 20 ).replace( / /g, `-` )}${guildName.length > 20 ? `...` : ``}/`
-    const configPath = `${path}config.js`
-    const idOfGuildToCopy = this.#config.idOfGuildToCopy
+  registerNamespace = async(id:string, name?:string) => {
+    const namespaceFolderPath = this.#dataFolderPath + id + `/`
+    const defualtConfigPath = this.#dataFolderPath + this.#defaultConfigSubpath
 
-    this.serversDatasets.set( guildId, new GuildDataset( guildName, guild ) )
-    // this.guildsDatasets.set( guildId, new GuildDataset( guildName, guild, this.loggers.guild, this.eventBinder ) )
+    const namespaceFolderExists = await fs.access( namespaceFolderPath ).then( () => true ).catch( () => false )
+    if (!namespaceFolderExists) {
+      const [ defaultConfigExists ] = await Promise.all([
+        fs.readdir( defualtConfigPath ).catch<false>( () => false ),
+        fs.mkdir( namespaceFolderPath, { recursive:true } ),
+      ])
 
-    const pathExists = await fs.access( path ).then( () => true ).catch( () => false )
-    if (!pathExists) fs.mkdir( path )
-
-    const configExists = await fs.access( configPath ).then( () => true ).catch( () => false )
-    if (!configExists && idOfGuildToCopy) {
-      if (idOfGuildToCopy !== guildId) {
-        const configToCopyFolderPath = await fs.readdir( path ).then( filenames =>
-          filenames.filter( filename => filename.split( `--` )[ 0 ] === idOfGuildToCopy )[ 0 ],
-        )
-
-        await fs.copyFile( `${configToCopyFolderPath}config.js`, configPath )
-      } else {
-        await fs.writeFile( configPath, `` )
-      }
+      if (defaultConfigExists) await Promise.all(
+        defaultConfigExists.map( fileName => fs.copyFile( defualtConfigPath + fileName, namespaceFolderPath + fileName ) ),
+      )
     }
 
-    const error = await this.loadModule( configPath )
+    const namespace = new Namespace( id, name )
+    const configLoadingErrors = await namespace.loadConfigFromFolder( namespaceFolderPath ).catch( errs => errs )
 
-    if (this.#initialized) this.logSystem( `I have joined to guild named [fgYellow]${guildName}[]` )
+    this.#namespacesData.set( namespace.id, namespace )
+
+    if (this.#initialized) this.logSystem( `I have joined to guild named [fgYellow]${name}[]` )
     else {
-      let message = `I'm on guild named [fgYellow]${guildName}[]`
+      let message = name ? `I'm on namespace named [fgYellow]${name}[]` : `I'm on namespace with id [fgYellow]${name}[]`
 
-      if (error) message += `\n[fgRed]CONFIG LOADING ERROR[]: ${error}`
+      if (configLoadingErrors) configLoadingErrors.forEach( err => message += `\n[fgRed]CONFIG LOADING ERROR[]: ${err}` )
 
       this.logSystem( message )
     }

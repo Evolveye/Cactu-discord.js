@@ -29,7 +29,7 @@ export class Executor {
 export type ScopeConfig = Record<string, Scope | Executor>
 export default class Scope {
   #meta: ScopeMeta
-  #config: ScopeConfig
+  config: ScopeConfig
 
   get meta() {
     return this.#meta
@@ -37,6 +37,19 @@ export default class Scope {
 
   constructor( meta:ScopeMeta, config:ScopeConfig ) {
     this.#meta = meta
-    this.#config = config
+    this.config = config
+  }
+
+  static merge( target:Scope, scope:Scope ) {
+    Object.entries( scope ).forEach( ([ key, value ]) => {
+      if (key in target) {
+        if (target[ key ] instanceof Executor) target[ key ] = value
+        else if (target[ key ] instanceof Scope) {
+          if (value instanceof Scope) this.merge( target[ key ], value )
+        }
+      }
+
+      target[ key ] = value
+    } )
   }
 }

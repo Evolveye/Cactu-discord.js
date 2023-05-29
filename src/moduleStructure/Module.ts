@@ -26,17 +26,36 @@ export type TranslationKeys =
   | `label.no`
   | `system.loadSuccess`
 
-
-export type ModuleConfig = {
-  prefix?: string
-  prefixSpace?: boolean
-  translation?: Record<TranslationKeys, string>
-  commands?: Scope
-  filters?: Filter[]
+export interface ModuleData {
+  prefix: string
+  prefixSpace: boolean
+  translation: Partial<Record<TranslationKeys, string>>
+  commands: undefined | Scope
+  filters: Filter[]
 }
 
-export default class Module {
-  constructor( config:ModuleConfig ) {
+export type ModuleConfig = Partial<ModuleData>
 
+export default class Module implements ModuleData {
+  prefix = `/`
+  prefixSpace = false
+  translation = {}
+  commands: undefined | Scope = undefined
+  filters = []
+
+  constructor( config:ModuleConfig = {} ) {
+    Module.merge( this, config )
+  }
+
+  static merge( target:Module, module:ModuleConfig ) {
+    if (module.prefix) target.prefix = module.prefix
+    if (module.prefixSpace) target.prefixSpace = module.prefixSpace
+    if (module.filters) module.filters.push( ...module.filters )
+    if (module.translation) Object.assign( target.translation, module.translation )
+
+    if (module.commands) {
+      if (target.commands) Scope.merge( target.commands, module.commands )
+      else target.commands = module.commands
+    }
   }
 }

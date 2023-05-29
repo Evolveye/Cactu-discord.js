@@ -4,7 +4,7 @@ import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 export * from "./src/moduleStructure/index.js"
 
 type Config = BotBaseConfig & {
-  token: string
+  botToken: string
   appId: string
 }
 
@@ -15,9 +15,9 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
   constructor( config:Config ) {
     super()
 
-    if (!config?.token) throw new Error( `Config object have to have "token" field` )
+    if (!config?.botToken) throw new Error( `Config object have to have "botToken" field` )
 
-    this.rest = new REST().setToken( config.token )
+    this.rest = new REST().setToken( config.botToken )
     this.client = new Discord.Client({
       intents: (2 ** 22 - 1), // All intents
       partials: [ Partials.Channel, Partials.Message ],
@@ -30,7 +30,7 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
       .on( `guildCreate`, this.handleGuild )
       .on( `guildDelete`, ({ name }) => this.logSystem( `I left from guild named [fgYellow]${name}[]` ) )
       .on( `ready`, this.onReady )
-      .login( config.token )
+      .login( config.botToken )
       .catch( err => this.logSystem( `I can't login in.\n${err}` ) )
   }
 
@@ -46,7 +46,7 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
 
     if (!id || !author || (author.bot && author.id === this.client.user?.id)) return
 
-    return this.serversDatasets.get( id )
+    return this.namespacesData.get( id )
   }
 
 
@@ -76,7 +76,8 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
 
 
   handleGuild = (guild:Discord.Guild) => {
-    this.createGuild( guild.id, guild.name, guild )
+    const parsedName = guild.name.slice( 0, 20 ).replace( / [^ ]/g, match => match.trim().toUpperCase() ).trim() + (guild.name.length > 20 ? `...` : ``)
+    this.registerNamespace( guild.id + `--` + parsedName, guild.name )
   }
 
 

@@ -3,6 +3,8 @@ lib/
 .vscode/
 
 guild_configs/
+namespaces_data/*
+!namespaces_data/_default_config/
 
 priv-*
 private*
