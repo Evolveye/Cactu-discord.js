@@ -2,8 +2,6 @@ import fs from "fs/promises"
 import Logger, { LoggerPart } from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
 import Namespace from "./Namespace.js"
-import { Scope } from "./CommandProcessor.js"
-
 
 export const __APPDIRNAME = await fs.realpath( `.` )
 
@@ -11,6 +9,11 @@ export type BotBaseConfig = {
   defaultPrefix?: string
   defaultPrefixSpace?: boolean
   logMaxLength?: number
+}
+
+export type NamespaceRegistrationConfig = {
+  name?: string
+  folderName?: string
 }
 
 export default class BotClientBase<TNamespace> {
@@ -101,56 +104,8 @@ export default class BotClientBase<TNamespace> {
   }
 
 
-  // async loadModule( modulePath:string ): Promise<string | void> {
-  //   if (!modulePath) return `Module path not provided`
-
-  //   const guildId = modulePath.match( /([^-]+)--(.*)$/ )?.[ 1 ]
-
-  //   if (!guildId) return `Wrong module path (guild id not found)`
-
-  //   const guildDataset = this.namespacesData.get( guildId )
-
-  //   if (!guildDataset) return `Guild dataset not found`
-
-  //   const configCode = await fs.readFile( `${__APPDIRNAME}/${modulePath}`, { encoding:`utf-8` } )
-  //   // const importsAndStartingCommentsTrimmer = /(?:(?:import |\/\/|\/\*[\s\S]*?\*\/).*\r?\n)*([\s\S]*)/
-
-  //   try {
-  //     // TODO Loading every script (unsafe too; with infinite loops etc) and validate its return object
-  //     // const script = configCode.match( importsAndStartingCommentsTrimmer )?.[ 1 ]
-  //     // let scriptReturnValue =  new VM2Package.VM( this.vmConfig ).run( `(() => {${script}})()` ) ?? {}
-
-  //     let scriptReturnValue = eval( `(() => {${configCode}})()` ) ?? {}
-  //     let error:Error | null = null
-
-  //     if (!(scriptReturnValue instanceof Config) || Array.isArray( scriptReturnValue )) {
-  //       scriptReturnValue = new Config({})
-  //       error = new Error( `Config return datatype is not an object!` )
-  //     }
-
-  //     const config = scriptReturnValue?.data
-
-  //     if (!config.prefix) config.prefix = this.#config.defaultPrefix
-  //     if (!config.commands) config.commands = new Scope( {}, {} )
-
-  //     config.commands.setSafety( false )
-  //     config.commands.merge( BotClientBase.predefinedCommands, true )
-
-  //     guildDataset.loadConfig( scriptReturnValue )
-
-  //     if (error) throw error
-  //   } catch (err) {
-  //     console.error( err )
-
-  //     if (err instanceof Error) {
-  //       return err.message
-  //     }
-  //   }
-  // }
-
-
-  registerNamespace = async(id:string, name?:string) => {
-    const namespaceFolderPath = this.#dataFolderPath + id + `/`
+  registerNamespace = async(id:string, { name = id, folderName = id }:NamespaceRegistrationConfig = {}) => {
+    const namespaceFolderPath = this.#dataFolderPath + folderName + `/`
     const defualtConfigPath = this.#dataFolderPath + this.#defaultConfigSubpath
 
     const namespaceFolderExists = await fs.access( namespaceFolderPath ).then( () => true ).catch( () => false )
@@ -188,7 +143,4 @@ export default class BotClientBase<TNamespace> {
 
     this.logSystem( `I have been started!` )
   }
-
-
-  static predefinedCommands = new Scope( {}, {} )
 }

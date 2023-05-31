@@ -2,6 +2,8 @@ node_modules/
 lib/
 .vscode/
 
+.tsbuildinfo
+
 guild_configs/
 namespaces_data/*
 !namespaces_data/_default_config/

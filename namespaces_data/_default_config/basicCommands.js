@@ -1,11 +1,17 @@
 import { Module, Scope, Executor } from "../../lib/index.js"
 
-export const config = { abc:1 }
-
 export default new Module({
   commands: new Scope( {}, {
-    ping: new Executor( {}, () => {
-      console.log( `ping pong command` )
+    $: new Scope( {}, {
+      tell: new Executor( {
+        params: [ { name:`message`, type:`message` } ],
+      }, $ => {
+        console.log( `Tell by bot`, { $ } )
+      } ),
+    } ),
+
+    ping: new Executor( {}, $ => {
+      $.send( `pong` )
     } ),
   } ),
 })

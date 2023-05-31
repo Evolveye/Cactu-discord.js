@@ -71,13 +71,20 @@ export default class CactuDiscordBot extends BotBase<Discord.Guild> {
 
     guildDataset?.processMessage({
       message: message.content,
+      processFilters: false,
+      executorDataGetter: () => ({
+        send: (msg:string) => message.channel.send( msg ),
+      }),
     })
   }
 
 
   handleGuild = (guild:Discord.Guild) => {
     const parsedName = guild.name.slice( 0, 20 ).replace( / [^ ]/g, match => match.trim().toUpperCase() ).trim() + (guild.name.length > 20 ? `...` : ``)
-    this.registerNamespace( guild.id + `--` + parsedName, guild.name )
+    this.registerNamespace( guild.id, {
+      name: guild.name,
+      folderName: guild.id + `--` + parsedName,
+    } )
   }
 
 

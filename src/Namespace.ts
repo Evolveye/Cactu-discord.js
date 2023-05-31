@@ -1,14 +1,13 @@
 import path from "path"
 import fs from "fs/promises"
 import Module from "./moduleStructure/Module.js"
+import CommandsProcessor from "./CommandProcessor.js"
 
-type ProcessorParam = {
-  message?: string
+type ProcessorParam<T = unknown> = {
+  message: string
   processFilters?: boolean
   processCommands?: boolean
-  filtersVariablesGetter?: (matches:string[]) => void
-  commandsVariablesGetter?: () => void
-  performResponse?: () => void
+  executorDataGetter?: () => T
   checkPermissions?: () => void
 }
 
@@ -18,16 +17,25 @@ class Config {
   addModule( module:Module ) {
     Module.merge( this.compoundModule, module )
   }
+
+  getCommand() {
+    return this.compoundModule.commands
+  }
 }
 
 export default class Namespace {
   #config: Config = new Config()
+  #commandsProcessor = new CommandsProcessor()
 
   id: string
   name?: string
 
   get config() {
     return this.#config
+  }
+
+  get commands() {
+    return this.#config.getCommand()
   }
 
   constructor( id:string, name?:string ) {
@@ -62,10 +70,12 @@ export default class Namespace {
     }
   }
 
-  processMessage({ message, processFilters = true, processCommands = true, ...functions }:ProcessorParam) {
+  processMessage({ message, processFilters = true, processCommands = true, executorDataGetter }:ProcessorParam) {
     if (processFilters) console.log( `checking filteres`, { message } )
     if (processCommands) {
-      console.log( `checking commands`, { message } )
+      const { commands } = this
+
+      if (commands) this.#commandsProcessor.process( message, commands, executorDataGetter )
     }
   }
 }

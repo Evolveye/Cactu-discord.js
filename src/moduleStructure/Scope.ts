@@ -1,4 +1,4 @@
-export type ScopeMeta = {
+export type BasicMetadata = {
   r?: string | string[]
   roles?: string | string[]
   sd?: string
@@ -7,37 +7,58 @@ export type ScopeMeta = {
   detailedDescription?: string
 }
 
-export type ExecutorFn = () => void
-export class Executor {
-  #meta: ScopeMeta
-  #fn: ExecutorFn
+export type ExecutorParamType = `bool` | `number` | `string` | `message` | {min: number; max: number} | string[]
+export type ExecutorParam = {
+  name: string
+  desc?: string
+  type: ExecutorParamType
+}
+
+export type ExecutorMetaData = BasicMetadata & {
+  params: ExecutorParam[]
+}
+
+export class MetadataHolder {
+  #meta: BasicMetadata
+
+  constructor( meta:BasicMetadata ) {
+    this.#meta = meta
+  }
 
   get meta() {
     return this.#meta
   }
+}
 
-  constructor( meta:ScopeMeta, fn:ExecutorFn ) {
-    this.#meta = meta
+export type ExecutorFn = (context:unknown) => void
+export class Executor extends MetadataHolder {
+  #fn: ExecutorFn
+
+  constructor( meta:BasicMetadata, fn:ExecutorFn ) {
+    super( meta )
     this.#fn = fn
   }
 
-  execute = () => {
-    this.#fn()
+  execute( ctx ) {
+    this.#fn( ctx )
   }
 }
 
 export type ScopeConfig = Record<string, Scope | Executor>
-export default class Scope {
-  #meta: ScopeMeta
+export default class Scope extends MetadataHolder {
   config: ScopeConfig
 
-  get meta() {
-    return this.#meta
+  constructor( meta:BasicMetadata, config:ScopeConfig ) {
+    super( meta )
+    this.config = config
   }
 
-  constructor( meta:ScopeMeta, config:ScopeConfig ) {
-    this.#meta = meta
-    this.config = config
+  getItem( fieldName:string ) {
+    return this.config[ fieldName ]
+  }
+
+  getItemsInfo() {
+    return Object.entries( this.config ).map( ([ name, { meta } ]) => ({ name, ...meta }) )
   }
 
   static merge( target:Scope, scope:Scope ) {
