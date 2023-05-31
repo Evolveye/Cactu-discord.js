@@ -1,14 +1,21 @@
 import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
+import { Executor } from "./src/moduleStructure/index.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
 export * from "./src/moduleStructure/index.js"
+
+export type ExecutorFnParam = {
+  send: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
+}
+
+export class DCExecutor extends Executor<ExecutorFnParam> {}
 
 type Config = BotBaseConfig & {
   botToken: string
   appId: string
 }
 
-export default class CactuDiscordBot extends BotBase<Discord.Guild> {
+export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
   client: Discord.Client
   rest: REST
 

@@ -16,11 +16,11 @@ export type NamespaceRegistrationConfig = {
   folderName?: string
 }
 
-export default class BotClientBase<TNamespace> {
+export default class BotClientBase<TExecutorParam> {
   #dataFolderPath = `./namespaces_data/`
   #defaultConfigSubpath = `_default_config/`
   #initialized = false
-  #namespacesData = new Map<string, Namespace>()
+  #namespacesData = new Map<string, Namespace<TExecutorParam>>()
 
   static loggers = {
     system: new Logger( [

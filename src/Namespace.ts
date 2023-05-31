@@ -23,7 +23,7 @@ class Config {
   }
 }
 
-export default class Namespace {
+export default class Namespace<TExecutorParam=unknown> {
   #config: Config = new Config()
   #commandsProcessor = new CommandsProcessor()
 
@@ -70,7 +70,7 @@ export default class Namespace {
     }
   }
 
-  processMessage({ message, processFilters = true, processCommands = true, executorDataGetter }:ProcessorParam) {
+  processMessage({ message, processFilters = true, processCommands = true, executorDataGetter }:ProcessorParam<TExecutorParam>) {
     if (processFilters) console.log( `checking filteres`, { message } )
     if (processCommands) {
       const { commands } = this

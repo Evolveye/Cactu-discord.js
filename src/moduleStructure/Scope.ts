@@ -30,16 +30,16 @@ export class MetadataHolder {
   }
 }
 
-export type ExecutorFn = (context:unknown) => void
-export class Executor extends MetadataHolder {
-  #fn: ExecutorFn
+export type ExecutorFn<T=unknown> = (context:T) => void
+export class Executor<T=unknown> extends MetadataHolder {
+  #fn: ExecutorFn<T>
 
-  constructor( meta:BasicMetadata, fn:ExecutorFn ) {
+  constructor( meta:BasicMetadata, fn:ExecutorFn<T> ) {
     super( meta )
     this.#fn = fn
   }
 
-  execute( ctx ) {
+  execute( ctx:T ) {
     this.#fn( ctx )
   }
 }
