@@ -1,9 +1,15 @@
-export type BasicMetadata = {
-  r?: string | string[]
-  roles?: string | string[]
+export type BasicUnnormalizedMetadata = {
+  p?: string | string[]
+  perms?: string | string[]
   sd?: string
   shortDescription?: string
   dd?: string
+  detailedDescription?: string
+}
+
+export type BasicMetadata = {
+  perms?: string[]
+  shortDescription?: string
   detailedDescription?: string
 }
 
@@ -14,15 +20,22 @@ export type ExecutorParam = {
   type: ExecutorParamType
 }
 
-export type ExecutorMetaData = BasicMetadata & {
+export type ExecutorMetaData = BasicUnnormalizedMetadata & {
   params: ExecutorParam[]
 }
 
 export class MetadataHolder {
   #meta: BasicMetadata
 
-  constructor( meta:BasicMetadata ) {
-    this.#meta = meta
+  constructor( meta:BasicUnnormalizedMetadata ) {
+    let perms = meta.p ?? meta.perms ?? []
+    if (!Array.isArray( perms )) perms = [ perms ]
+
+    this.#meta = {
+      perms,
+      detailedDescription: meta.dd ?? meta.detailedDescription,
+      shortDescription: meta.sd ?? meta.shortDescription,
+    }
   }
 
   get meta() {
@@ -34,7 +47,7 @@ export type ExecutorFn<T=unknown> = (context:T) => void
 export class Executor<T=unknown> extends MetadataHolder {
   #fn: ExecutorFn<T>
 
-  constructor( meta:BasicMetadata, fn:ExecutorFn<T> ) {
+  constructor( meta:BasicUnnormalizedMetadata, fn:ExecutorFn<T> ) {
     super( meta )
     this.#fn = fn
   }
@@ -48,7 +61,7 @@ export type ScopeConfig = Record<string, Scope | Executor>
 export default class Scope extends MetadataHolder {
   config: ScopeConfig
 
-  constructor( meta:BasicMetadata, config:ScopeConfig ) {
+  constructor( meta:BasicUnnormalizedMetadata, config:ScopeConfig ) {
     super( meta )
     this.config = config
   }

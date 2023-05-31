@@ -1,12 +1,18 @@
-import { Module, Scope, DCExecutor } from "../../lib/index.js"
+import { Module, Scope, DCExecutor, Executor } from "../../lib/index.js"
 
 export default new Module({
   commands: new Scope( {}, {
-    $: new Scope( {}, {
+    nobody: new Executor( {
+      perms: `_NOBODY`,
+    }, () => {} ),
+
+    $: new Scope( {
+      perms: `_ADMIN`,
+    }, {
       tell: new DCExecutor( {
         params: [ { name:`message`, type:`message` } ],
       }, $ => {
-        console.log( `Tell by bot`, { $ } )
+        $.send( `Tell me why?` )
       } ),
     } ),
 

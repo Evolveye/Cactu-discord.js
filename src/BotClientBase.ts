@@ -7,7 +7,6 @@ export const __APPDIRNAME = await fs.realpath( `.` )
 
 export type BotBaseConfig = {
   defaultPrefix?: string
-  defaultPrefixSpace?: boolean
   logMaxLength?: number
 }
 

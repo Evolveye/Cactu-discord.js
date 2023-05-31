@@ -1,8 +1,34 @@
 import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
 import { Executor } from "./src/moduleStructure/index.js"
+import { CommandPermissionsError, CommandProcessingError, ProcessorResponseHandlerParam } from "./src/CommandProcessor.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
 export * from "./src/moduleStructure/index.js"
+
+export type TranslationKeys =
+  | `err.noPath`
+  | `err.noPerms`
+  | `err.noParam`
+  | `err.badParam`
+  | `err.tooManyParams`
+  | `err.tooManyParamsUnnecessaryParam`
+  | `err.invalidCommand`
+  | `err.error`
+  | `err.noAttachment`
+  | `help.title`
+  | `help.showDescription`
+  | `help.optionalParam`
+  | `help.restParam`
+  | `label.commands`
+  | `label.scopes`
+  | `label.providedValue`
+  | `label.parameter`
+  | `label.optional`
+  | `label.rest`
+  | `label.mask`
+  | `label.yes`
+  | `label.no`
+  | `system.loadSuccess`
 
 export type ExecutorFnParam = {
   send: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
@@ -11,6 +37,7 @@ export type ExecutorFnParam = {
 export class DCExecutor extends Executor<ExecutorFnParam> {}
 
 type Config = BotBaseConfig & {
+  appOwnerId?: string
   botToken: string
   appId: string
 }
@@ -18,11 +45,13 @@ type Config = BotBaseConfig & {
 export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
   client: Discord.Client
   rest: REST
+  ownerId: undefined | string = undefined
 
   constructor( config:Config ) {
     super()
 
     if (!config?.botToken) throw new Error( `Config object have to have "botToken" field` )
+    if (config.appOwnerId) this.ownerId = config.appOwnerId
 
     this.rest = new REST().setToken( config.botToken )
     this.client = new Discord.Client({
@@ -79,10 +108,56 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
     guildDataset?.processMessage({
       message: message.content,
       processFilters: false,
+      checkPermissions: perms => this.checkPermissions( perms, message ),
       executorDataGetter: () => ({
         send: (msg:string) => message.channel.send( msg ),
       }),
+      handleResponse: response => this.handleResponse( response, guildDataset.config.compoundModule.translation, message ),
     })
+  }
+
+
+  checkPermissions = (perms:string[], message:Discord.Message) => {
+    if (perms.includes( `_NOBODY` )) return false
+    if (message.author.bot) return perms.includes( `_BOT` )
+
+    if (!perms.length) return true
+    if (message.author.id === this.ownerId) return true
+    if (perms.includes( message.author.id )) return true
+    if (perms.includes( `!` + message.author.id )) return false
+
+    const { member } = message
+
+    if (member) {
+      const roleNames = member.roles.cache.map( r => [ r.name, r.id ] ).flat() ?? []
+      const PermFlags = Discord.PermissionsBitField.Flags
+
+      if (perms.some( p => roleNames.includes( p ) )) return true
+      if (perms.includes( `_ADMIN` ) && member.permissions.has( PermFlags.Administrator )) return true
+    }
+
+    return false
+  }
+
+
+  handleResponse = (response:ProcessorResponseHandlerParam, translation:Partial<Record<TranslationKeys, string>>, message:Discord.Message) => {
+    if (response instanceof CommandProcessingError) {
+      const embed = {
+        color: 0xb7603d,
+        description: ``,
+        footer: {
+          text: (message.member?.displayName ?? message.author.username) + ` :: ` + response.path.join( ` ` ),
+          icon_url: message.author.displayAvatarURL(),
+        },
+      }
+
+      if (response instanceof CommandPermissionsError) embed.description = translation[ `err.noPerms` ] ?? `You have no permissions to do this`
+
+      embed.description = `**` + (translation[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
+
+      message.channel.send({ embeds:[ embed ] })
+      return
+    }
   }
 
 

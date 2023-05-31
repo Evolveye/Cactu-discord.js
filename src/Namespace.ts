@@ -1,14 +1,12 @@
 import path from "path"
 import fs from "fs/promises"
 import Module from "./moduleStructure/Module.js"
-import CommandsProcessor from "./CommandProcessor.js"
+import CommandsProcessor, { ProcessConfig } from "./CommandProcessor.js"
 
-type ProcessorParam<T = unknown> = {
+type ProcessorParam<T = unknown> = ProcessConfig<T> & {
   message: string
   processFilters?: boolean
   processCommands?: boolean
-  executorDataGetter?: () => T
-  checkPermissions?: () => void
 }
 
 class Config {
@@ -70,12 +68,12 @@ export default class Namespace<TExecutorParam=unknown> {
     }
   }
 
-  processMessage({ message, processFilters = true, processCommands = true, executorDataGetter }:ProcessorParam<TExecutorParam>) {
+  processMessage({ message, processFilters = true, processCommands = true, executorDataGetter, checkPermissions, handleResponse }:ProcessorParam<TExecutorParam>) {
     if (processFilters) console.log( `checking filteres`, { message } )
     if (processCommands) {
       const { commands } = this
 
-      if (commands) this.#commandsProcessor.process( message, commands, executorDataGetter )
+      if (commands) this.#commandsProcessor.process( message, commands, { executorDataGetter, checkPermissions, handleResponse } )
     }
   }
 }
