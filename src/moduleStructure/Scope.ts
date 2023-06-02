@@ -1,68 +1,92 @@
-export type BasicUnnormalizedMetadata = {
-  p?: string | string[]
-  perms?: string | string[]
-  sd?: string
-  shortDescription?: string
-  dd?: string
-  detailedDescription?: string
-}
-
-export type BasicMetadata = {
-  perms?: string[]
-  shortDescription?: string
-  detailedDescription?: string
-}
+import { MissingExecutionParameter, OverlimitedExecutorParameter, RuntimeExecutionError, WrongExecutionParameter } from "../CommandProcessor/index.js"
+import MetadataHolder, { UnnormalizedMeta } from "./ModuleStructureMeta.js"
 
 export type ExecutorParamType = `bool` | `number` | `string` | `message` | {min: number; max: number} | string[]
 export type ExecutorParam = {
   name: string
   desc?: string
   type: ExecutorParamType
+  optional?: boolean
 }
 
-export type ExecutorMetaData = BasicUnnormalizedMetadata & {
+export type OnlyExecutorMetaData = {
   params: ExecutorParam[]
 }
 
-export class MetadataHolder {
-  #meta: BasicMetadata
+export type ExecutorPartialMeta = UnnormalizedMeta & Partial<OnlyExecutorMetaData>
+export type ExecutorMeta = UnnormalizedMeta & OnlyExecutorMetaData
 
-  constructor( meta:BasicUnnormalizedMetadata ) {
-    let perms = meta.p ?? meta.perms ?? []
-    if (!Array.isArray( perms )) perms = [ perms ]
-
-    this.#meta = {
-      perms,
-      detailedDescription: meta.dd ?? meta.detailedDescription,
-      shortDescription: meta.sd ?? meta.shortDescription,
-    }
-  }
-
-  get meta() {
-    return this.#meta
-  }
-}
-
-export type ExecutorFn<T=unknown> = (context:T) => void
-export class Executor<T=unknown> extends MetadataHolder {
+export type ExecutorFn<T = unknown> = (context:T, ...params:unknown[]) => void
+export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
   #fn: ExecutorFn<T>
 
-  constructor( meta:BasicUnnormalizedMetadata, fn:ExecutorFn<T> ) {
-    super( meta )
+  constructor( meta:ExecutorPartialMeta, fn:ExecutorFn<T> ) {
+    if (!Array.isArray( meta.params )) meta.params = []
+
+    super( meta as ExecutorMeta, `executor` )
     this.#fn = fn
   }
 
-  execute( ctx:T ) {
-    this.#fn( ctx )
+  execute( params:unknown[], ctx:T ) {
+    try {
+      this.#fn( ctx, ...params )
+    } catch (err) {
+      return new RuntimeExecutionError()
+    }
+  }
+
+  prepareParams( paramsString:string ) {
+    const paramsRegExp = /[^ ]+/g
+    const paramsValues:string[] = []
+    let lastNoOptionalRegIndex = 0
+
+    for (const param of this.meta.params) {
+      let part = paramsRegExp.exec( paramsString )?.[ 0 ]
+
+      if (!part) {
+        if (!param.optional) return new MissingExecutionParameter({ param })
+        paramsRegExp.lastIndex = lastNoOptionalRegIndex
+        continue
+      }
+
+      let testPass = false
+
+      if (param.type == `number`) testPass = /^-?\d+$/.test( part )
+      else if (param.type == `string`) testPass = /^[^ ]+$/.test( part )
+      else if (param.type == `bool`) testPass = /^(?:true|t|yes|y|1|false|f|no|n|0)$/i.test( part )
+      else if (param.type == `message`) {
+        testPass = /^.+$/s.test( part )
+        part += paramsString.slice( paramsRegExp.lastIndex )
+        paramsRegExp.lastIndex = Infinity
+      }
+
+      if (!testPass) return new WrongExecutionParameter({ param, passedValue:part })
+
+      lastNoOptionalRegIndex = paramsRegExp.lastIndex
+      paramsValues.push( part )
+    }
+
+    const overlimited = paramsRegExp.exec( paramsString )?.[ 0 ]
+    if (overlimited) return new OverlimitedExecutorParameter({ passedValue:overlimited })
+
+    return paramsValues
+  }
+
+  prepareAndExecute( paramsString:string, ctx:T ) {
+    const params = this.prepareParams( paramsString )
+
+    if (Array.isArray( params )) return this.execute( params, ctx )
+    else return params
   }
 }
+
 
 export type ScopeConfig = Record<string, Scope | Executor>
 export default class Scope extends MetadataHolder {
   config: ScopeConfig
 
-  constructor( meta:BasicUnnormalizedMetadata, config:ScopeConfig ) {
-    super( meta )
+  constructor( meta:UnnormalizedMeta, config:ScopeConfig ) {
+    super( meta, `scope` )
     this.config = config
   }
 

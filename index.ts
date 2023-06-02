@@ -1,6 +1,6 @@
 import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
-import { Executor } from "./src/moduleStructure/index.js"
-import { CommandPermissionsError, CommandProcessingError, ProcessorResponseHandlerParam } from "./src/CommandProcessor.js"
+import { Executor, Scope } from "./src/moduleStructure/index.js"
+import { CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError } from "./src/CommandProcessor/index.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
 export * from "./src/moduleStructure/index.js"
@@ -31,7 +31,9 @@ export type TranslationKeys =
   | `system.loadSuccess`
 
 export type ExecutorFnParam = {
+  msg: Discord.Message
   send: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
+  deleteMsg: () => Promise<Discord.Message<boolean>>
 }
 
 export class DCExecutor extends Executor<ExecutorFnParam> {}
@@ -110,7 +112,9 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
       processFilters: false,
       checkPermissions: perms => this.checkPermissions( perms, message ),
       executorDataGetter: () => ({
+        msg: message,
         send: (msg:string) => message.channel.send( msg ),
+        deleteMsg: () => message.delete(),
       }),
       handleResponse: response => this.handleResponse( response, guildDataset.config.compoundModule.translation, message ),
     })
@@ -141,21 +145,79 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
 
 
   handleResponse = (response:ProcessorResponseHandlerParam, translation:Partial<Record<TranslationKeys, string>>, message:Discord.Message) => {
-    if (response instanceof CommandProcessingError) {
+    if (response instanceof Error) {
       const embed = {
         color: 0xb7603d,
         description: ``,
+        footer: {
+          text: (message.member?.displayName ?? message.author.username),
+          icon_url: message.author.displayAvatarURL(),
+        },
+      }
+
+      if (response instanceof CommandError) {
+        embed.footer.text += ` :: ` + response.path.join( ` ` )
+
+        if (response instanceof NoCommandError) embed.description = translation[ `err.noPath` ] ?? `No command`
+        else if (response instanceof CommandPermissionsError) embed.description = translation[ `err.noPerms` ] ?? `You have no permissions to do this`
+      } else if (response instanceof ExecutionError) {
+        if (response instanceof MissingExecutionParameter) embed.description = translation[ `err.noParam` ] ?? `Missing parameter`
+        else if (response instanceof WrongExecutionParameter) embed.description = translation[ `err.badParam` ] ?? `Bad parameter`
+        else if (response instanceof OverlimitedExecutorParameter) embed.description = translation[ `err.tooManyParams` ] ?? `Too many parameters`
+        else if (response instanceof RuntimeExecutionError) embed.description = translation[ `err.invalidCommand` ] ?? `This command have invalid code`
+      }
+
+      embed.description = `**` + (translation[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
+
+      message.channel.send({ embeds:[ embed ] })
+      return
+    }
+
+    if (response.typeInstance instanceof Scope) {
+      const path = response.path.join( ` ` ) + ` `
+      const scopeItems = response.typeInstance.getItemsInfo()
+
+      const scopesFields:Discord.APIEmbedField[] = []
+      const esecutorsFields:Discord.APIEmbedField[] = []
+      const fields:Discord.APIEmbedField[] = []
+
+      for (const item of scopeItems) {
+        if (item.type === `scope`) scopesFields.push({
+          name: path + `***` + item.name + `*** ...`,
+          value: item.shortDescription ?? ``,
+          inline: true,
+        })
+
+        if (item.type === `executor`) esecutorsFields.push({
+          name: path + `***` + item.name + `***`,
+          value: item.shortDescription ?? ``,
+          inline: true,
+        })
+      }
+
+      if (scopesFields.length) fields.push(
+        { name:``, value:translation[ `label.scopes` ] ?? `Scopes` },
+        ...scopesFields,
+      )
+
+      if (esecutorsFields.length) fields.push(
+        { name:scopeItems.length ? `\u200b` : ``, value:translation[ `label.commands` ] ?? `Commands` },
+        ...esecutorsFields,
+      )
+
+      const embed:Discord.APIEmbed = {
+        color: 0x4ee910,
+        title: translation[ `help.title` ] ?? `⚙️ Help for commands`,
+        description: ``,
+        fields,
         footer: {
           text: (message.member?.displayName ?? message.author.username) + ` :: ` + response.path.join( ` ` ),
           icon_url: message.author.displayAvatarURL(),
         },
       }
 
-      if (response instanceof CommandPermissionsError) embed.description = translation[ `err.noPerms` ] ?? `You have no permissions to do this`
-
-      embed.description = `**` + (translation[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
-
       message.channel.send({ embeds:[ embed ] })
+
       return
     }
   }

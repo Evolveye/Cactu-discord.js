@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 import Module from "./moduleStructure/Module.js"
-import CommandsProcessor, { ProcessConfig } from "./CommandProcessor.js"
+import CommandsProcessor, { ProcessConfig } from "./CommandProcessor/index.js"
 
 type ProcessorParam<T = unknown> = ProcessConfig<T> & {
   message: string
@@ -71,9 +71,12 @@ export default class Namespace<TExecutorParam=unknown> {
   processMessage({ message, processFilters = true, processCommands = true, executorDataGetter, checkPermissions, handleResponse }:ProcessorParam<TExecutorParam>) {
     if (processFilters) console.log( `checking filteres`, { message } )
     if (processCommands) {
+      const prefix = this.#config.compoundModule.prefix
       const { commands } = this
 
-      if (commands) this.#commandsProcessor.process( message, commands, { executorDataGetter, checkPermissions, handleResponse } )
+      if (commands && (message === prefix.trimEnd() || message.startsWith( prefix ))) {
+        this.#commandsProcessor.process( message.slice( prefix.length ), commands, { executorDataGetter, checkPermissions, handleResponse } )
+      }
     }
   }
 }

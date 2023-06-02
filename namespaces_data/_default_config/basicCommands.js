@@ -10,9 +10,17 @@ export default new Module({
       perms: `_ADMIN`,
     }, {
       tell: new DCExecutor( {
+        shortDescription: `Say something by bot`,
         params: [ { name:`message`, type:`message` } ],
       }, $ => {
         $.send( `Tell me why?` )
+      } ),
+
+      eval: new DCExecutor( {
+        shortDescription: `Evaluate JS code with executor context`,
+        params: [ { name:`code`, type:`message` } ],
+      }, $ => {
+        $.send( `Evaluation!` )
       } ),
     } ),
 
