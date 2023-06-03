@@ -16,7 +16,7 @@ export type OnlyExecutorMetaData = {
 export type ExecutorPartialMeta = UnnormalizedMeta & Partial<OnlyExecutorMetaData>
 export type ExecutorMeta = UnnormalizedMeta & OnlyExecutorMetaData
 
-export type ExecutorFn<T = unknown> = (context:T, ...params:unknown[]) => void
+export type ExecutorFn<T = unknown> = (context:T, ...params:unknown[]) => void | Promise<void>
 export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
   #fn: ExecutorFn<T>
 
@@ -27,17 +27,18 @@ export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
     this.#fn = fn
   }
 
-  execute( params:unknown[], ctx:T ) {
+  async execute( params:unknown[], ctx:T ) {
     try {
-      this.#fn( ctx, ...params )
+      await this.#fn( ctx, ...params )
     } catch (err) {
+      console.error( err )
       return new RuntimeExecutionError()
     }
   }
 
   prepareParams( paramsString:string ) {
     const paramsRegExp = /[^ ]+/g
-    const paramsValues:string[] = []
+    const paramsValues:(undefined | boolean | number | string)[] = []
     let lastNoOptionalRegIndex = 0
 
     for (const param of this.meta.params) {
@@ -60,7 +61,12 @@ export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
         paramsRegExp.lastIndex = Infinity
       }
 
-      if (!testPass) return new WrongExecutionParameter({ param, passedValue:part })
+      if (!testPass) {
+        if (!param.optional) return new WrongExecutionParameter({ param, passedValue:part })
+        paramsValues.push( undefined )
+        paramsRegExp.lastIndex = lastNoOptionalRegIndex
+        continue
+      }
 
       lastNoOptionalRegIndex = paramsRegExp.lastIndex
       paramsValues.push( part )
@@ -72,7 +78,7 @@ export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
     return paramsValues
   }
 
-  prepareAndExecute( paramsString:string, ctx:T ) {
+  async prepareAndExecute( paramsString:string, ctx:T ) {
     const params = this.prepareParams( paramsString )
 
     if (Array.isArray( params )) return this.execute( params, ctx )

@@ -17,7 +17,7 @@ export type ProcessConfig<T=unknown> = {
 }
 
 export default class CommandsProcessor {
-  process( command:string, scope:Scope, { executorDataGetter, checkPermissions, handleResponse }:ProcessConfig = {} ) {
+  async process( command:string, scope:Scope, { executorDataGetter, checkPermissions, handleResponse }:ProcessConfig = {} ) {
     const trimedCmd = command.trim()
     const node = this.#findNode( trimedCmd, scope, checkPermissions )
 
@@ -27,7 +27,7 @@ export default class CommandsProcessor {
     }
 
     if (node.typeInstance instanceof Executor) {
-      const executionResult = node.typeInstance.prepareAndExecute( node.restPath, executorDataGetter?.() )
+      const executionResult = await node.typeInstance.prepareAndExecute( node.restPath, executorDataGetter?.() )
 
       if (executionResult) {
         if (executionResult instanceof ExecutionError) executionResult.node = node

@@ -1,3 +1,4 @@
+import Namespace from "src/Namespace.js"
 import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
 import { Executor, Scope } from "./src/moduleStructure/index.js"
 import { CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError } from "./src/CommandProcessor/index.js"
@@ -31,9 +32,12 @@ export type TranslationKeys =
   | `system.loadSuccess`
 
 export type ExecutorFnParam = {
+  ns: Namespace<ExecutorFnParam>
   msg: Discord.Message
   send: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
+  sendOk: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
   deleteMsg: () => Promise<Discord.Message<boolean>>
+  getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
 }
 
 export class DCExecutor extends Executor<ExecutorFnParam> {}
@@ -73,7 +77,7 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
   }
 
 
-  getGuildDatasets = (message:Discord.Message) => {
+  getGuildNamespace = (message:Discord.Message) => {
     const { guild, author } = message
 
     const id = guild
@@ -105,18 +109,21 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
       }
     }
 
-    const guildDataset = this.getGuildDatasets( message )
+    const guildNamespace = this.getGuildNamespace( message )
 
-    guildDataset?.processMessage({
+    guildNamespace?.processMessage({
       message: message.content,
       processFilters: false,
       checkPermissions: perms => this.checkPermissions( perms, message ),
       executorDataGetter: () => ({
+        ns: guildNamespace,
         msg: message,
         send: (msg:string) => message.channel.send( msg ),
+        sendOk: (msg:string) => message.channel.send( `✅ ${msg}` ),
         deleteMsg: () => message.delete(),
+        getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? message.channel ),
       }),
-      handleResponse: response => this.handleResponse( response, guildDataset.config.compoundModule.translation, message ),
+      handleResponse: response => this.handleResponse( response, guildNamespace.config.compoundModule.translation, message ),
     })
   }
 
@@ -237,5 +244,20 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
     this.client.user?.setActivity({ name:`My pings`, type:ActivityType.Watching })
 
     this.endInitialization()
+  }
+
+
+  async getWebHook( channel:Discord.Channel ) {
+    if (channel.type !== Discord.ChannelType.GuildText) return null
+
+    const hooks = await channel.fetchWebhooks().catch( console.log ).then( hook => hook ?? null )
+    const existingCactuHook = hooks?.find( ({ name }) => name == `CactuHaczyk` )
+
+    if (existingCactuHook) return existingCactuHook
+
+    const cactuHook = await channel.createWebhook({ name:`CactuHaczyk`, avatar:`https://cdn.discordapp.com/avatars/379234773408677888/a062f0b67e42116104554c1d3e3b695f.png?size=2048` })
+      .catch( console.log ).then( hook => hook ?? null )
+
+    return cactuHook
   }
 }

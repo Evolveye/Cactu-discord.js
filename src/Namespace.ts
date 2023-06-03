@@ -1,6 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 import Module from "./moduleStructure/Module.js"
+import importWithoutCache from "./importWithoutCache/index.js"
 import CommandsProcessor, { ProcessConfig } from "./CommandProcessor/index.js"
 
 type ProcessorParam<T = unknown> = ProcessConfig<T> & {
@@ -11,13 +12,24 @@ type ProcessorParam<T = unknown> = ProcessConfig<T> & {
 
 class Config {
   compoundModule = new Module()
+  modulesFilepaths = new Set<string>()
 
-  addModule( module:Module ) {
+  addModule( filepath:string, module:Module ) {
+    this.modulesFilepaths.add( filepath )
     Module.merge( this.compoundModule, module )
+  }
+
+  clear() {
+    this.compoundModule = new Module()
+    this.modulesFilepaths.clear()
   }
 
   getCommand() {
     return this.compoundModule.commands
+  }
+
+  getModulesFilepaths() {
+    return [ ...this.modulesFilepaths.values() ]
   }
 }
 
@@ -55,17 +67,47 @@ export default class Namespace<TExecutorParam=unknown> {
   async loadConfigFromFile( filepath:string ) {
     try {
       const absoluteFilepath = path.resolve( filepath )
-      const mod = await import( `file://` + absoluteFilepath )
+      const mod = await importWithoutCache<Module>( absoluteFilepath )
 
-      if (!mod.default || !(mod.default instanceof Module)) return false
+      if (!(mod instanceof Module)) return false
 
-      this.#config.addModule( mod.default )
+      this.#config.addModule( absoluteFilepath, mod )
 
       return true
     } catch (err) {
       console.log( `${err}` )
       return false
     }
+  }
+
+  async reloadConfig() {
+    const modulesFilepaths = this.#config.getModulesFilepaths()
+    const failedModules:string[] = []
+
+    this.#config.clear()
+
+    for (const path of modulesFilepaths) {
+      try {
+        const mod = await importWithoutCache( path )
+
+        if (!(mod instanceof Module)) continue
+
+        this.#config.addModule( path, mod )
+      } catch (err) {
+        console.log( err )
+        failedModules.push( path )
+      }
+    }
+
+    return { failedModules }
+  }
+
+  async loadModule( path:string ) {
+    return importWithoutCache( path )
+    // const code = await fs.readFile( path, `utf-8` )
+
+    // console.log( path, code )
+    // console.log( eval( `(function() {\n${code}\n})()` ) )
   }
 
   processMessage({ message, processFilters = true, processCommands = true, executorDataGetter, checkPermissions, handleResponse }:ProcessorParam<TExecutorParam>) {
