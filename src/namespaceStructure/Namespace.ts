@@ -1,8 +1,8 @@
 import path from "path"
 import fs from "fs/promises"
-import Module from "./moduleStructure/Module.js"
-import importWithoutCache from "./importWithoutCache/index.js"
+import importWithoutCache from "../importWithoutCache/index.js"
 import ModuleProcessor, { ProcessConfig } from "./ModuleProcessor/index.js"
+import Module from "./Module.js"
 
 export type ProcessorParam<T = unknown> = ProcessConfig<T> & {
   message: string

@@ -1,15 +1,9 @@
 import fs from "fs/promises"
-import { Module } from "./moduleStructure/index.js"
+import { Namespace, Module } from "./namespaceStructure/index.js"
 import Logger, { LoggerPart } from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
-import Namespace from "./Namespace.js"
 
-export const __APPDIRNAME = await fs.realpath( `.` )
-
-export type BotBaseConfig = {
-  defaultPrefix?: string
-  logMaxLength?: number
-}
+export type BotBaseConfig = {}
 
 export type NamespaceRegistrationConfig = {
   name?: string
@@ -54,43 +48,14 @@ export default class BotClientBase<TModule extends Module<any>> {
     ] as const satisfies readonly LoggerPart[], { maxLineLength:180 } ),
   }
 
-  #config = {
-    defaultPrefix: `cc!`,
-    defaultPrefixSpace: true,
-    logMaxLength: 170,
-    externalVars: {},
-    idOfGuildToCopy: ``,
-  }
-
 
   get namespacesData() {
     return this.#namespacesData
   }
 
 
-  constructor( config:BotBaseConfig = {} ) {
-    this.handleConfig( config )
-
+  constructor() {
     fs.mkdir( this.#dataFolderPath, { recursive:true } )
-  }
-
-
-  handleConfig( config:BotBaseConfig ) {
-    if (`defaultPrefix` in config && typeof config.defaultPrefix === `string`) {
-      this.#config.defaultPrefix = config.defaultPrefix
-    }
-
-    if (`defaultPrefixSpace` in config && typeof config.defaultPrefixSpace === `boolean`) {
-      this.#config.defaultPrefixSpace = config.defaultPrefixSpace
-    }
-
-    if (`logMaxLength` in config && typeof config.logMaxLength === `number`) {
-      this.#config.logMaxLength = config.logMaxLength
-    }
-
-    if (`idOfGuildToCopy` in config && typeof config.idOfGuildToCopy === `string`) {
-      this.#config.idOfGuildToCopy = config.idOfGuildToCopy
-    }
   }
 
 
@@ -139,9 +104,7 @@ export default class BotClientBase<TModule extends Module<any>> {
 
   endInitialization() {
     this.#initialized = true
-
     console.log()
-
     this.logSystem( `I have been started!` )
   }
 }

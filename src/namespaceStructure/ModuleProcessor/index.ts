@@ -1,4 +1,4 @@
-import { Executor, Filter, Scope } from "../moduleStructure/index.js"
+import { Executor, Filter, Scope } from "../index.js"
 import { ExecutionError } from "./ExecutorError.js"
 import { CommandPermissionsError, CommandError, NoCommandError } from "./CommandError.js"
 

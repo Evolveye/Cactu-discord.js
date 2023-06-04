@@ -1,13 +1,12 @@
 import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
-import Namespace, { CtxFromModule, ProcessorParam } from "./src/Namespace.js"
-import { CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError } from "./src/ModuleProcessor/index.js"
+import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
 import DCModule, { Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
 export { default as DCModule } from "./src/DCModule/index.js"
 export * from "./src/DCModule/index.js"
 
-type Config = BotBaseConfig & {
+export type Config = BotBaseConfig & {
   appOwnerId?: string
   botToken: string
   appId: string

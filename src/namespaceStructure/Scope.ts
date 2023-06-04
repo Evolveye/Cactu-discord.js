@@ -1,5 +1,5 @@
-import { MissingExecutionParameter, OverlimitedExecutorParameter, RuntimeExecutionError, WrongExecutionParameter } from "../ModuleProcessor/index.js"
 import MetadataHolder, { UnnormalizedMeta } from "./ModuleStructureMeta.js"
+import { MissingExecutionParameter, OverlimitedExecutorParameter, RuntimeExecutionError, WrongExecutionParameter } from "./ModuleProcessor/index.js"
 
 export type ExecutorParamType = `bool` | `number` | `string` | `message` | {min: number; max: number} | RegExp | string[]
 export type ExecutorParam = {

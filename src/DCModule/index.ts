@@ -1,6 +1,5 @@
 import Discord from "discord.js"
-import { Executor, Filter, Module, ModuleConfig, Scope } from "../moduleStructure/index.js"
-import Namespace from "../Namespace.js"
+import { Namespace, Executor, Filter, Module, ModuleConfig, Scope } from "../namespaceStructure/index.js"
 
 export { Executor, Filter, Module, Scope }
 
@@ -49,6 +48,7 @@ export type DCModuleConfig = ModuleConfig & {
 export class DCExecutor extends Executor<ModuleCtx> {}
 export class DCFilter extends Filter<ModuleCtx> {}
 export class DCScope extends Scope {}
+
 export default class DCModule extends Module<ModuleCtx> {
   translation: TranslationObject = {}
   interactions: Record<string, (interaction:Discord.Interaction) => void> = {}
