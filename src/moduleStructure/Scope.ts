@@ -1,7 +1,7 @@
-import { MissingExecutionParameter, OverlimitedExecutorParameter, RuntimeExecutionError, WrongExecutionParameter } from "../CommandProcessor/index.js"
+import { MissingExecutionParameter, OverlimitedExecutorParameter, RuntimeExecutionError, WrongExecutionParameter } from "../ModuleProcessor/index.js"
 import MetadataHolder, { UnnormalizedMeta } from "./ModuleStructureMeta.js"
 
-export type ExecutorParamType = `bool` | `number` | `string` | `message` | {min: number; max: number} | string[]
+export type ExecutorParamType = `bool` | `number` | `string` | `message` | {min: number; max: number} | RegExp | string[]
 export type ExecutorParam = {
   name: string
   desc?: string
@@ -55,6 +55,7 @@ export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
       if (param.type == `number`) testPass = /^-?\d+$/.test( part )
       else if (param.type == `string`) testPass = /^[^ ]+$/.test( part )
       else if (param.type == `bool`) testPass = /^(?:true|t|yes|y|1|false|f|no|n|0)$/i.test( part )
+      else if (param.type instanceof RegExp) testPass = param.type.test( part )
       else if (param.type == `message`) {
         testPass = /^.+$/s.test( part )
         part += paramsString.slice( paramsRegExp.lastIndex )

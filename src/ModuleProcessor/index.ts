@@ -1,4 +1,4 @@
-import { Executor, Scope } from "../moduleStructure/index.js"
+import { Executor, Filter, Scope } from "../moduleStructure/index.js"
 import { ExecutionError } from "./ExecutorError.js"
 import { CommandPermissionsError, CommandError, NoCommandError } from "./CommandError.js"
 
@@ -11,13 +11,20 @@ export type ProcessorResponseHandlerParam = CommandError | ExecutionError | Proc
 export type ProcessorResponseHandler = (response:ProcessorResponseHandlerParam) => void
 
 export type ProcessConfig<T=unknown> = {
+  prefix?: null | string
   checkPermissions?: ProcessorPermissionChecker
   executorDataGetter?: () => T
   handleResponse?: ProcessorResponseHandler
 }
 
-export default class CommandsProcessor {
-  async process( command:string, scope:Scope, { executorDataGetter, checkPermissions, handleResponse }:ProcessConfig = {} ) {
+export default class ModuleProcessor {
+  async processCommand( command:string, scope:Scope, { prefix, executorDataGetter, checkPermissions, handleResponse }:ProcessConfig = {} ) {
+    if (prefix) {
+      if (command !== prefix.trimEnd() && !command.startsWith( prefix )) return
+
+      command = command.slice( prefix.length )
+    }
+
     const trimedCmd = command.trim()
     const node = this.#findNode( trimedCmd, scope, checkPermissions )
 
@@ -67,6 +74,19 @@ export default class CommandsProcessor {
       path: data.path,
       restPath: data.restPath.trim(),
       typeInstance,
+    }
+  }
+
+  async applyFilters( message:string, filters:Filter[], executorDataGetter?:() => unknown ) {
+    let ctx:unknown = typeof executorDataGetter === `function` ? undefined : executorDataGetter
+
+    for (const filter of filters) {
+      const testPassed = filter.test( message )
+
+      if (!testPassed) continue
+      if (!ctx) ctx = executorDataGetter?.()
+
+      await filter.apply( message, ctx )
     }
   }
 }

@@ -1,4 +1,5 @@
 import fs from "fs/promises"
+import { Module } from "./moduleStructure/index.js"
 import Logger, { LoggerPart } from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
 import Namespace from "./Namespace.js"
@@ -15,11 +16,12 @@ export type NamespaceRegistrationConfig = {
   folderName?: string
 }
 
-export default class BotClientBase<TExecutorParam> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default class BotClientBase<TModule extends Module<any>> {
   #dataFolderPath = `./namespaces_data/`
   #defaultConfigSubpath = `_default_config/`
   #initialized = false
-  #namespacesData = new Map<string, Namespace<TExecutorParam>>()
+  #namespacesData = new Map<string, Namespace<TModule>>()
 
   static loggers = {
     system: new Logger( [
@@ -119,7 +121,7 @@ export default class BotClientBase<TExecutorParam> {
       )
     }
 
-    const namespace = new Namespace( id, name )
+    const namespace = new Namespace<TModule>( id, name )
     const configLoadingErrors = await namespace.loadConfigFromFolder( namespaceFolderPath ).catch( errs => errs )
 
     this.#namespacesData.set( namespace.id, namespace )

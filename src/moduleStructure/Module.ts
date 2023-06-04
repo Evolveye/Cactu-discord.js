@@ -1,32 +1,27 @@
 import Scope from "./Scope.js"
 import Filter from "./Filter.js"
 
-export interface ModuleData {
+export interface ModuleData<T=unknown> {
   prefix: string
-  prefixSpace: boolean
-  translation: Record<string, string>
   commands: undefined | Scope
-  filters: Filter[]
+  filters: Filter<T>[]
 }
 
-export type ModuleConfig = Partial<ModuleData>
+export type ModuleConfig<T=unknown> = Partial<ModuleData<T>>
 
-export default class Module implements ModuleData {
+export default class Module<T=unknown> implements ModuleData<T> {
   prefix = `/`
-  prefixSpace = false
-  translation = {}
   commands: undefined | Scope = undefined
-  filters = []
+  filters: Filter<T>[] = []
 
-  constructor( config:ModuleConfig = {} ) {
+  constructor( config:ModuleConfig<T> = {} ) {
     Module.merge( this, config )
   }
 
-  static merge( target:Module, module:ModuleConfig ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static merge( target:Module<any>, module:ModuleConfig<any> ) {
     if (module.prefix) target.prefix = module.prefix
-    if (module.prefixSpace) target.prefixSpace = module.prefixSpace
-    if (module.filters) module.filters.push( ...module.filters )
-    if (module.translation) Object.assign( target.translation, module.translation )
+    if (module.filters) target.filters.push( ...module.filters )
 
     if (module.commands) {
       if (target.commands) Scope.merge( target.commands, module.commands )

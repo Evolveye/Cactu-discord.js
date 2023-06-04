@@ -1,46 +1,11 @@
-import Namespace from "src/Namespace.js"
 import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
-import { Executor, Scope } from "./src/moduleStructure/index.js"
-import { CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError } from "./src/CommandProcessor/index.js"
+import Namespace, { CtxFromModule, ProcessorParam } from "./src/Namespace.js"
+import { CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError } from "./src/ModuleProcessor/index.js"
+import DCModule, { Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
-export * from "./src/moduleStructure/index.js"
-
-export type TranslationKeys =
-  | `err.noPath`
-  | `err.noPerms`
-  | `err.noParam`
-  | `err.badParam`
-  | `err.tooManyParams`
-  | `err.tooManyParamsUnnecessaryParam`
-  | `err.invalidCommand`
-  | `err.error`
-  | `err.noAttachment`
-  | `help.title`
-  | `help.showDescription`
-  | `help.optionalParam`
-  | `help.restParam`
-  | `label.commands`
-  | `label.scopes`
-  | `label.providedValue`
-  | `label.parameter`
-  | `label.optional`
-  | `label.rest`
-  | `label.mask`
-  | `label.yes`
-  | `label.no`
-  | `system.loadSuccess`
-
-export type ExecutorFnParam = {
-  ns: Namespace<ExecutorFnParam>
-  msg: Discord.Message
-  send: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
-  sendOk: (msg:string) => (Promise<Discord.Message<false>> | Promise<Discord.Message<true>>)
-  deleteMsg: () => Promise<Discord.Message<boolean>>
-  getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
-}
-
-export class DCExecutor extends Executor<ExecutorFnParam> {}
+export { default as DCModule } from "./src/DCModule/index.js"
+export * from "./src/DCModule/index.js"
 
 type Config = BotBaseConfig & {
   appOwnerId?: string
@@ -48,7 +13,7 @@ type Config = BotBaseConfig & {
   appId: string
 }
 
-export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
+export default class CactuDiscordBot extends BotBase<DCModule> {
   client: Discord.Client
   rest: REST
   ownerId: undefined | string = undefined
@@ -66,10 +31,10 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
     })
 
     this.client
-      // .on( `messageCreate`, () => console.log( `msg` ) )
       .on( `messageCreate`, this.handleMessage )
       // .on( `messageUpdate`, this.onMessageUpdate )
       .on( `guildCreate`, this.handleGuild )
+      .on( `interactionCreate`, this.handleInterraction )
       .on( `guildDelete`, ({ name }) => this.logSystem( `I left from guild named [fgYellow]${name}[]` ) )
       .on( `ready`, this.onReady )
       .login( config.botToken )
@@ -111,20 +76,29 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
 
     const guildNamespace = this.getGuildNamespace( message )
 
-    guildNamespace?.processMessage({
+    if (!guildNamespace) return
+
+    const ctx:ProcessorParam<CtxFromModule<DCModule>> = {
       message: message.content,
-      processFilters: false,
       checkPermissions: perms => this.checkPermissions( perms, message ),
       executorDataGetter: () => ({
         ns: guildNamespace,
         msg: message,
-        send: (msg:string) => message.channel.send( msg ),
-        sendOk: (msg:string) => message.channel.send( `✅ ${msg}` ),
+        send: msg => message.channel.send( msg ),
+        sendOk: msg => message.channel.send( `✅ ${msg}` ),
         deleteMsg: () => message.delete(),
+        runCmd: command => guildNamespace.processMessage({
+          ...ctx,
+          checkPermissions: () => true,
+          message: command,
+          prefix: null,
+        }),
         getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? message.channel ),
       }),
-      handleResponse: response => this.handleResponse( response, guildNamespace.config.compoundModule.translation, message ),
-    })
+      handleResponse: response => this.handleResponse( response, guildNamespace, message ),
+    }
+
+    guildNamespace.processMessage( ctx )
   }
 
 
@@ -151,7 +125,9 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
   }
 
 
-  handleResponse = (response:ProcessorResponseHandlerParam, translation:Partial<Record<TranslationKeys, string>>, message:Discord.Message) => {
+  handleResponse = (response:ProcessorResponseHandlerParam, ns:Namespace<DCModule>, message:Discord.Message) => {
+    const t:TranslationObject = ns.getCompoundModule().translation
+
     if (response instanceof Error) {
       const embed = {
         color: 0xb7603d,
@@ -165,57 +141,64 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
       if (response instanceof CommandError) {
         embed.footer.text += ` :: ` + response.path.join( ` ` )
 
-        if (response instanceof NoCommandError) embed.description = translation[ `err.noPath` ] ?? `No command`
-        else if (response instanceof CommandPermissionsError) embed.description = translation[ `err.noPerms` ] ?? `You have no permissions to do this`
+        if (response instanceof NoCommandError) embed.description = t[ `err.noPath` ] ?? `No command`
+        else if (response instanceof CommandPermissionsError) embed.description = t[ `err.noPerms` ] ?? `You have no permissions to do this`
       } else if (response instanceof ExecutionError) {
-        if (response instanceof MissingExecutionParameter) embed.description = translation[ `err.noParam` ] ?? `Missing parameter`
-        else if (response instanceof WrongExecutionParameter) embed.description = translation[ `err.badParam` ] ?? `Bad parameter`
-        else if (response instanceof OverlimitedExecutorParameter) embed.description = translation[ `err.tooManyParams` ] ?? `Too many parameters`
-        else if (response instanceof RuntimeExecutionError) embed.description = translation[ `err.invalidCommand` ] ?? `This command have invalid code`
+        if (response instanceof MissingExecutionParameter) embed.description = t[ `err.noParam` ] ?? `Missing parameter`
+        else if (response instanceof WrongExecutionParameter) embed.description = t[ `err.badParam` ] ?? `Bad parameter`
+        else if (response instanceof OverlimitedExecutorParameter) embed.description = t[ `err.tooManyParams` ] ?? `Too many parameters`
+        else if (response instanceof RuntimeExecutionError) embed.description = t[ `err.invalidCommand` ] ?? `This command have invalid code`
       }
 
-      embed.description = `**` + (translation[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
+      embed.description = `**` + (t[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
 
       message.channel.send({ embeds:[ embed ] })
       return
     }
 
     if (response.typeInstance instanceof Scope) {
-      const path = response.path.join( ` ` ) + ` `
+      const path =  ns.getCompoundModule().prefix + response.path.join( ` ` ) + ` `
       const scopeItems = response.typeInstance.getItemsInfo()
 
       const scopesFields:Discord.APIEmbedField[] = []
-      const esecutorsFields:Discord.APIEmbedField[] = []
+      const executorsFields:Discord.APIEmbedField[] = []
       const fields:Discord.APIEmbedField[] = []
 
       for (const item of scopeItems) {
         if (item.type === `scope`) scopesFields.push({
-          name: path + `***` + item.name + `*** ...`,
+          name: path + ` ***` + item.name + `*** \`...\``,
           value: item.shortDescription ?? ``,
           inline: true,
         })
 
-        if (item.type === `executor`) esecutorsFields.push({
-          name: path + `***` + item.name + `***`,
+        if (item.type === `executor` && `params` in item) executorsFields.push({
+          name: path
+            + ` ***` + item.name + `*** `
+            + item.params.map( p => `  **\` ${p.type == `message` ? `...` : ``}${p.name}${p.optional ? `?` : ``} \`**  ` ).join( `` ),
           value: item.shortDescription ?? ``,
-          inline: true,
         })
       }
 
+      if (scopesFields.length) for (let i = 0;  i < 3 - ((scopesFields.length + 1) % 3);  i++) scopesFields.push({ name:`\u200b`, value:`\u200b`, inline:true })
+
       if (scopesFields.length) fields.push(
-        { name:``, value:translation[ `label.scopes` ] ?? `Scopes` },
+        { name:``, value:t[ `label.scopes` ] ?? `Scopes` },
         ...scopesFields,
       )
 
-      if (esecutorsFields.length) fields.push(
-        { name:scopeItems.length ? `\u200b` : ``, value:translation[ `label.commands` ] ?? `Commands` },
-        ...esecutorsFields,
+      if (executorsFields.length) fields.push(
+        { name:scopeItems.length ? `\u200b` : ``, value:t[ `label.commands` ] ?? `Commands` },
+        ...executorsFields,
       )
+
+      if (!scopesFields.length && !executorsFields.length) fields.push({ name:`\u200b`, value:t[ `help.nothing` ] ?? `Nothing is here` })
 
       const embed:Discord.APIEmbed = {
         color: 0x4ee910,
-        title: translation[ `help.title` ] ?? `⚙️ Help for commands`,
-        description: ``,
+        title: t[ `help.title` ] ?? `⚙️ Help for commands`,
+        description: response.path.length ? `` : ``
+          + `* ` + (t[ `help.optionalParam` ] ?? `Sign **\`?\`** means parameter is optional`) + `\n`
+          + `* ` + (t[ `help.restParam` ] ?? `Dots **\`...\`** means parameter can be a sentence`),
         fields,
         footer: {
           text: (message.member?.displayName ?? message.author.username) + ` :: ` + response.path.join( ` ` ),
@@ -236,6 +219,18 @@ export default class CactuDiscordBot extends BotBase<ExecutorFnParam> {
       name: guild.name,
       folderName: guild.id + `--` + parsedName,
     } )
+  }
+
+
+  handleInterraction = (interaction:Discord.Interaction) => {
+    if (!interaction.guildId || !(`customId` in interaction)) {
+      console.log({ interaction })
+      return
+    }
+
+    const ns = this.namespacesData.get( interaction.guildId )
+
+    ns?.getCompoundModule().interactions[ interaction.customId ]?.( interaction )
   }
 
 

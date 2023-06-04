@@ -2,55 +2,50 @@ import path from "path"
 import fs from "fs/promises"
 import Module from "./moduleStructure/Module.js"
 import importWithoutCache from "./importWithoutCache/index.js"
-import CommandsProcessor, { ProcessConfig } from "./CommandProcessor/index.js"
+import ModuleProcessor, { ProcessConfig } from "./ModuleProcessor/index.js"
 
-type ProcessorParam<T = unknown> = ProcessConfig<T> & {
+export type ProcessorParam<T = unknown> = ProcessConfig<T> & {
   message: string
   processFilters?: boolean
   processCommands?: boolean
 }
 
-class Config {
-  compoundModule = new Module()
-  modulesFilepaths = new Set<string>()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type CtxFromModule<TModule extends Module<any>> = TModule extends Module<infer TCtx> ? TCtx : never
 
-  addModule( filepath:string, module:Module ) {
-    this.modulesFilepaths.add( filepath )
-    Module.merge( this.compoundModule, module )
-  }
-
-  clear() {
-    this.compoundModule = new Module()
-    this.modulesFilepaths.clear()
-  }
-
-  getCommand() {
-    return this.compoundModule.commands
-  }
-
-  getModulesFilepaths() {
-    return [ ...this.modulesFilepaths.values() ]
-  }
-}
-
-export default class Namespace<TExecutorParam=unknown> {
-  #config: Config = new Config()
-  #commandsProcessor = new CommandsProcessor()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default class Namespace<TModule extends Module<any> = Module> {
+  #modulesFilepaths = new Set<string>()
+  #moduleProcessor = new ModuleProcessor()
 
   id: string
   name?: string
-
-  get config() {
-    return this.#config
-  }
-
-  get commands() {
-    return this.#config.getCommand()
-  }
+  #compoundModule: undefined | TModule = undefined
 
   constructor( id:string, name?:string ) {
     this.id = id
     this.name = name
+  }
+
+  getCompoundModule() {
+    if (!this.#compoundModule) throw new Error( `No modules in namespace` )
+    return this.#compoundModule
+  }
+
+  clear() {
+    this.#compoundModule = undefined
+    this.#modulesFilepaths.clear()
+  }
+
+  getModulesFilepaths() {
+    return [ ...this.#modulesFilepaths.values() ]
+  }
+
+  addModule( filepath:string, module:TModule ) {
+    this.#modulesFilepaths.add( filepath )
+
+    if (this.#compoundModule) Module.merge( this.#compoundModule, module )
+    else this.#compoundModule = module
   }
 
   async loadConfigFromFolder( folderpath:string ) {
@@ -67,11 +62,11 @@ export default class Namespace<TExecutorParam=unknown> {
   async loadConfigFromFile( filepath:string ) {
     try {
       const absoluteFilepath = path.resolve( filepath )
-      const mod = await importWithoutCache<Module>( absoluteFilepath )
+      const mod = await importWithoutCache<TModule>( absoluteFilepath )
 
       if (!(mod instanceof Module)) return false
 
-      this.#config.addModule( absoluteFilepath, mod )
+      this.addModule( absoluteFilepath, mod )
 
       return true
     } catch (err) {
@@ -81,18 +76,18 @@ export default class Namespace<TExecutorParam=unknown> {
   }
 
   async reloadConfig() {
-    const modulesFilepaths = this.#config.getModulesFilepaths()
+    const modulesFilepaths = this.getModulesFilepaths()
     const failedModules:string[] = []
 
-    this.#config.clear()
+    this.clear()
 
     for (const path of modulesFilepaths) {
       try {
-        const mod = await importWithoutCache( path )
+        const mod = await importWithoutCache<TModule>( path )
 
         if (!(mod instanceof Module)) continue
 
-        this.#config.addModule( path, mod )
+        this.addModule( path, mod )
       } catch (err) {
         console.log( err )
         failedModules.push( path )
@@ -110,15 +105,22 @@ export default class Namespace<TExecutorParam=unknown> {
     // console.log( eval( `(function() {\n${code}\n})()` ) )
   }
 
-  processMessage({ message, processFilters = true, processCommands = true, executorDataGetter, checkPermissions, handleResponse }:ProcessorParam<TExecutorParam>) {
-    if (processFilters) console.log( `checking filteres`, { message } )
-    if (processCommands) {
-      const prefix = this.#config.compoundModule.prefix
-      const { commands } = this
+  async processMessage({ message, processFilters = true, processCommands = true, executorDataGetter, checkPermissions, handleResponse, prefix }:ProcessorParam<CtxFromModule<TModule>>) {
+    if (processFilters) {
+      const { filters } = this.getCompoundModule()
 
-      if (commands && (message === prefix.trimEnd() || message.startsWith( prefix ))) {
-        this.#commandsProcessor.process( message.slice( prefix.length ), commands, { executorDataGetter, checkPermissions, handleResponse } )
-      }
+      if (filters) this.#moduleProcessor.applyFilters( message, filters, executorDataGetter )
+    }
+
+    if (processCommands) {
+      const { commands, prefix:configPrefix } = this.getCompoundModule()
+
+      if (commands) this.#moduleProcessor.processCommand( message, commands, {
+        prefix: prefix !== undefined ? prefix : configPrefix,
+        executorDataGetter,
+        checkPermissions,
+        handleResponse,
+      } )
     }
   }
 }

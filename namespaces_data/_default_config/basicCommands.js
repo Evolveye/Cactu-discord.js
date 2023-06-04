@@ -1,8 +1,12 @@
 /** @type {import("../../lib/index.js")} */
-const { Module, Scope, DCExecutor } = await import( `@lib/index.js` )
+const { Module, Scope, DCExecutor, DCFilter } = await import( `@lib/index.js` )
 
 return new Module({
   prefix: `cc! `,
+  filters: [
+    new DCFilter( /#zaniepokojenie/, (txt, $) => $.send( `#zaniepokojenie` ) ),
+    new DCFilter( /#ranfisz/, (txt, $) => $.send( `Ranfisz ||a może Blacky|| mówi **stop** takim wiadomościom!` ) ),
+  ],
   commands: new Scope( {}, {
     nobody: new DCExecutor( {
       perms: `_NOBODY`,

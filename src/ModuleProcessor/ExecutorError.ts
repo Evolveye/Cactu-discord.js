@@ -1,4 +1,4 @@
-import { ExecutorParam } from "src/moduleStructure/Scope"
+import { ExecutorParam } from "../moduleStructure/Scope.js"
 import { ProcessorNode } from "."
 
 export type ExecutionErrorConfig = {
