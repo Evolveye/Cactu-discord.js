@@ -99,6 +99,8 @@ export default class BotClientBase<TModule extends Module<any>> {
 
       this.logSystem( message )
     }
+
+    return namespace
   }
 
 

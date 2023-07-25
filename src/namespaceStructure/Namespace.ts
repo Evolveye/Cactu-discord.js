@@ -10,11 +10,19 @@ export type ProcessorParam<T = unknown> = ProcessConfig<T> & {
   processCommands?: boolean
 }
 
+export type NamespaceEvents = {
+  load: () => void
+  preReload: () => void
+  postReload: () => void
+  everyLoad: () => void
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CtxFromModule<TModule extends Module<any>> = TModule extends Module<infer TCtx> ? TCtx : never
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default class Namespace<TModule extends Module<any> = Module> {
+  #events: Record<string, ((...params) => void)[]> = {}
   #modulesFilepaths = new Set<string>()
   #moduleProcessor = new ModuleProcessor()
 
@@ -25,6 +33,11 @@ export default class Namespace<TModule extends Module<any> = Module> {
   constructor( id:string, name?:string ) {
     this.id = id
     this.name = name
+
+    setTimeout( () => {
+      this.dispatch( `load` )
+      this.dispatch( `everyLoad` )
+    }, 0 )
   }
 
   getCompoundModule() {
@@ -76,6 +89,8 @@ export default class Namespace<TModule extends Module<any> = Module> {
   }
 
   async reloadConfig() {
+    this.dispatch( `preReload` )
+
     const modulesFilepaths = this.getModulesFilepaths()
     const failedModules:string[] = []
 
@@ -94,7 +109,24 @@ export default class Namespace<TModule extends Module<any> = Module> {
       }
     }
 
+
+    this.dispatch( `postReload` )
+    this.dispatch( `everyLoad` )
+
     return { failedModules }
+  }
+
+  on<T extends keyof NamespaceEvents>(eventName:T, eventHandler:NamespaceEvents[T]) {
+    this.#events[ eventName ] ??= []
+    this.#events[ eventName ]!.push( eventHandler )
+  }
+
+  dispatch<T extends keyof NamespaceEvents>(eventName:T, ...values:Parameters<NamespaceEvents[T]>) {
+    const eventScope = this.#events[ eventName ]
+
+    if (!eventScope) return
+
+    eventScope.forEach( f => f( ...values ) )
   }
 
   async loadModule( path:string ) {

@@ -1,7 +1,7 @@
 /** @type {import("../../lib/index.js")} */
-const { Module, Scope, DCExecutor, DCFilter } = await import( `@lib/index.js` )
+const { DCModule, Scope, DCExecutor, DCFilter } = await import( `@lib/index.js` )
 
-return new Module({
+return new DCModule({
   prefix: `cc! `,
   filters: [
     new DCFilter( /#zaniepokojenie/, (txt, $) => $.send( `#zaniepokojenie` ) ),

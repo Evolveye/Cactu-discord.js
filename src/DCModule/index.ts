@@ -40,9 +40,11 @@ export type ModuleCtx = {
   getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
 }
 
+type DCModuleEvent = Partial<{ [K in keyof Discord.ClientEvents]:(...args:Discord.ClientEvents[K]) => void}>
 export type DCModuleConfig = ModuleConfig & {
-  translation: TranslationObject
-  interactions: Record<string, (interaction:Discord.Interaction) => void>
+  translation?: TranslationObject
+  interactions?: Record<string, (interaction:Discord.Interaction) => void>
+  events?: DCModuleEvent
 }
 
 export class DCExecutor extends Executor<ModuleCtx> {}
@@ -52,6 +54,7 @@ export class DCScope extends Scope {}
 export default class DCModule extends Module<ModuleCtx> {
   translation: TranslationObject = {}
   interactions: Record<string, (interaction:Discord.Interaction) => void> = {}
+  events: DCModuleEvent = {}
 
   constructor( config:DCModuleConfig ) {
     super( config )
@@ -60,6 +63,8 @@ export default class DCModule extends Module<ModuleCtx> {
 
   static #merge( target:DCModule, module:DCModuleConfig ) {
     if (module.translation) Object.assign( target.translation, module.translation )
+    if (module.events) Object.assign( target.events, module.events )
+
     Object.assign( target.interactions, module.interactions )
   }
 }

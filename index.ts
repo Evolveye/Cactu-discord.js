@@ -212,12 +212,28 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
   }
 
 
-  handleGuild = (guild:Discord.Guild) => {
+  handleGuild = async(guild:Discord.Guild) => {
     const parsedName = guild.name.slice( 0, 20 ).replace( / [^ ]/g, match => match.trim().toUpperCase() ).trim() + (guild.name.length > 20 ? `...` : ``)
-    this.registerNamespace( guild.id, {
+    const namespace = await this.registerNamespace( guild.id, {
       name: guild.name,
       folderName: guild.id + `--` + parsedName,
     } )
+
+    const handleEveryLoad = () => {
+      Object.entries( namespace.getCompoundModule().events ).forEach( ([ eventName, eventhandler ]) => {
+        console.log( eventName )
+        this.client.on( eventName, eventhandler )
+      } )
+    }
+
+    namespace.on( `everyLoad`, handleEveryLoad )
+    namespace.on( `preReload`, () => {
+      Object.entries( namespace.getCompoundModule().events ).forEach( ([ eventName, eventhandler ]) => {
+        this.client.removeListener( eventName, eventhandler )
+      } )
+    } )
+
+    handleEveryLoad()
   }
 
 
