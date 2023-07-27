@@ -146,7 +146,10 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         if (response instanceof MissingExecutionParameter) embed.description = t[ `err.noParam` ] ?? `Missing parameter`
         else if (response instanceof WrongExecutionParameter) embed.description = t[ `err.badParam` ] ?? `Bad parameter`
         else if (response instanceof OverlimitedExecutorParameter) embed.description = t[ `err.tooManyParams` ] ?? `Too many parameters`
-        else if (response instanceof RuntimeExecutionError) embed.description = t[ `err.invalidCommand` ] ?? `This command have invalid code`
+        else if (response instanceof RuntimeExecutionError) {
+          this.logSystem( `[fgRed]ERR[]: Path="${ns.getCompoundModule().prefix + response.node?.path}", location="${response.commandLocation}"` )
+          embed.description = t[ `err.invalidCommand` ] ?? `This command has invalid code`
+        }
       }
 
       embed.description = `**` + (t[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
@@ -156,7 +159,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
     }
 
     if (response.typeInstance instanceof Scope) {
-      const path =  ns.getCompoundModule().prefix + response.path.join( ` ` ) + ` `
+      const compoundModule = ns.getCompoundModule()
+      const path =  compoundModule.prefix + response.path.join( ` ` ) + ` `
       const scopeItems = response.typeInstance.getItemsInfo()
 
       const scopesFields:Discord.APIEmbedField[] = []
@@ -181,12 +185,12 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       if (scopesFields.length) for (let i = 0;  i < 3 - ((scopesFields.length + 1) % 3);  i++) scopesFields.push({ name:`\u200b`, value:`\u200b`, inline:true })
 
       if (scopesFields.length) fields.push(
-        { name:``, value:t[ `label.scopes` ] ?? `Scopes` },
+        { name:``, value:t[ `help.scopes` ] ?? `Scopes` },
         ...scopesFields,
       )
 
       if (executorsFields.length) fields.push(
-        { name:scopeItems.length ? `\u200b` : ``, value:t[ `label.commands` ] ?? `Commands` },
+        { name:scopeItems.length ? `\u200b` : ``, value:t[ `help.commands` ] ?? `Commands` },
         ...executorsFields,
       )
 
@@ -200,7 +204,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
           + `* ` + (t[ `help.restParam` ] ?? `Dots **\`...\`** means parameter can be a sentence`),
         fields,
         footer: {
-          text: (message.member?.displayName ?? message.author.username) + ` :: ` + response.path.join( ` ` ),
+          text: (message.member?.displayName ?? message.author.username) + ` :: ` + compoundModule.prefix + response.path.join( ` ` ),
           icon_url: message.author.displayAvatarURL(),
         },
       }

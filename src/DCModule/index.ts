@@ -17,8 +17,8 @@ export type TranslationKeys =
   | `help.optionalParam`
   | `help.nothing`
   | `help.restParam`
-  | `label.commands`
-  | `label.scopes`
+  | `help.commands`
+  | `help.scopes`
   | `label.providedValue`
   | `label.parameter`
   | `label.optional`
@@ -45,6 +45,7 @@ export type DCModuleConfig = ModuleConfig & {
   translation?: TranslationObject
   interactions?: Record<string, (interaction:Discord.Interaction) => void>
   events?: DCModuleEvent
+  slashCommands?: Scope
 }
 
 export class DCExecutor extends Executor<ModuleCtx> {}
@@ -55,6 +56,7 @@ export default class DCModule extends Module<ModuleCtx> {
   translation: TranslationObject = {}
   interactions: Record<string, (interaction:Discord.Interaction) => void> = {}
   events: DCModuleEvent = {}
+  slashCommands: undefined | Scope = undefined
 
   constructor( config:DCModuleConfig ) {
     super( config )
@@ -64,6 +66,11 @@ export default class DCModule extends Module<ModuleCtx> {
   static #merge( target:DCModule, module:DCModuleConfig ) {
     if (module.translation) Object.assign( target.translation, module.translation )
     if (module.events) Object.assign( target.events, module.events )
+
+    if (module.slashCommands) {
+      if (target.slashCommands) Scope.merge( target.slashCommands, module.slashCommands )
+      else target.slashCommands = module.slashCommands
+    }
 
     Object.assign( target.interactions, module.interactions )
   }

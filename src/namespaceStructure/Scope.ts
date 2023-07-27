@@ -31,8 +31,7 @@ export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
     try {
       await this.#fn( ctx, ...params )
     } catch (err) {
-      console.error( err )
-      return new RuntimeExecutionError()
+      return new RuntimeExecutionError( err )
     }
   }
 
