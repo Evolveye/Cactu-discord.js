@@ -1,6 +1,7 @@
-import Discord, { REST, ActivityType, ChannelType, Partials } from "discord.js"
+import { ExecutorParam } from "src/namespaceStructure/Scope.js"
+import Discord, { REST, ActivityType, ChannelType, Partials, Routes } from "discord.js"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
-import DCModule, { Scope, TranslationObject } from "./src/DCModule/index.js"
+import DCModule, { ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
 
 export { default as DCModule } from "./src/DCModule/index.js"
@@ -83,6 +84,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       executorDataGetter: () => ({
         ns: guildNamespace,
         msg: message,
+        member: message.member,
+        channel: message.channel,
         send: msg => message.channel.send( msg ),
         sendOk: msg => message.channel.send( `✅ ${msg}` ),
         deleteMsg: () => message.delete(),
@@ -94,7 +97,11 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         }),
         getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? message.channel ),
       }),
-      handleResponse: response => this.handleResponse( response, guildNamespace, message ),
+      handleResponse: response => this.handleResponse( response, guildNamespace, {
+        channel: message.channel,
+        member: message.member,
+        user: message.author,
+      } ),
     }
 
     guildNamespace.processMessage( ctx )
@@ -124,16 +131,20 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
   }
 
 
-  handleResponse = (response:ProcessorResponseHandlerParam, ns:Namespace<DCModule>, message:Discord.Message) => {
+  handleResponse = (response:ProcessorResponseHandlerParam, ns:Namespace<DCModule>, { channel, member, user }:{ channel: null | Discord.DMChannel | Discord.PartialDMChannel | Discord.NewsChannel | Discord.StageChannel | Discord.TextChannel | Discord.PrivateThreadChannel | Discord.PublicThreadChannel<boolean> | Discord.VoiceChannel; member: Discord.GuildMember | Discord.APIInteractionGuildMember | null; user: Discord.User }) => {
     const t:TranslationObject = ns.getCompoundModule().translation
+
+    if (!channel) return
+
+    const username = member && `displayName` in member ? member.displayName : user.username
 
     if (response instanceof Error) {
       const embed = {
         color: 0xb7603d,
         description: ``,
         footer: {
-          text: (message.member?.displayName ?? message.author.username),
-          icon_url: message.author.displayAvatarURL(),
+          text: username,
+          icon_url: user.displayAvatarURL(),
         },
       }
 
@@ -154,7 +165,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
       embed.description = `**` + (t[ `err.error` ] ?? `Error`) + `** :: ` + embed.description
 
-      message.channel.send({ embeds:[ embed ] })
+      channel.send({ embeds:[ embed ] })
       return
     }
 
@@ -204,12 +215,12 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
           + `* ` + (t[ `help.restParam` ] ?? `Dots **\`...\`** means parameter can be a sentence`),
         fields,
         footer: {
-          text: (message.member?.displayName ?? message.author.username) + ` :: ` + compoundModule.prefix + response.path.join( ` ` ),
-          icon_url: message.author.displayAvatarURL(),
+          text: username + ` :: ` + compoundModule.prefix + response.path.join( ` ` ),
+          icon_url: user.displayAvatarURL(),
         },
       }
 
-      message.channel.send({ embeds:[ embed ] })
+      channel.send({ embeds:[ embed ] })
 
       return
     }
@@ -224,8 +235,46 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
     } )
 
     const handleEveryLoad = () => {
+      const app = this.client.application
+
+      if (app) {
+        const ns = this.namespacesData.get( guild.id )
+
+        if (ns) {
+          // Delete all commands
+          // this.rest.put( Routes.applicationGuildCommands( this.client.application.id, guild.id ), { body:[] } )
+          //   .then( () => console.log( `Successfully deleted all guild commands for ${guild.name}` ) )
+
+          const commands = Object.entries( ns.getCompoundModule().slashCommands ).map( ([ commandName, executor ]) => {
+            let cmd = new Discord.SlashCommandBuilder()
+              .setName( commandName )
+              .setDescription( executor.meta.shortDescription ?? executor.meta.detailedDescription ?? `- - -` )
+
+            const createOption = (option:Discord.SlashCommandNumberOption, p:ExecutorParam) => {
+              option = option
+                .setName( p.name.toLowerCase().replace( / /g, `_` ) )
+                .setRequired( !p.optional )
+
+              if (p.desc) option = option.setDescription( p.desc )
+
+              return option
+            }
+
+            executor.meta.params.forEach( p => {
+              if (p.type === `number`) return cmd = cmd.addNumberOption( opt => createOption( opt, p ) ) as Discord.SlashCommandBuilder
+            } )
+
+            return cmd
+          } )
+
+          this.rest.put( Routes.applicationGuildCommands( app.id, guild.id ), { body:commands } )
+            .catch( err => {
+              console.log( `Error`, err.rawError.message, JSON.stringify( err.rawError.errors, null, 2 ) )
+            } )
+        }
+      }
+
       Object.entries( namespace.getCompoundModule().events ).forEach( ([ eventName, eventhandler ]) => {
-        console.log( eventName )
         this.client.on( eventName, eventhandler )
       } )
     }
@@ -242,14 +291,56 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
 
   handleInterraction = (interaction:Discord.Interaction) => {
-    if (!interaction.guildId || !(`customId` in interaction)) {
-      console.log({ interaction })
-      return
-    }
+    if (!interaction.guildId) return
 
     const ns = this.namespacesData.get( interaction.guildId )
 
-    ns?.getCompoundModule().interactions[ interaction.customId ]?.( interaction )
+    if (!ns) return
+    if (interaction.isChatInputCommand()) {
+      const slashCommand = ns.getCompoundModule().slashCommands[ interaction.commandName ]
+
+      if (!slashCommand) return
+
+      const ctx:ModuleCmdCtx = {
+        ns,
+        cmd: interaction,
+        runCmd: command => ns.processMessage({
+          message: command,
+          prefix: null,
+          checkPermissions: () => true,
+          executorDataGetter: () => ({
+            ns,
+            msg: null,
+            member: interaction.member && `displayName` in interaction.member ? interaction.member : null,
+            channel: interaction.channel,
+            send: msg => {
+              if (typeof msg === `string`) return interaction.reply({ content:msg })
+              if (`content` in msg) return interaction.reply({ content:msg.content, components:msg.components })
+              throw new Error( `Cannot send message` )
+            },
+            sendOk: msg => interaction.reply( `✅ ${msg}` ),
+            deleteMsg: async() => {
+              interaction.deferReply()
+              interaction.deleteReply()
+            },
+            runCmd: command => ns.processMessage({ ...ctx, message:command }),
+            getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? interaction.channel ),
+          }),
+          handleResponse: response => this.handleResponse( response, ns, {
+            channel: interaction.channel,
+            member: interaction.member,
+            user: interaction.user,
+          } ),
+        }),
+        getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? interaction.channel ),
+      }
+
+      slashCommand.prepareAndExecute( ``, ctx )
+    }
+
+    if (!(`customId` in interaction)) return
+
+    ns.getCompoundModule().interactions[ interaction.customId ]?.( interaction )
   }
 
 
@@ -261,8 +352,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
   }
 
 
-  async getWebHook( channel:Discord.Channel ) {
-    if (channel.type !== Discord.ChannelType.GuildText) return null
+  async getWebHook( channel:null | Discord.Channel ) {
+    if (!channel || channel.type !== Discord.ChannelType.GuildText) return null
 
     const hooks = await channel.fetchWebhooks().catch( console.log ).then( hook => hook ?? null )
     const existingCactuHook = hooks?.find( ({ name }) => name == `CactuHaczyk` )
