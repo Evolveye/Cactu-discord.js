@@ -2,6 +2,7 @@ import fs from "fs/promises"
 import { Namespace, Module } from "./namespaceStructure/index.js"
 import Logger, { LoggerPart } from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
+import FileStorage from "./FileStorage/index.js"
 
 export type BotBaseConfig = {}
 
@@ -14,8 +15,10 @@ export type NamespaceRegistrationConfig = {
 export default class BotClientBase<TModule extends Module<any>> {
   #dataFolderPath = `./namespaces_data/`
   #defaultConfigSubpath = `_default_config/`
+  #storageFileName = `_storage.json`
   #initialized = false
   #namespacesData = new Map<string, Namespace<TModule>>()
+  #storages = new Map<string, FileStorage>()
 
   static loggers = {
     system: new Logger( [
@@ -71,7 +74,7 @@ export default class BotClientBase<TModule extends Module<any>> {
 
 
   registerNamespace = async(id:string, { name = id, folderName = id }:NamespaceRegistrationConfig = {}) => {
-    const namespaceFolderPath = this.#dataFolderPath + folderName + `/`
+    const namespaceFolderPath = this.#getNamespaceFolderPath( folderName )
     const defualtConfigPath = this.#dataFolderPath + this.#defaultConfigSubpath
 
     const namespaceFolderExists = await fs.access( namespaceFolderPath ).then( () => true ).catch( () => false )
@@ -104,9 +107,25 @@ export default class BotClientBase<TModule extends Module<any>> {
   }
 
 
+  async getNamespaceFileStorage( folderName:string ) {
+    let storage = this.#storages.get( folderName + this.#storageFileName )
+
+    if (!storage) {
+      storage = await FileStorage.createStorage( this.#getNamespaceFolderPath( folderName ) + this.#storageFileName )
+      this.#storages.set( folderName, storage )
+    }
+
+    return storage
+  }
+
+
   endInitialization() {
     this.#initialized = true
     console.log()
     this.logSystem( `I have been started!` )
+  }
+
+  #getNamespaceFolderPath( folderName:string ) {
+    return this.#dataFolderPath + folderName + `/`
   }
 }

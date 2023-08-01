@@ -88,6 +88,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         channel: message.channel,
         send: msg => message.channel.send( msg ),
         sendOk: msg => message.channel.send( `✅ ${msg}` ),
+        getStorage: async() => !message.guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( message.guild ) ),
         deleteMsg: () => message.delete(),
         runCmd: command => guildNamespace.processMessage({
           ...ctx,
@@ -228,10 +229,9 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
 
   handleGuild = async(guild:Discord.Guild) => {
-    const parsedName = guild.name.slice( 0, 20 ).replace( / [^ ]/g, match => match.trim().toUpperCase() ).trim() + (guild.name.length > 20 ? `...` : ``)
     const namespace = await this.registerNamespace( guild.id, {
       name: guild.name,
-      folderName: guild.id + `--` + parsedName,
+      folderName: this.getGuildFolderName( guild ),
     } )
 
     const handleEveryLoad = () => {
@@ -319,6 +319,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
               throw new Error( `Cannot send message` )
             },
             sendOk: msg => interaction.reply( `✅ ${msg}` ),
+            getStorage: async() => !interaction.guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( interaction.guild ) ),
             deleteMsg: async() => {
               interaction.deferReply()
               interaction.deleteReply()
@@ -332,6 +333,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
             user: interaction.user,
           } ),
         }),
+        getStorage: async() => !interaction.guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( interaction.guild ) ),
         getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? interaction.channel ),
       }
 
@@ -340,7 +342,16 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
     if (!(`customId` in interaction)) return
 
-    ns.getCompoundModule().interactions[ interaction.customId ]?.( interaction )
+    const { interactions } = ns.getCompoundModule()
+
+    let interactionFn = interactions[ interaction.customId ]
+
+    if (!interactionFn) interactionFn = Object.entries( interactions )
+      .filter( ([ k ]) => k.startsWith( `/` ) && k.endsWith( `/` ) )
+      .find( ([ k ]) => new RegExp( k.slice( 1, -1 ) ).test( interaction.customId ) )
+      ?.[ 1 ]
+
+    interactionFn?.( interaction )
   }
 
 
@@ -364,5 +375,10 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       .catch( console.log ).then( hook => hook ?? null )
 
     return cactuHook
+  }
+
+  getGuildFolderName( guild:Discord.Guild ) {
+    const parsedName = guild.name.slice( 0, 20 ).replace( / [^ ]/g, match => match.trim().toUpperCase() ).trim() + (guild.name.length > 20 ? `...` : ``)
+    return guild.id + `--` + parsedName
   }
 }

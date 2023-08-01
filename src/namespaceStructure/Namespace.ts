@@ -1,5 +1,6 @@
 import path from "path"
 import fs from "fs/promises"
+import FileStorage from "src/FileStorage/index.js"
 import importWithoutCache from "../importWithoutCache/index.js"
 import ModuleProcessor, { ProcessConfig } from "./ModuleProcessor/index.js"
 import Module from "./Module.js"
@@ -65,7 +66,7 @@ export default class Namespace<TModule extends Module<any> = Module> {
     if (!folderpath.endsWith( `/` )) folderpath += `/`
 
     const config = await fs.readdir( folderpath )
-      .then( files => Promise.all( files.map( filename => this.loadConfigFromFile( folderpath + filename ) ) ) )
+      .then( files => Promise.all( files.map( filename => filename.endsWith( `.js` ) && this.loadConfigFromFile( folderpath + filename ) ) ) )
       .then( () => true )
       .catch<false>( () => false )
 

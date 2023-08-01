@@ -1,3 +1,4 @@
+import FileStorage from "src/FileStorage/index.js"
 import Discord, { InteractionResponse } from "discord.js"
 import { Namespace, Executor, Filter, Module, ModuleConfig, Scope } from "../namespaceStructure/index.js"
 
@@ -36,6 +37,7 @@ export type ModuleCtx = {
   msg: null | Discord.Message
   member: null | Discord.GuildMember
   channel: null | DCChannel
+  getStorage: () => Promise<undefined | FileStorage>
   send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
   sendOk: (msg:string) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
   deleteMsg: () => Promise<void | Discord.Message<boolean>>
@@ -46,6 +48,7 @@ export type ModuleCtx = {
 export type ModuleCmdCtx = {
   ns: Namespace<DCModule>
   cmd: Discord.ChatInputCommandInteraction<Discord.CacheType>
+  getStorage: () => Promise<undefined | FileStorage>
   runCmd: (command:string) => Promise<void>
   getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
 }
