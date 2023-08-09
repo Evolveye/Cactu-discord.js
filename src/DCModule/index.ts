@@ -37,19 +37,20 @@ export type ModuleCtx = {
   msg: null | Discord.Message
   member: null | Discord.GuildMember
   channel: null | DCChannel
-  getStorage: () => Promise<undefined | FileStorage>
   send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
   sendOk: (msg:string) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
   deleteMsg: () => Promise<void | Discord.Message<boolean>>
   runCmd: (command:string) => Promise<void>
+  getStorage: () => Promise<undefined | FileStorage>
   getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
 }
 
 export type ModuleCmdCtx = {
   ns: Namespace<DCModule>
   cmd: Discord.ChatInputCommandInteraction<Discord.CacheType>
-  getStorage: () => Promise<undefined | FileStorage>
+  send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
   runCmd: (command:string) => Promise<void>
+  getStorage: () => Promise<undefined | FileStorage>
   getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
 }
 
@@ -74,14 +75,20 @@ export default class DCModule extends Module<ModuleCtx> {
 
   constructor( config:DCModuleConfig ) {
     super( config )
-    DCModule.#merge( this, config )
+    DCModule.merge( this, config )
   }
 
-  static #merge( target:DCModule, module:DCModuleConfig ) {
+  merge<T extends DCModuleConfig>(module:T) {
+    Module.merge( this, module )
+    DCModule.merge( this, module )
+  }
+
+  static merge( target:DCModule, module:DCModuleConfig ) {
     if (module.translation) Object.assign( target.translation, module.translation )
     if (module.events) Object.assign( target.events, module.events )
     if (module.slashCommands) Object.assign( target.slashCommands, module.slashCommands )
 
+    // console.log({ target:target.interactions, module:module.interactions })
     Object.assign( target.interactions, module.interactions )
   }
 }

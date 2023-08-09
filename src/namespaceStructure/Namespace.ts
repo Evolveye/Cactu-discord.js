@@ -1,6 +1,5 @@
 import path from "path"
 import fs from "fs/promises"
-import FileStorage from "src/FileStorage/index.js"
 import importWithoutCache from "../importWithoutCache/index.js"
 import ModuleProcessor, { ProcessConfig } from "./ModuleProcessor/index.js"
 import Module from "./Module.js"
@@ -58,7 +57,10 @@ export default class Namespace<TModule extends Module<any> = Module> {
   addModule( filepath:string, module:TModule ) {
     this.#modulesFilepaths.add( filepath )
 
-    if (this.#compoundModule) Module.merge( this.#compoundModule, module )
+    if (this.#compoundModule) {
+      this.#compoundModule.merge( module )
+      console.log({ compoundModule:this.#compoundModule })
+    }
     else this.#compoundModule = module
   }
 
@@ -84,7 +86,6 @@ export default class Namespace<TModule extends Module<any> = Module> {
 
       return true
     } catch (err) {
-      console.log( `${err}` )
       return false
     }
   }

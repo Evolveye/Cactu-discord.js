@@ -10,12 +10,17 @@ export interface ModuleData<T=unknown> {
 export type ModuleConfig<T=unknown> = Partial<ModuleData<T>>
 
 export default class Module<T=unknown> implements ModuleData<T> {
-  prefix = `/`
+  prefix = ``
   commands: undefined | Scope = undefined
   filters: Filter<T>[] = []
 
   constructor( config:ModuleConfig<T> = {} ) {
     Module.merge( this, config )
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  merge<T extends ModuleConfig<any>>(module:T) {
+    Module.merge( this, module )
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -250,18 +250,19 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
               .setName( commandName )
               .setDescription( executor.meta.shortDescription ?? executor.meta.detailedDescription ?? `- - -` )
 
-            const createOption = (option:Discord.SlashCommandNumberOption, p:ExecutorParam) => {
+            const createOption = <T extends Discord.SlashCommandNumberOption | Discord.SlashCommandStringOption>(option:T, p:ExecutorParam): T => {
               option = option
                 .setName( p.name.toLowerCase().replace( / /g, `_` ) )
-                .setRequired( !p.optional )
+                .setRequired( !p.optional ) as T
 
-              if (p.desc) option = option.setDescription( p.desc )
+              if (p.desc) option = option.setDescription( p.desc ) as T
 
               return option
             }
 
             executor.meta.params.forEach( p => {
               if (p.type === `number`) return cmd = cmd.addNumberOption( opt => createOption( opt, p ) ) as Discord.SlashCommandBuilder
+              if (p.type === `message`) return cmd = cmd.addStringOption( opt => createOption( opt, p ) ) as Discord.SlashCommandBuilder
             } )
 
             return cmd
@@ -333,10 +334,16 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
             user: interaction.user,
           } ),
         }),
+        send: msg => {
+          if (typeof msg === `string`) return interaction.reply({ content:msg })
+          if (`content` in msg) return interaction.reply({ content:msg.content, components:msg.components })
+          throw new Error( `Cannot send message` )
+        },
         getStorage: async() => !interaction.guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( interaction.guild ) ),
         getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? interaction.channel ),
       }
 
+      // TODO parameters
       slashCommand.prepareAndExecute( ``, ctx )
     }
 

@@ -9,6 +9,7 @@ export type ProcessorNode = { path: string[];restPath: string; typeInstance: Exe
 export type ProcessorPermissionChecker = (perms:string[]) => boolean
 export type ProcessorResponseHandlerParam = CommandError | ExecutionError | ProcessorNode
 export type ProcessorResponseHandler = (response:ProcessorResponseHandlerParam) => void
+export type ConditionalFilter = Filter | Filter[]
 
 export type ProcessConfig<T=unknown> = {
   prefix?: null | string
@@ -77,16 +78,24 @@ export default class ModuleProcessor {
     }
   }
 
-  async applyFilters( message:string, filters:Filter[], executorDataGetter?:() => unknown ) {
+  async applyFilters( message:string, filters:ConditionalFilter[], executorDataGetter?:() => unknown ) {
+    const filteringCtx = {
+      breakFiltering: false,
+    }
+
     let ctx:unknown = typeof executorDataGetter === `function` ? undefined : executorDataGetter
 
-    for (const filter of filters) {
-      const testPassed = filter.test( message )
+    for (const semiFiltersGroup of filters) {
+      const filtersGroup = Array.isArray( semiFiltersGroup ) ? semiFiltersGroup : [ semiFiltersGroup ]
 
-      if (!testPassed) continue
-      if (!ctx) ctx = executorDataGetter?.()
+      for (const filter of filtersGroup) {
+        const testPassed = filter.test( message )
 
-      await filter.apply( message, ctx )
+        if (!testPassed) continue
+        if (!ctx) ctx = executorDataGetter?.()
+
+        await filter.apply( message, ctx )
+      }
     }
   }
 }

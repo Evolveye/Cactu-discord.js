@@ -105,15 +105,15 @@ export default class Scope extends MetadataHolder {
   }
 
   static merge( target:Scope, scope:Scope ) {
-    Object.entries( scope ).forEach( ([ key, value ]) => {
-      if (key in target) {
-        if (target[ key ] instanceof Executor) target[ key ] = value
-        else if (target[ key ] instanceof Scope) {
-          if (value instanceof Scope) this.merge( target[ key ], value )
-        }
-      }
+    Object.entries( scope.config ).forEach( ([ key, value ]) => {
+      const targetConf = target.config
 
-      target[ key ] = value
+      if (key in targetConf) {
+        if (targetConf[ key ] instanceof Executor) targetConf[ key ] = value
+        else if (targetConf[ key ] instanceof Scope) {
+          if (value instanceof Scope) this.merge( targetConf[ key ] as Scope, value )
+        }
+      } else targetConf[ key ] = value
     } )
   }
 }
