@@ -3,3 +3,6 @@ extends:
 parser: "@typescript-eslint/parser"
 ignorePatterns:
   - lib
+rules:
+  no-dupe-class-members: off
+  "@typescript-eslint/no-dupe-class-members": 1

@@ -2,6 +2,7 @@ import fs from "fs/promises"
 import { Namespace, Module } from "./namespaceStructure/index.js"
 import Logger, { LoggerPart } from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
+import ModulesManager from "./ModulesManager.js"
 import FileStorage from "./FileStorage/index.js"
 
 export type BotBaseConfig = {}
@@ -12,6 +13,12 @@ export type NamespaceRegistrationConfig = {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type NamespaceInfo<T extends Module<any>> = {
+  folderPath: string
+  namespace: Namespace<T>
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default class BotClientBase<TModule extends Module<any>> {
   #dataFolderPath = `./namespaces_data/`
   #defaultConfigSubpath = `_default_config/`
@@ -19,6 +26,7 @@ export default class BotClientBase<TModule extends Module<any>> {
   #initialized = false
   #namespacesData = new Map<string, Namespace<TModule>>()
   #storages = new Map<string, FileStorage>()
+  modulesManager = new ModulesManager()
 
   static loggers = {
     system: new Logger( [
@@ -123,6 +131,17 @@ export default class BotClientBase<TModule extends Module<any>> {
     this.#initialized = true
     console.log()
     this.logSystem( `I have been started!` )
+  }
+
+  getNamespaceInfo( folderName:string, id:string ): null | NamespaceInfo<TModule> {
+    const ns = this.namespacesData.get( id )
+
+    if (!ns) return null
+
+    return {
+      namespace: ns,
+      folderPath: this.#dataFolderPath + folderName + `/`,
+    }
   }
 
   #getNamespaceFolderPath( folderName:string ) {

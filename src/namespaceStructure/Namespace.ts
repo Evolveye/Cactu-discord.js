@@ -1,5 +1,6 @@
 import path from "path"
-import fs from "fs/promises"
+import fsp from "fs/promises"
+import fs from "fs"
 import importWithoutCache from "../importWithoutCache/index.js"
 import ModuleProcessor, { ProcessConfig } from "./ModuleProcessor/index.js"
 import Module from "./Module.js"
@@ -54,20 +55,27 @@ export default class Namespace<TModule extends Module<any> = Module> {
     return [ ...this.#modulesFilepaths.values() ]
   }
 
-  addModule( filepath:string, module:TModule ) {
-    this.#modulesFilepaths.add( filepath )
+  loadModule( filepath:string, module:TModule ) {
+    this.#modulesFilepaths.add( filepath.replace( /\\\\/g, `/` ) ) // TODO replace paths to file with something better (example for this.unloadModule)
 
-    if (this.#compoundModule) {
-      this.#compoundModule.merge( module )
-      console.log({ compoundModule:this.#compoundModule })
-    }
+    if (this.#compoundModule) this.#compoundModule.merge( module )
     else this.#compoundModule = module
+  }
+
+  async unloadModule( filepath:string ) {
+    let sureFilepath = filepath
+
+    try {
+      sureFilepath = this.#modulesFilepaths.has( filepath ) ? filepath : fs.realpathSync( filepath )
+    } catch { /* */ }
+
+    if (this.#modulesFilepaths.delete( sureFilepath )) return this.reloadConfig()
   }
 
   async loadConfigFromFolder( folderpath:string ) {
     if (!folderpath.endsWith( `/` )) folderpath += `/`
 
-    const config = await fs.readdir( folderpath )
+    const config = await fsp.readdir( folderpath )
       .then( files => Promise.all( files.map( filename => filename.endsWith( `.js` ) && this.loadConfigFromFile( folderpath + filename ) ) ) )
       .then( () => true )
       .catch<false>( () => false )
@@ -79,13 +87,13 @@ export default class Namespace<TModule extends Module<any> = Module> {
     try {
       const absoluteFilepath = path.resolve( filepath )
       const mod = await importWithoutCache<TModule>( absoluteFilepath )
-
       if (!(mod instanceof Module)) return false
 
-      this.addModule( absoluteFilepath, mod )
+      this.loadModule( absoluteFilepath, mod )
 
       return true
     } catch (err) {
+      console.log({ err })
       return false
     }
   }
@@ -104,7 +112,7 @@ export default class Namespace<TModule extends Module<any> = Module> {
 
         if (!(mod instanceof Module)) continue
 
-        this.addModule( path, mod )
+        this.loadModule( path, mod )
       } catch (err) {
         console.log( err )
         failedModules.push( path )
@@ -131,7 +139,7 @@ export default class Namespace<TModule extends Module<any> = Module> {
     eventScope.forEach( f => f( ...values ) )
   }
 
-  async loadModule( path:string ) {
+  async importModule( path:string ) {
     return importWithoutCache( path )
     // const code = await fs.readFile( path, `utf-8` )
 

@@ -2,7 +2,7 @@ import { ExecutorParam } from "src/namespaceStructure/Scope.js"
 import Discord, { REST, ActivityType, ChannelType, Partials, Routes } from "discord.js"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
 import DCModule, { ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
-import BotBase, { BotBaseConfig } from "./src/BotClientBase.js"
+import BotBase, { BotBaseConfig, NamespaceInfo } from "./src/BotClientBase.js"
 
 export { default as DCModule } from "./src/DCModule/index.js"
 export * from "./src/DCModule/index.js"
@@ -82,6 +82,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       message: message.content,
       checkPermissions: perms => this.checkPermissions( perms, message ),
       executorDataGetter: () => ({
+        bot: this,
         ns: guildNamespace,
         msg: message,
         member: message.member,
@@ -305,11 +306,13 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       const ctx:ModuleCmdCtx = {
         ns,
         cmd: interaction,
+        bot: this,
         runCmd: command => ns.processMessage({
           message: command,
           prefix: null,
           checkPermissions: () => true,
           executorDataGetter: () => ({
+            bot: this,
             ns,
             msg: null,
             member: interaction.member && `displayName` in interaction.member ? interaction.member : null,
@@ -343,8 +346,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? interaction.channel ),
       }
 
-      // TODO parameters
-      slashCommand.prepareAndExecute( ``, ctx )
+      const params = slashCommand.meta.params.map( p => interaction.options.data.find( d => d.name === p.name.toLowerCase() )?.value )
+      slashCommand.execute( params, ctx )
     }
 
     if (!(`customId` in interaction)) return
@@ -387,5 +390,13 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
   getGuildFolderName( guild:Discord.Guild ) {
     const parsedName = guild.name.slice( 0, 20 ).replace( / [^ ]/g, match => match.trim().toUpperCase() ).trim() + (guild.name.length > 20 ? `...` : ``)
     return guild.id + `--` + parsedName
+  }
+
+  getNamespaceInfoFromGuild( guildId:string ): null | NamespaceInfo<DCModule>
+  getNamespaceInfoFromGuild( guild:Discord.Guild ): null | NamespaceInfo<DCModule>
+  getNamespaceInfoFromGuild( guildOrItsId:string | Discord.Guild ): null | NamespaceInfo<DCModule> {
+    const guild = typeof guildOrItsId === `string` ? this.client.guilds.cache.get( guildOrItsId ) : guildOrItsId
+    if (!guild) return null
+    return super.getNamespaceInfo( this.getGuildFolderName( guild ), guild.id )
   }
 }

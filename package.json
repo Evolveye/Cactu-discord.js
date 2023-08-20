@@ -2,7 +2,11 @@
   "name": "cactu-discord.js",
   "version": "4.0.0-pr.1",
   "description": "Transformed discord.js library into Cactu framework",
-  "main": "index.js",
+  "author": "Paweł S",
+  "homepage": "https://github.com/Evolveye/Cactu-discord.js",
+  "repository": "https://github.com/Evolveye/Cactu-discord.js",
+  "license": "ISC",
+  "main": "lib/index.js",
   "type": "module",
   "scripts": {
     "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js.",
@@ -20,10 +24,6 @@
     "framework",
     "automated"
   ],
-  "author": "Paweł S",
-  "homepage": "https://github.com/Evolveye/Cactu-discord.js",
-  "repository": "https://github.com/Evolveye/Cactu-discord.js",
-  "license": "ISC",
   "dependencies": {
     "canvas": "^2.11.2",
     "discord.js": "14.11",

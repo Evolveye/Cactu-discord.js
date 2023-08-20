@@ -1,4 +1,5 @@
 import FileStorage from "src/FileStorage/index.js"
+import CactuDiscordBot from "index.js"
 import Discord, { InteractionResponse } from "discord.js"
 import { Namespace, Executor, Filter, Module, ModuleConfig, Scope } from "../namespaceStructure/index.js"
 
@@ -33,6 +34,7 @@ export type DCChannel = Discord.TextBasedChannel | Discord.DMChannel | Discord.P
 export type TranslationObject = Partial<Record<TranslationKeys, string>>
 
 export type ModuleCtx = {
+  bot: CactuDiscordBot
   ns: Namespace<DCModule>
   msg: null | Discord.Message
   member: null | Discord.GuildMember
@@ -46,6 +48,7 @@ export type ModuleCtx = {
 }
 
 export type ModuleCmdCtx = {
+  bot: CactuDiscordBot
   ns: Namespace<DCModule>
   cmd: Discord.ChatInputCommandInteraction<Discord.CacheType>
   send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
