@@ -81,6 +81,7 @@ export default class ModuleProcessor {
   async applyFilters( message:string, filters:ConditionalFilter[], executorDataGetter?:() => unknown ) {
     const filteringCtx = {
       breakFiltering: false,
+      continueFilteringGroup: false,
     }
 
     let ctx:unknown = typeof executorDataGetter === `function` ? undefined : executorDataGetter
@@ -88,14 +89,20 @@ export default class ModuleProcessor {
     for (const semiFiltersGroup of filters) {
       const filtersGroup = Array.isArray( semiFiltersGroup ) ? semiFiltersGroup : [ semiFiltersGroup ]
 
+      filteringCtx.continueFilteringGroup = false
+
       for (const filter of filtersGroup) {
         const testPassed = filter.test( message )
 
         if (!testPassed) continue
         if (!ctx) ctx = executorDataGetter?.()
 
-        await filter.apply( message, ctx )
+        await filter.apply( message, ctx, filteringCtx )
+
+        if (!filteringCtx.continueFilteringGroup) break
       }
+
+      if (filteringCtx.breakFiltering) break
     }
   }
 }

@@ -160,7 +160,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         else if (response instanceof WrongExecutionParameter) embed.description = t[ `err.badParam` ] ?? `Bad parameter`
         else if (response instanceof OverlimitedExecutorParameter) embed.description = t[ `err.tooManyParams` ] ?? `Too many parameters`
         else if (response instanceof RuntimeExecutionError) {
-          this.logSystem( `[fgRed]ERR[]: Path="${ns.getCompoundModule().prefix + response.node?.path}", location="${response.commandLocation}"` )
+          // this.logSystem( `[fgRed]ERR[]: Path="${ns.getCompoundModule().prefix + response.node?.path}", location="${response.commandLocation}"` )
+          this.logSystem( `[fgRed]ERR[]: ${response}` )
           embed.description = t[ `err.invalidCommand` ] ?? `This command has invalid code`
         }
       }

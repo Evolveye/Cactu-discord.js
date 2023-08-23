@@ -1,5 +1,10 @@
+export type FilterContext = {
+  breakFiltering: boolean
+  continueFilteringGroup: boolean
+}
+
 export type FilterTester = RegExp | ((message:string) => boolean)
-export type FilterEvaluator<T = unknown> = (text:string, context:T) => void | Promise<void>
+export type FilterEvaluator<T = unknown> = (text:string, context:T, filterContext:FilterContext) => void | Promise<void>
 export default class Filter<T = unknown> {
   #tester: FilterTester
   #fn: FilterEvaluator<T>
@@ -18,7 +23,7 @@ export default class Filter<T = unknown> {
     return testPassed
   }
 
-  async apply( text:string, ctx:T ) {
-    return this.#fn( text, ctx )
+  async apply( text:string, ctx:T, filterCtx:FilterContext ) {
+    return this.#fn( text, ctx, filterCtx )
   }
 }
