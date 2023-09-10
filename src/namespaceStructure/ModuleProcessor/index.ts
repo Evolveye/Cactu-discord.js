@@ -1,4 +1,5 @@
 import { Executor, Filter, Scope } from "../index.js"
+import { FilterContext } from "../Filter.js"
 import { ExecutionError } from "./ExecutorError.js"
 import { CommandPermissionsError, CommandError, NoCommandError } from "./CommandError.js"
 
@@ -79,9 +80,10 @@ export default class ModuleProcessor {
   }
 
   async applyFilters( message:string, filters:ConditionalFilter[], executorDataGetter?:() => unknown ) {
-    const filteringCtx = {
+    const filteringCtx:FilterContext = {
       breakFiltering: false,
       continueFilteringGroup: false,
+      filterMatched: false,
     }
 
     let ctx:unknown = typeof executorDataGetter === `function` ? undefined : executorDataGetter
@@ -90,6 +92,7 @@ export default class ModuleProcessor {
       const filtersGroup = Array.isArray( semiFiltersGroup ) ? semiFiltersGroup : [ semiFiltersGroup ]
 
       filteringCtx.continueFilteringGroup = false
+      filteringCtx.filterMatched = false
 
       for (const filter of filtersGroup) {
         const testPassed = filter.test( message )
@@ -99,6 +102,7 @@ export default class ModuleProcessor {
 
         await filter.apply( message, ctx, filteringCtx )
 
+        if (filteringCtx.filterMatched) { /* TODO */ }
         if (!filteringCtx.continueFilteringGroup) break
       }
 

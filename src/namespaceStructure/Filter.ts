@@ -1,6 +1,7 @@
 export type FilterContext = {
   breakFiltering: boolean
   continueFilteringGroup: boolean
+  filterMatched: boolean
 }
 
 export type FilterTester = RegExp | ((message:string) => boolean)
