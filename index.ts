@@ -58,7 +58,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
 
   handleMessage = (message:Discord.Message) => {
-    if (!message.content) return
+    if (!message.content || message.author.id === this.client.user?.id) return
 
     const msgType = message.channel.type
 

@@ -1,7 +1,7 @@
-import FileStorage from "src/FileStorage/index.js"
-import CactuDiscordBot from "index.js"
 import Discord, { InteractionResponse } from "discord.js"
 import { Namespace, Executor, Filter, Module, ModuleConfig, Scope } from "../namespaceStructure/index.js"
+import FileStorage from "../FileStorage/index.js"
+import CactuDiscordBot from "../../index.js"
 
 export { Executor, Filter, Module, Scope }
 
