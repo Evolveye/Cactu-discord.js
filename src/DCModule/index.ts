@@ -39,8 +39,8 @@ export type ModuleCtx = {
   msg: null | Discord.Message
   member: null | Discord.GuildMember
   channel: null | DCChannel
-  send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
-  sendOk: (msg:string) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
+  send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<null | InteractionResponse<boolean> | Discord.Message<boolean>>
+  sendOk: (msg:string) => Promise<null | InteractionResponse<boolean> | Discord.Message<boolean>>
   deleteMsg: () => Promise<void | Discord.Message<boolean>>
   runCmd: (command:string) => Promise<void>
   getStorage: () => Promise<undefined | FileStorage>

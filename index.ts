@@ -1,5 +1,6 @@
 import { ExecutorParam } from "src/namespaceStructure/Scope.js"
-import Discord, { REST, ActivityType, ChannelType, Partials, Routes } from "discord.js"
+import Discord, { ActivityType, ChannelType, Partials, REST, Routes } from "discord.js"
+import { SlashCommandBuilder, SlashCommandNumberOption, SlashCommandStringOption } from "@discordjs/builders"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
 import DCModule, { ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig, NamespaceInfo } from "./src/BotClientBase.js"
@@ -87,8 +88,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         msg: message,
         member: message.member,
         channel: message.channel,
-        send: msg => message.channel.send( msg ),
-        sendOk: msg => message.channel.send( `✅ ${msg}` ),
+        send: async msg => `send` in message.channel ? message.channel.send( msg ) : null,
+        sendOk: async msg => `send` in message.channel ? message.channel.send( `✅ ${msg}` ) : null,
         getStorage: async() => !message.guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( message.guild ) ),
         deleteMsg: () => message.delete(),
         runCmd: command => guildNamespace.processMessage({
@@ -193,6 +194,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
             + ` ***` + item.name + `*** `
             + item.params.map( p => `  **\` ${p.type == `message` ? `...` : ``}${p.name}${p.optional ? `?` : ``} \`**  ` ).join( `` ),
           value: item.shortDescription ?? ``,
+          inline: false,
         })
       }
 
@@ -208,7 +210,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
         ...executorsFields,
       )
 
-      if (!scopesFields.length && !executorsFields.length) fields.push({ name:`\u200b`, value:t[ `help.nothing` ] ?? `Nothing is here` })
+      if (!scopesFields.length && !executorsFields.length) fields.push({ name:`\u200b`, value:t[ `help.nothing` ] ?? `Nothing is here`, inline:false })
 
       const embed:Discord.APIEmbed = {
         color: 0x4ee910,
@@ -248,11 +250,12 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
           //   .then( () => console.log( `Successfully deleted all guild commands for ${guild.name}` ) )
 
           const commands = Object.entries( ns.getCompoundModule().slashCommands ).map( ([ commandName, executor ]) => {
-            let cmd = new Discord.SlashCommandBuilder()
+
+            let cmd = new SlashCommandBuilder()
               .setName( commandName )
               .setDescription( executor.meta.shortDescription ?? executor.meta.detailedDescription ?? `- - -` )
 
-            const createOption = <T extends Discord.SlashCommandNumberOption | Discord.SlashCommandStringOption>(option:T, p:ExecutorParam): T => {
+            const createOption = <T extends SlashCommandNumberOption | SlashCommandStringOption>(option:T, p:ExecutorParam): T => {
               option = option
                 .setName( p.name.toLowerCase().replace( / /g, `_` ) )
                 .setRequired( !p.optional ) as T
@@ -263,8 +266,8 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
             }
 
             executor.meta.params.forEach( p => {
-              if (p.type === `number`) return cmd = cmd.addNumberOption( opt => createOption( opt, p ) ) as Discord.SlashCommandBuilder
-              if (p.type === `message`) return cmd = cmd.addStringOption( opt => createOption( opt, p ) ) as Discord.SlashCommandBuilder
+              if (p.type === `number`) return cmd = cmd.addNumberOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
+              if (p.type === `message`) return cmd = cmd.addStringOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
             } )
 
             return cmd
@@ -368,21 +371,25 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
   onReady = () => {
     this.client.guilds.cache.forEach( guild => this.handleGuild( guild ) )
-    this.client.user?.setActivity({ name:`My pings`, type:ActivityType.Watching })
+    this.client.user?.setActivity({ name:`Growing plants`, type:ActivityType.Watching })
 
     this.endInitialization()
   }
 
 
-  async getWebHook( channel:null | Discord.Channel ) {
-    if (!channel || channel.type !== Discord.ChannelType.GuildText) return null
+  async getWebHook( channel:null | Discord.Channel | Discord.ThreadChannel ) {
+    if (!channel) return null
 
-    const hooks = await channel.fetchWebhooks().catch( console.log ).then( hook => hook ?? null )
+    const guildChannel = channel.type === ChannelType.PublicThread ? channel.parent : channel
+
+    if (guildChannel?.type !== ChannelType.GuildText) return null
+
+    const hooks = await guildChannel.fetchWebhooks().catch( console.log ).then( hook => hook ?? null )
     const existingCactuHook = hooks?.find( ({ name }) => name == `CactuHaczyk` )
 
     if (existingCactuHook) return existingCactuHook
 
-    const cactuHook = await channel.createWebhook({ name:`CactuHaczyk`, avatar:`https://cdn.discordapp.com/avatars/379234773408677888/a062f0b67e42116104554c1d3e3b695f.png?size=2048` })
+    const cactuHook = await guildChannel.createWebhook({ name:`CactuHaczyk`, avatar:`https://cdn.discordapp.com/avatars/379234773408677888/a062f0b67e42116104554c1d3e3b695f.png?size=2048` })
       .catch( console.log ).then( hook => hook ?? null )
 
     return cactuHook
