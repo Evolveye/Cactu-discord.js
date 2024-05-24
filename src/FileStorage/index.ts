@@ -14,18 +14,16 @@ export default class FileStorage {
 
     FileStorage.get( filePath ).then( obj => {
       this.cachedData = obj
-      console.log( `loaded`, filePath, this.cachedData, obj )
+      console.log( `Loaded file storage`, filePath )
       resolver( true )
     } )
   }
 
   get( key:string ) {
-    console.log( this.cachedData, key )
     return this.cachedData?.[ key ]
   }
 
   async set( key:string, value:unknown ) {
-    console.log( this.cachedData, key, value )
     if (!this.cachedData) return
 
     this.cachedData[ key ] = value

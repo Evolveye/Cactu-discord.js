@@ -120,7 +120,7 @@ export default class BotClientBase<TModule extends Module<any>> {
 
     if (!storage) {
       storage = await FileStorage.createStorage( this.#getNamespaceFolderPath( folderName ) + this.#storageFileName )
-      this.#storages.set( folderName, storage )
+      this.#storages.set( folderName + this.#storageFileName, storage )
     }
 
     return storage
