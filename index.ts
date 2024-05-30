@@ -1,6 +1,6 @@
 import { ExecutorParam } from "src/namespaceStructure/Scope.js"
 import Discord, { ActivityType, ChannelType, Partials, REST, Routes } from "discord.js"
-import { SlashCommandBuilder, SlashCommandNumberOption, SlashCommandStringOption } from "@discordjs/builders"
+import { SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "@discordjs/builders"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
 import DCModule, { ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig, NamespaceInfo } from "./src/BotClientBase.js"
@@ -18,6 +18,9 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
   client: Discord.Client
   rest: REST
   ownerId: undefined | string = undefined
+  globals = {
+    commands: new Map<string, SlashCommandBuilder>(),
+  }
 
   constructor( config:Config ) {
     super()
@@ -249,13 +252,15 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
           // this.rest.put( Routes.applicationGuildCommands( this.client.application.id, guild.id ), { body:[] } )
           //   .then( () => console.log( `Successfully deleted all guild commands for ${guild.name}` ) )
 
-          const commands = Object.entries( ns.getCompoundModule().slashCommands ).map( ([ commandName, executor ]) => {
+          const commands:SlashCommandBuilder[] = []
+          const privateCommands:SlashCommandBuilder[] = []
 
+          for (const [ commandName, executor ] of Object.entries( ns.getCompoundModule().slashCommands )) {
             let cmd = new SlashCommandBuilder()
               .setName( commandName )
               .setDescription( executor.meta.shortDescription ?? executor.meta.detailedDescription ?? `- - -` )
 
-            const createOption = <T extends SlashCommandNumberOption | SlashCommandStringOption>(option:T, p:ExecutorParam): T => {
+            const createOption = <T extends SlashCommandNumberOption | SlashCommandStringOption | SlashCommandBooleanOption | SlashCommandMentionableOption>(option:T, p:ExecutorParam): T => {
               option = option
                 .setName( p.name.toLowerCase().replace( / /g, `_` ) )
                 .setRequired( !p.optional ) as T
@@ -266,16 +271,22 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
             }
 
             executor.meta.params.forEach( p => {
+              if (p.type === `mention`) return cmd = cmd.addMentionableOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
+              if (p.type === `bool`) return cmd = cmd.addBooleanOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
               if (p.type === `number`) return cmd = cmd.addNumberOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
               if (p.type === `message`) return cmd = cmd.addStringOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
             } )
 
-            return cmd
-          } )
+            if (executor.meta.forPrivateMessages) privateCommands.push( cmd )
+            else commands.push( cmd )
+          }
+
+          privateCommands.forEach( c => this.globals.commands.set( c.name, c ) )
 
           this.rest.put( Routes.applicationGuildCommands( app.id, guild.id ), { body:commands } )
             .catch( err => {
-              console.log( `Error`, err.rawError.message, JSON.stringify( err.rawError.errors, null, 2 ) )
+              if (err?.rawError?.message) console.log( `Error`, err.rawError.message, JSON.stringify( err.rawError.errors, null, 2 ) )
+              else console.log( err )
             } )
         }
       }
@@ -365,13 +376,31 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       .find( ([ k ]) => new RegExp( k.slice( 1, -1 ) ).test( interaction.customId ) )
       ?.[ 1 ]
 
-    interactionFn?.( interaction )
+    interactionFn?.( interaction, {
+      getStorage: async guildId => {
+        if (!guildId && !interaction.guild) return undefined
+
+        const guild = guildId ? this.client.guilds.cache.get( guildId ) : interaction.guild
+
+        return !guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( guild ) )
+      },
+    } )
   }
 
 
   onReady = () => {
-    this.client.guilds.cache.forEach( guild => this.handleGuild( guild ) )
+    const app = this.client.application
+
     this.client.user?.setActivity({ name:`Growing plants`, type:ActivityType.Watching })
+
+    Promise.allSettled( this.client.guilds.cache.map( guild => this.handleGuild( guild ) ) )
+      .then( () => {
+        if (app) this.rest.put( Routes.applicationCommands( app.id ), { body:[ ...this.globals.commands.values() ] } )
+          .catch( err => {
+            if (err?.rawError?.message) console.log( `Error`, err.rawError.message, JSON.stringify( err.rawError.errors, null, 2 ) )
+            else console.log( err )
+          } )
+      } )
 
     this.endInitialization()
   }

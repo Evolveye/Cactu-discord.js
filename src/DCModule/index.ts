@@ -57,22 +57,26 @@ export type ModuleCmdCtx = {
   getWebHook: (channel:Discord.Channel) => Promise<null | Discord.Webhook>
 }
 
+export type ModuleInteractionCtx = {
+  getStorage: (guildId?:string) => Promise<undefined | FileStorage>
+}
+
 type DCModuleEvent = Partial<{ [K in keyof Discord.ClientEvents]:(...args:Discord.ClientEvents[K]) => void}>
 export type DCModuleConfig = ModuleConfig & {
   translation?: TranslationObject
-  interactions?: Record<string, (interaction:Discord.Interaction) => void>
+  interactions?: Record<string, (interaction:Discord.Interaction, ctx:ModuleInteractionCtx) => void>
   events?: DCModuleEvent
   slashCommands?: Scope
 }
 
-export class DCCmdExecutor extends Executor<ModuleCmdCtx> {}
+export class DCCmdExecutor extends Executor<ModuleCmdCtx, { forPrivateMessages: boolean }> {}
 export class DCExecutor extends Executor<ModuleCtx> {}
 export class DCFilter extends Filter<ModuleCtx> {}
 export class DCScope extends Scope {}
 
 export default class DCModule extends Module<ModuleCtx> {
   translation: TranslationObject = {}
-  interactions: Record<string, (interaction:Discord.Interaction) => void> = {}
+  interactions: Record<string, (interaction:Discord.Interaction, ctx:ModuleInteractionCtx) => void> = {}
   events: DCModuleEvent = {}
   slashCommands: Record<string, DCCmdExecutor> = {}
 

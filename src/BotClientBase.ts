@@ -49,7 +49,7 @@ export default class BotClientBase<TModule extends Module<any>> {
     ] as const satisfies readonly LoggerPart[], { maxLineLength:180 } ),
     dm: new Logger( [
       { color:`fgBlack`, value:() => formatDate( Date.now(), `[hh:mm:ss:ms] ` )  },
-      { color:`fgBlue`, minLength:39, maxLength:39, align:`right` },    // User
+      { color:`fgBlue`, minLength:35, maxLength:35, align:`right` },    // User
       { color:`fgBlack`, value:` :: ` },
       { color:`fgYellow`, minLength:10, maxLength:10, align:`right` },  // Nickname
       { color:`fgBlack`, value:`: ` },

@@ -11,6 +11,7 @@
   "scripts": {
     "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js.",
     "test": "tsc && node ./priv/app.js",
+    "run": "node ./priv/app.js",
     "build": "tsc"
   },
   "keywords": [

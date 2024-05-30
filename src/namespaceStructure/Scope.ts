@@ -1,7 +1,7 @@
 import MetadataHolder, { UnnormalizedMeta } from "./ModuleStructureMeta.js"
 import { MissingExecutionParameter, OverlimitedExecutorParameter, RuntimeExecutionError, WrongExecutionParameter } from "./ModuleProcessor/index.js"
 
-export type ExecutorParamType = `bool` | `number` | `string` | `message` | {min: number; max: number} | RegExp | string[]
+export type ExecutorParamType = `bool` | `number` | `string` | `message` | `mention` | {min: number; max: number} | RegExp | string[]
 export type ExecutorParam = {
   name: string
   desc?: string
@@ -17,13 +17,13 @@ export type ExecutorPartialMeta = UnnormalizedMeta & Partial<OnlyExecutorMetaDat
 export type ExecutorMeta = UnnormalizedMeta & OnlyExecutorMetaData
 
 export type ExecutorFn<T = unknown> = (context:T, ...params:unknown[]) => void | Promise<void>
-export class Executor<T = unknown> extends MetadataHolder<ExecutorMeta> {
+export class Executor<T = unknown, AdditionlMeta extends Record<string, string | number | boolean> = {}> extends MetadataHolder<ExecutorMeta & AdditionlMeta> {
   #fn: ExecutorFn<T>
 
-  constructor( meta:ExecutorPartialMeta, fn:ExecutorFn<T> ) {
+  constructor( meta:ExecutorPartialMeta & Partial<AdditionlMeta>, fn:ExecutorFn<T> ) {
     if (!Array.isArray( meta.params )) meta.params = []
 
-    super( meta as ExecutorMeta, `executor` )
+    super( meta as ExecutorMeta & AdditionlMeta, `executor` )
     this.#fn = fn
   }
 
