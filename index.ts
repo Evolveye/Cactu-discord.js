@@ -1,8 +1,8 @@
 import { ExecutorParam } from "src/namespaceStructure/Scope.js"
-import Discord, { ActivityType, ChannelType, Partials, REST, Routes } from "discord.js"
+import Discord, { ActivityType, ChannelType, Guild, Partials, REST, Routes } from "discord.js"
 import { SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "@discordjs/builders"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
-import DCModule, { ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
+import DCModule, { DCCmdExecutor, ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig, NamespaceInfo } from "./src/BotClientBase.js"
 
 export { default as DCModule } from "./src/DCModule/index.js"
@@ -14,12 +14,14 @@ export type Config = BotBaseConfig & {
   appId: string
 }
 
+type GlobalCommandsData = {cmd: SlashCommandBuilder; executor: DCCmdExecutor; registrationGuildId: string }
+
 export default class CactuDiscordBot extends BotBase<DCModule> {
   client: Discord.Client
   rest: REST
   ownerId: undefined | string = undefined
   globals = {
-    commands: new Map<string, SlashCommandBuilder>(),
+    commands: new Map<string, GlobalCommandsData>(),
   }
 
   constructor( config:Config ) {
@@ -253,7 +255,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
           //   .then( () => console.log( `Successfully deleted all guild commands for ${guild.name}` ) )
 
           const commands:SlashCommandBuilder[] = []
-          const privateCommands:SlashCommandBuilder[] = []
+          const privateCommands:GlobalCommandsData[] = []
 
           for (const [ commandName, executor ] of Object.entries( ns.getCompoundModule().slashCommands )) {
             let cmd = new SlashCommandBuilder()
@@ -277,11 +279,11 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
               if (p.type === `message`) return cmd = cmd.addStringOption( opt => createOption( opt, p ) ) as SlashCommandBuilder
             } )
 
-            if (executor.meta.forPrivateMessages) privateCommands.push( cmd )
+            if (executor.meta.forPrivateMessages) privateCommands.push({ cmd, executor, registrationGuildId:guild.id })
             else commands.push( cmd )
           }
 
-          privateCommands.forEach( c => this.globals.commands.set( c.name, c ) )
+          privateCommands.forEach( data => this.globals.commands.set( data.cmd.name, data ) )
 
           this.rest.put( Routes.applicationGuildCommands( app.id, guild.id ), { body:commands } )
             .catch( err => {
@@ -308,7 +310,34 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
 
   handleInterraction = (interaction:Discord.Interaction) => {
-    if (!interaction.guildId) return
+    if (!interaction.guildId) {
+      if (!interaction.isChatInputCommand()) return
+
+      const globalCmd = this.globals.commands.get( interaction.commandName )
+      if (!globalCmd) return
+
+      const params = globalCmd.executor.meta.params.map( p => interaction.options.data.find( d => d.name === p.name.toLowerCase() )?.value )
+      const ctx:ModuleCmdCtx = {
+        ns: null as unknown as Namespace<DCModule>,
+        registrationGuildId: globalCmd.registrationGuildId,
+        cmd: interaction,
+        bot: this,
+        runCmd: async() => {},
+        send: msg => {
+          if (typeof msg === `string`) return interaction.reply({ content:msg })
+          if (`content` in msg) return interaction.reply({ content:msg.content, components:msg.components })
+          throw new Error( `Cannot send message` )
+        },
+        getStorage: async() => {
+          const guild = this.client.guilds.cache.get( globalCmd.registrationGuildId )
+          return !guild ? undefined : this.getNamespaceFileStorage( this.getGuildFolderName( guild ) )
+        },
+        getWebHook: (channel?:Discord.Channel) => this.getWebHook( channel ?? interaction.channel ),
+      }
+
+      globalCmd.executor.execute( params, ctx )
+      return
+    }
 
     const ns = this.namespacesData.get( interaction.guildId )
 
@@ -321,6 +350,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       const ctx:ModuleCmdCtx = {
         ns,
         cmd: interaction,
+        registrationGuildId: interaction.guild!.id,
         bot: this,
         runCmd: command => ns.processMessage({
           message: command,
@@ -395,7 +425,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
     Promise.allSettled( this.client.guilds.cache.map( guild => this.handleGuild( guild ) ) )
       .then( () => {
-        if (app) this.rest.put( Routes.applicationCommands( app.id ), { body:[ ...this.globals.commands.values() ] } )
+        if (app) this.rest.put( Routes.applicationCommands( app.id ), { body:[ ...this.globals.commands.values() ].map( v => v.cmd ) } )
           .catch( err => {
             if (err?.rawError?.message) console.log( `Error`, err.rawError.message, JSON.stringify( err.rawError.errors, null, 2 ) )
             else console.log( err )
