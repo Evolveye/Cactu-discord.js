@@ -49,6 +49,7 @@ export type ModuleCtx = {
 
 export type ModuleCmdCtx = {
   bot: CactuDiscordBot
+  registrationGuildId: string
   ns: Namespace<DCModule>
   cmd: Discord.ChatInputCommandInteraction<Discord.CacheType>
   send: (msg:string | Discord.MessagePayload | Discord.MessageCreateOptions) => Promise<InteractionResponse<boolean> | Discord.Message<boolean>>
