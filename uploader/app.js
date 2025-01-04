@@ -1,13 +1,13 @@
+import url from "url"
 import http from "http"
 import fs from "fs"
-import url from "url"
 
-import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
 import { handleGame, fetchGames, downloadGame, voteOnGame, getMyVotes, getAllVotes } from "./gamesManager.js"
+import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
 
 const staticPath = `./public/`
 
-http.createServer( async (req, res) => {
+http.createServer( async(req, res) => {
   const urlObj = url.parse( req.url, true )
 
   if (urlObj.pathname.startsWith( `/api/` )) {
@@ -28,7 +28,7 @@ http.createServer( async (req, res) => {
     }
   }
 
-  const staticFilePath = `${staticPath}${urlObj.pathname == "/" ? `index.html` : urlObj.pathname}`
+  const staticFilePath = `${staticPath}${urlObj.pathname == `/` ? `index.html` : urlObj.pathname}`
 
   if (!fs.existsSync( staticFilePath )) return send404( res )
 
@@ -52,8 +52,8 @@ function getMime( path ) {
   }
 }
 
-/*** @param {http.ServerResponse} res */
-function send404( res, reason=`Wrong route. Content didn't find.` ) {
+/** * @param {http.ServerResponse} res */
+function send404( res, reason = `Wrong route. Content didn't find.` ) {
   res.writeHead( 404, { "Content-Type":`text/json` } )
-    .end( JSON.stringify( { error:reason } ) )
+    .end( JSON.stringify({ error:reason }) )
 }

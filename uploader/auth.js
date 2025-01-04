@@ -17,7 +17,7 @@ import config from "./private.js"
  * @property {string} mfa_enabled
  */
 
- /**
+/**
   * @typedef {object} ErrMsg
   * @property {string} message
   * @property {number} code
@@ -39,7 +39,7 @@ const ONE_MINUTE = 1000 * 60
 if (fs.existsSync( `./sessions.json` )) sessions.push( ...JSON.parse( fs.readFileSync( `./sessions.json`, `utf-8` ) ) )
 
 setInterval( () => {
-  sessions = sessions.filter( ({ lastActivity }) => Date.now() - ONE_MINUTE * 5 > lastActivity  )
+  sessions = sessions.filter( ({ lastActivity }) => Date.now() - ONE_MINUTE * 5 > lastActivity )
 }, ONE_MINUTE * 15 )
 
 /** @param {ClientRequest} req */
@@ -75,7 +75,7 @@ export function handleSessionFromToken( req, res, urlParts ) {
   res.writeHead( 200, { "Content-Type":`text/json` } )
 
   if (user) res.end( JSON.stringify( user ) )
-  else res.end( JSON.stringify( { message:`No session finded` } ) )
+  else res.end( JSON.stringify({ message:`No session found` }) )
 }
 
 /**
@@ -90,8 +90,6 @@ export function handleUrlQuery( req, res, urlParts ) {
   const reqLocation = req.headers.referer.match( /(?<origin>https?:\/\/(?<host>localhost|\d+\.\d+\.\d+\.\d+)(?::(?<port>\d+))?)/ )
   const accessCode = urlParts[ 0 ]
   const data = {
-    client_id: config.clientId,
-    client_secret: config.clientSecret,
     grant_type: `authorization_code`,
     redirect_uri: reqLocation.groups.origin,
     code: accessCode,
@@ -99,18 +97,22 @@ export function handleUrlQuery( req, res, urlParts ) {
   }
 
   return fetch( `https://discord.com/api/oauth2/token`, {
-    method: 'POST',
+    method: `POST`,
     body: new URLSearchParams( data ),
-    headers: { "Content-Type":`application/x-www-form-urlencoded` },
+    headers: {
+      "Content-Type": `application/x-www-form-urlencoded`,
+      Authorization: `Basic ${btoa( `${config.clientId}:${config.clientSecret}` )}`,
+    },
   } )
     .then( res => res.json() )
-    .then( info =>
-      fetch( `https://discord.com/api/users/@me`, { headers: {
+    .then( info => {
+      return fetch( `https://discord.com/api/users/@me`, { headers: {
         authorization: `${info.token_type} ${info.access_token}`,
       } } ).catch( console.error )
+    },
     )
     .then( res => res.json() )
-    .then( /** @param {User|ErrMsg} user */ user => {
+    .then( user => {
       if (user.message) return user
 
       const token = Math.random().toString()
@@ -123,7 +125,7 @@ export function handleUrlQuery( req, res, urlParts ) {
       fs.writeFileSync( `./sessions.json`, JSON.stringify( sessions ) )
 
       return data
-     } )
+    } )
     .then( JSON.stringify )
     .then( user => res.writeHead( 200, { "Content-Type":`text/json` } ).end( user ) )
     .catch( console.error )
