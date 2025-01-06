@@ -1,5 +1,5 @@
-import formidable from "formidable"
 import fs  from "fs"
+import formidable from "formidable"
 
 import { authorizeRequest, getUserFromToken } from "./auth.js"
 
@@ -32,10 +32,10 @@ const formFields = [
 
 /**
  * @param {ServerResponse} res
- * @param {{ status:number message:string }} param1
+ * @param {{ status:number message:string, rest:Record<string,any> }} param1
  */
-function end( res, { status, message }, success=(status < 300)  ) {
-  const json = { [success ? `ok` : `error`]: message }
+function end( res, { status, message, rest }, success = (status < 300) ) {
+  const json = { success, message, ...rest }
 
   return res.writeHead( status, message ).end( JSON.stringify( json ) )
 }
@@ -127,42 +127,44 @@ export function downloadGame( req, res, urlParts ) {
  * @param {string[]} urlParts
  */
 export function voteOnGame( req, res, urlParts ) {
-  if (req.method.toLowerCase() != `post`) return end( res, RESPONSES.ONLY_POST )
+  console.log( `voteOnGame`, req.method )
+  if (req.method.toLowerCase() !== `put`) return end( res, RESPONSES.ONLY_POST )
 
   authorizeRequest( req )
 
   if (!req.session) return end( res, RESPONSES.NOT_AUTH )
 
-  req.on(`data`, formDataJson => {
+  req.on( `data`, formDataJson => {
     const { user } = req.session
     const formPosibleAnserws = formFields.reduce(
-      (obj, { categoryName, scale }) => ({ ...obj, [categoryName]:scale }), {}
+      (obj, { categoryName, scale }) => ({ ...obj, [ categoryName ]:scale }), {},
     )
 
-    const formData = JSON.parse( formDataJson )
+    const newVotes = {}
+    const formData = JSON.parse( formDataJson )?.categories
     const userPath = `./games/${user.id}/`
     const votesPath = `${userPath}voting.json`
     const metaPath = `${userPath}meta.json`
 
     for (const [ key, scale ] of Object.entries( formPosibleAnserws )) {
-      if (key in formData && scale.includes( Number( formData[ key ] ) )) formPosibleAnserws[ key ] = Number( formData[ key ] )
-      else return end( res, RESPONSES.WRONG_ANSWER )
+      if (key in formData && scale.includes( Number( formData[ key ] ) )) newVotes[ key ] = Number( formData[ key ] )
+      // else return end( res, RESPONSES.WRONG_ANSWER )
     }
 
     if (!fs.existsSync( userPath )) fs.mkdir( userPath )
     if (!fs.existsSync( votesPath )) fs.writeFileSync( votesPath, `{}` )
-    // if (!fs.existsSync( metaPath ))
-    fs.writeFileSync( metaPath, JSON.stringify( user ) )
 
     const votes = JSON.parse( fs.readFileSync( votesPath, `utf-8` ) )
 
-    votes[ urlParts[ 0 ] ] = formPosibleAnserws
+    votes[ urlParts[ 0 ] ] ??= {}
+    Object.assign( votes[ urlParts[ 0 ] ] ?? {}, newVotes )
 
-    console.log( `Voting -> ${user.username} :: ${JSON.stringify( votes )}` )
+    console.log( `Voting -> ${user.username} :: ${JSON.stringify( votes[ urlParts[ 0 ] ] )}` )
 
+    fs.writeFileSync( metaPath, JSON.stringify( user ) )
     fs.writeFileSync( votesPath, JSON.stringify( votes ) )
 
-    return end( res, RESPONSES.SUCCESS )
+    return end( res, { ...RESPONSES.SUCCESS, rest:{ votes } } )
   } )
 }
 

@@ -1,20 +1,29 @@
 import fs from "fs"
 import fetch from "node-fetch"
 import config from "./private.js"
+import getReqOrigin from "./getReqOrigin.js"
 
 /** @typedef {import("http").IncomingMessage} ClientRequest */
 /** @typedef {import("http").ServerResponse} ServerResponse */
 
 /**
- * @typedef {object} User
+ * @typedef {object} DiscordUser
  * @property {string} id
  * @property {string} username
+ * @property {string} global_name
  * @property {string} avatar
  * @property {string} discriminator
- * @property {string} locale
  * @property {number} public_flags
  * @property {string} flags
- * @property {string} mfa_enabled
+ * @property {number} accent_color
+ */
+
+/**
+ * @typedef {object} User
+ * @property {string} id
+ * @property {string} displayName
+ * @property {string} avatarHref
+ * @property {string} accentColor
  */
 
 /**
@@ -69,13 +78,14 @@ export function handleSessionFromToken( req, res, urlParts ) {
   if (req.method.toLowerCase() != `get`) return
   if (!urlParts.length) return
 
-  const token = urlParts[ 0 ]
-  const user = getUserFromToken( token )
-
   res.writeHead( 200, { "Content-Type":`text/json` } )
 
-  if (user) res.end( JSON.stringify( user ) )
-  else res.end( JSON.stringify({ message:`No session found` }) )
+  const token = urlParts[ 0 ]
+  const session = getUserFromToken( token )
+  if (!session) return res.end( JSON.stringify({ message:`No session found` }) )
+
+  console.log( `Retrieving user from session token -> ${session.user.displayName}` )
+  res.end( JSON.stringify( session ) )
 }
 
 /**
@@ -87,16 +97,18 @@ export function handleUrlQuery( req, res, urlParts ) {
   if (req.method.toLowerCase() != `get`) return
   if (!urlParts.length) return
 
-  const reqLocation = req.headers.referer.match( /(?<origin>https?:\/\/(?<host>localhost|\d+\.\d+\.\d+\.\d+)(?::(?<port>\d+))?)/ )
+  const reqOrigin = getReqOrigin( req )
+  if (!reqOrigin) return
+
   const accessCode = urlParts[ 0 ]
   const data = {
     grant_type: `authorization_code`,
-    redirect_uri: reqLocation.groups.origin,
+    redirect_uri: reqOrigin,
     code: accessCode,
     scope: `identify`,
   }
 
-  return fetch( `https://discord.com/api/oauth2/token`, {
+  return fetch( `https://discord.com/api/v10/oauth2/token`, {
     method: `POST`,
     body: new URLSearchParams( data ),
     headers: {
@@ -106,17 +118,20 @@ export function handleUrlQuery( req, res, urlParts ) {
   } )
     .then( res => res.json() )
     .then( info => {
-      return fetch( `https://discord.com/api/users/@me`, { headers: {
+      // console.log({ info })
+
+      return fetch( `https://discord.com/api/v10/users/@me`, { headers: {
         authorization: `${info.token_type} ${info.access_token}`,
       } } ).catch( console.error )
-    },
-    )
+    } )
     .then( res => res.json() )
     .then( user => {
+      // console.log({ user })
       if (user.message) return user
 
-      const token = Math.random().toString()
-      const data = { token, user, lastActivity:Date.now() }
+      const lastActivity = Date.now()
+      const token = Math.random().toString().slice( 2 ) + lastActivity
+      const data = { token, lastActivity, user:getSessionUserFromDiscordUser( user ) }
 
       sessions.push( data )
 
@@ -134,4 +149,31 @@ export function handleUrlQuery( req, res, urlParts ) {
 /** @param {string} token */
 export function getUserFromToken( token ) {
   return sessions.find( session => session.token == token )
+}
+
+/** @param {string} id */
+export function loadDiscordUser( id ) {
+  return fetch( `https://discord.com/api/v10/users/${id}`, { headers: {
+    authorization: `Bot ${config.botToken}`,
+  } } ).then( r => r.json() ).catch( console.error )
+}
+
+/** @param {string} id @param {string} avatarHash  */
+export function getDiscordUserAvatarHref( id, avatarHash ) {
+  return `https://discord.com/api/v10/users/${id}/${avatarHash}.png`
+}
+
+/** @param {DiscordUser} user */
+export function getDiscordUserDisplayName( user ) {
+  return user.global_name ?? user.username
+}
+
+/** @param {DiscordUser} user @returns {User} */
+export function getSessionUserFromDiscordUser( user ) {
+  return {
+    id: user.id,
+    displayName: getDiscordUserDisplayName( user ),
+    avatarHref: getDiscordUserAvatarHref( user ),
+    accentColor: `#` + user.accent_color.toString( 16 ).padStart( 6, `0` ),
+  }
 }

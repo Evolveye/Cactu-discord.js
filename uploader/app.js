@@ -2,13 +2,21 @@ import url from "url"
 import http from "http"
 import fs from "fs"
 
+import getReqOrigin from "./getReqOrigin.js"
 import { handleGame, fetchGames, downloadGame, voteOnGame, getMyVotes, getAllVotes } from "./gamesManager.js"
 import { handleUrlQuery, handleSessionFromToken } from "./auth.js"
 
 const staticPath = `./public/`
+const port = process.env.PORT ?? 3001
 
 http.createServer( async(req, res) => {
   const urlObj = url.parse( req.url, true )
+
+  res.setHeader( `Access-Control-Allow-Origin`, getReqOrigin( req ) )
+  res.setHeader( `Access-Control-Allow-Methods`, `GET,POST,PUT,PATCH,DELETE` )
+  res.setHeader( `Access-Control-Allow-Headers`, `*` )
+
+  if (req.method === `OPTIONS`) return res.writeHead( 200 ).end()
 
   if (urlObj.pathname.startsWith( `/api/` )) {
     const pathParts = urlObj.pathname.split( `/` ).filter( Boolean )
@@ -24,6 +32,7 @@ http.createServer( async(req, res) => {
       case `voteOnGame`: return voteOnGame( req, res, params )
       case `getMyVotes`: return getMyVotes( req, res, params )
       case `getAllVotes`: return getAllVotes( req, res, params )
+      case `ping`: return res.end( JSON.stringify({ success:true, ping:`pong` }) )
       default: return send404( res, `This API field not exists` )
     }
   }
@@ -36,7 +45,7 @@ http.createServer( async(req, res) => {
 
   res.writeHead( 200, { "Content-Type":getMime( staticFilePath ) } )
     .end( pageContent )
-} ).listen( 80, () => console.log( `started\n` ) )
+} ).listen( port, () => console.log( `Started on port ${port}\n` ) )
 
 /** @param {string} path */
 function getMime( path ) {
