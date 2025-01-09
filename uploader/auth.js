@@ -22,8 +22,8 @@ import getReqOrigin from "./getReqOrigin.js"
  * @typedef {object} User
  * @property {string} id
  * @property {string} displayName
- * @property {string} avatarHref
- * @property {string} accentColor
+ * @property {string} avatarHash
+ * @property {null|string} accentColor
  */
 
 /**
@@ -58,15 +58,20 @@ export function getTokenFromRequest( req ) {
   return authentication ? authentication.match( /Bearer (.*)/ )[ 1 ] : null
 }
 
-/** @param {ClientRequest} req */
-export function authorizeRequest( req ) {
+/**
+ * @param {ClientRequest} req
+ * @returns {false|Session}
+ * */
+export function reqAuth( req ) {
   const token = getTokenFromRequest( req )
-
   if (!token) return false
 
-  req.session = sessions.find( s => s.token === token )
+  const session = sessions.find( s => s.token === token )
+  if (!session) return false
 
-  return true
+  session.lastActivity = Date.now()
+
+  return session
 }
 
 /**
@@ -118,8 +123,6 @@ export function handleUrlQuery( req, res, urlParts ) {
   } )
     .then( res => res.json() )
     .then( info => {
-      // console.log({ info })
-
       return fetch( `https://discord.com/api/v10/users/@me`, { headers: {
         authorization: `${info.token_type} ${info.access_token}`,
       } } ).catch( console.error )
@@ -160,7 +163,7 @@ export function loadDiscordUser( id ) {
 
 /** @param {string} id @param {string} avatarHash  */
 export function getDiscordUserAvatarHref( id, avatarHash ) {
-  return `https://discord.com/api/v10/users/${id}/${avatarHash}.png`
+  return `https://cdn.discordapp.com/avatars/${id}/${avatarHash}.png`
 }
 
 /** @param {DiscordUser} user */
@@ -168,12 +171,29 @@ export function getDiscordUserDisplayName( user ) {
   return user.global_name ?? user.username
 }
 
-/** @param {DiscordUser} user @returns {User} */
+/**
+ * @param {DiscordUser} user
+ * @returns {User}
+ */
 export function getSessionUserFromDiscordUser( user ) {
   return {
     id: user.id,
     displayName: getDiscordUserDisplayName( user ),
-    avatarHref: getDiscordUserAvatarHref( user ),
-    accentColor: `#` + user.accent_color.toString( 16 ).padStart( 6, `0` ),
+    avatarHash: user.avatar,
+    accentColor: !user.accent_color ? null : `#` + user.accent_color.toString( 16 ).padStart( 6, `0` ),
   }
+}
+
+/** @param {string} userId */
+export async function assertUserDirectory( userId ) {
+  const userFolder = `./games/${userId}`
+  if (!fs.existsSync( userFolder )) fs.mkdirSync( `./games/${userId}` )
+
+  const userMetaFile = `${userFolder}/meta.json`
+  if (fs.existsSync( userMetaFile )) return
+
+  const user = await loadDiscordUser( userId )
+  const userData = getSessionUserFromDiscordUser( user )
+
+  fs.writeFileSync( `./games/${userId}/meta.json`, JSON.stringify( userData ), {} )
 }

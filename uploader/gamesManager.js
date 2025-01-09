@@ -1,7 +1,7 @@
 import fs  from "fs"
 import formidable from "formidable"
 
-import { authorizeRequest, getUserFromToken } from "./auth.js"
+import { reqAuth, getSessionUserFromDiscordUser, getUserFromToken, loadDiscordUser, assertUserDirectory } from "./auth.js"
 
 /** @typedef {import("http").IncomingMessage} ClientRequest */
 /** @typedef {import("http").ServerResponse} ServerResponse */
@@ -37,7 +37,10 @@ const formFields = [
 function end( res, { status, message, rest }, success = (status < 300) ) {
   const json = { success, message, ...rest }
 
-  return res.writeHead( status, message ).end( JSON.stringify( json ) )
+  return res
+    .setHeader( `Content-Type`, `application/json` )
+    .writeHead( status, message )
+    .end( JSON.stringify( json ) )
 }
 
 
@@ -83,26 +86,31 @@ export function handleGame( req, res ) {
  * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
-export function fetchGames( req, res ) {
+export async function fetchGames( req, res ) {
   if (req.method.toLowerCase() != `get`) return end( res, RESPONSES.ONLY_GET )
 
   if (!fs.existsSync( `./games/` )) fs.mkdirSync( `./games/` )
 
-  const usersWithGames = fs.readdirSync( `./games/` ).map( dirname => {
-    if (!fs.existsSync( `./games/${dirname}/meta.json` )) fs.writeFileSync( `./games/${dirname}/meta.json`, `{}` )
+  const discordUsersIds = [
+    `191576899582033920`, // Tomangelo
+    `290565336174952452`, // Pooshek
+    `263736841025355777`, // Evolveye
+    `406202717313302540`, // Dakuro
+    `151606847260983297`, // Pikol
+    `200360826396213248`, // Tirex
+    `577482143815434252`, // drewnoissue
+  ]
 
-    const meta = JSON.parse( fs.readFileSync( `./games/${dirname}/meta.json`, `utf-8` ) )
-    const games = fs.readdirSync( `./games/${dirname}` ).filter( filename => /\.zip$/.test( filename ) )
+  const usersWithGames = await Promise.all( discordUsersIds.map( async userId => {
+    await assertUserDirectory( userId )
+    const user = JSON.parse( fs.readFileSync( `./games/${userId}/meta.json`, `utf-8` ) )
+    return { user,games:[] }
+  } ) )
 
-    return {
-      userId: meta.id,
-      username: meta.username,
-      avatarUrl: `https://cdn.discordapp.com/avatars/${meta.id}/${meta.avatar}.png`,
-      games,
-    }
+  end( res, {
+    status: 200,
+    rest:{ usersGames:usersWithGames.reduce( (obj, userGames) => ({ ...obj, [userGames.user.id]:userGames }), {} ) }
   } )
-
-  res.end( JSON.stringify( usersWithGames ) )
 }
 
 
@@ -126,16 +134,16 @@ export function downloadGame( req, res, urlParts ) {
  * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
-export function voteOnGame( req, res, urlParts ) {
+export async function voteOnGame( req, res, urlParts ) {
   console.log( `voteOnGame`, req.method )
   if (req.method.toLowerCase() !== `put`) return end( res, RESPONSES.ONLY_POST )
 
-  authorizeRequest( req )
-
-  if (!req.session) return end( res, RESPONSES.NOT_AUTH )
+  const session = reqAuth( req )
+  if (!session) return end( res, RESPONSES.NOT_AUTH )
+  await assertUserDirectory( session.user.id )
 
   req.on( `data`, formDataJson => {
-    const { user } = req.session
+    const { user } = session
     const formPosibleAnserws = formFields.reduce(
       (obj, { categoryName, scale }) => ({ ...obj, [ categoryName ]:scale }), {},
     )
@@ -151,15 +159,13 @@ export function voteOnGame( req, res, urlParts ) {
       // else return end( res, RESPONSES.WRONG_ANSWER )
     }
 
-    if (!fs.existsSync( userPath )) fs.mkdir( userPath )
     if (!fs.existsSync( votesPath )) fs.writeFileSync( votesPath, `{}` )
 
     const votes = JSON.parse( fs.readFileSync( votesPath, `utf-8` ) )
-
     votes[ urlParts[ 0 ] ] ??= {}
-    Object.assign( votes[ urlParts[ 0 ] ] ?? {}, newVotes )
+    Object.assign( votes[ urlParts[ 0 ] ], newVotes )
 
-    console.log( `Voting -> ${user.username} :: ${JSON.stringify( votes[ urlParts[ 0 ] ] )}` )
+    console.log( `Voting :: ${user.displayName} -> ${urlParts[ 0 ]} :: ${JSON.stringify( newVotes )}` )
 
     fs.writeFileSync( metaPath, JSON.stringify( user ) )
     fs.writeFileSync( votesPath, JSON.stringify( votes ) )
@@ -174,14 +180,14 @@ export function voteOnGame( req, res, urlParts ) {
  * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
-export function getMyVotes( req, res, urlParts ) {
+export async function getMyVotes( req, res, urlParts ) {
   if (req.method.toLowerCase() != `get`) return end( res, RESPONSES.ONLY_POST )
 
-  authorizeRequest( req )
+  const session = reqAuth( req )
+  if (!session) return end( res, RESPONSES.NOT_AUTH )
+  await assertUserDirectory( session.user.id )
 
-  if (!req.session) return end( res, RESPONSES.NOT_AUTH )
-
-  const userFolder = `./games/${req.session.user.id}`
+  const userFolder = `./games/${session.user.id}`
   const path = `${userFolder}/voting.json`
 
   if (!fs.existsSync( path )) {
@@ -190,9 +196,8 @@ export function getMyVotes( req, res, urlParts ) {
     fs.writeFileSync( path, `{}` )
   }
 
-  const votes = fs.readFileSync( path, `utf-8` )
-
-  res.end( votes )
+  const votes = JSON.parse( fs.readFileSync( path, `utf-8` ) )
+  end( res, {status:200, rest:{ votes }})
 }
 
 
@@ -201,12 +206,17 @@ export function getMyVotes( req, res, urlParts ) {
  * @param {ServerResponse} res
  * @param {string[]} urlParts
  */
-export function getAllVotes( req, res, urlParts ) {
+export async function getAllVotes( req, res, urlParts ) {
   if (req.method.toLowerCase() != `get`) return end( res, RESPONSES.ONLY_POST )
 
-  authorizeRequest( req )
+  const session = reqAuth( req )
+  if (!session) return end( res, RESPONSES.NOT_AUTH )
+  if (session.user.id != `263736841025355777`) {
+    console.log( `${session.user.displayName} tried to read all votes` )
+    return end( res, RESPONSES.NOT_AUTH )
+  }
 
-  if (!req.session || req.session.user.id != `263736841025355777`) return end( res, RESPONSES.NOT_AUTH )
+  await assertUserDirectory( session.user.id )
 
   const votes = []
 
@@ -228,5 +238,5 @@ export function getAllVotes( req, res, urlParts ) {
   } )
 
 
-  res.end( JSON.stringify( votes ) )
+  end( res, { status:200, rest:{ votes } } )
 }
