@@ -3,7 +3,7 @@ const { createCanvas, loadImage } = await import( `canvas` )
 /** @typedef {import("discord.js").Message} DCMessage */
 /** @typedef {import("discord.js").Guild} DCGuild */
 
-/** @type {import("../../lib/index.js")} */
+/** @type {import("../../index.js")} */
 const { DCModule, Scope, DCExecutor, DCCmdExecutor, DCFilter } = await import( `@lib/index.js` )
 // const vulgarismReg = /([^\n ]*(?:c[i!]p[a@o0y]|(?<![^ ])c?h[vuo0ó][jy]|(?:[kg][vuo0ó]|q)t[a@][$sz]|(?:k[vuó]|q)wa|deb[i!]l|(?:[kg][vuo0ó]|q)re?[wv]|([wv]y?)?p[i!]erd[o0a@](?:l|ł[aey])|spierd|jprdl|jeb|r[vuo0ó]ch[a@]n[i!]e|p[i!]zd)[^\n ]*)/gi
 const vulgarismReg = /([^\n ]*(c[i!]p[a@o0y]|(?<![^ ])c?h[vuo0ó][jy]|(?:[kg][vuo0ó]|q)t[a@][$sz]|(?:k[vuó]|q)wa|(?:[kg][vuo0ó]|q)re?[wv]|([wv]y?)?p[i!]erd[o0a@](?:l|ł[aey])|spierd|jprdl|jeb[ua@]?|r[vuo0ó]ch[a@]n[i!]e|p[i!]zd)[^\n ]*)/gi
@@ -230,7 +230,7 @@ const dcModule = new DCModule({
         matchedVulgs.push( matchedWord )
 
         if (i < minIndex) minIndex = i
-        else if (i > maxIndex) minIndex = i
+        else if (i > maxIndex) maxIndex = i
 
         return `**${matchedWord}**`
       } )
@@ -251,7 +251,7 @@ const dcModule = new DCModule({
 
         if (content.length > 1000) {
           let startIndexWithPadding = minIndex - 25
-          let endIndexWithPadding = maxIndex + 25
+          const endIndexWithPadding = maxIndex + 25
 
           if (startIndexWithPadding < 0) startIndexWithPadding = 0
           if (endIndexWithPadding > content.length) startIndexWithPadding = content.length
@@ -556,7 +556,7 @@ const dcModule = new DCModule({
             .then( m => m.delete() )
             .then( () => $.channel.send( msg2 ) )
         } else {
-          let addon = choosenMsg
+          const addon = choosenMsg
             ? (chance >= .97 || choosenMsg.member.displayName === $.member.displayName)
               ? `**xD z typa** bo sam od siebie`
               : `${msgs[ msgIndex ]} oberwał`

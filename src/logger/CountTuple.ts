@@ -1,5 +1,5 @@
 export type Tuple<T, L extends number, Arr extends unknown[] = []> =
-  | Arr["length"] extends L
+  | Arr[`length`] extends L
     ? Arr
     : Tuple<T, L, [...Arr, T]>;
 
@@ -9,7 +9,7 @@ type TupleCounter<Tuple extends readonly unknown[], ToFind extends unknown, Coun
       ? TupleCounter<Tail, ToFind, [...CountArr, unknown]>
       : TupleCounter<Tail, ToFind, CountArr>
     : Tuple extends []
-      ? CountArr["length"]
+      ? CountArr[`length`]
       : never
 
 type NegativeTupleCounter<Tuple extends readonly unknown[], ToFind extends unknown, CountArr extends unknown[] = []> =
@@ -18,7 +18,7 @@ type NegativeTupleCounter<Tuple extends readonly unknown[], ToFind extends unkno
       ? NegativeTupleCounter<Tail, ToFind, CountArr>
       : NegativeTupleCounter<Tail, ToFind, [...CountArr, unknown]>
     : Tuple extends []
-      ? CountArr["length"]
+      ? CountArr[`length`]
       : never
 
 export type TupleCount<Tuple extends readonly unknown[], ToFind extends unknown> = TupleCounter<Tuple, ToFind>

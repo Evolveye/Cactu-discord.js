@@ -36,7 +36,7 @@ export class RuntimeExecutionError extends ExecutionError {
       this.cause = err.cause
       this.stack = err.stack
 
-      let line = err.stack?.match( /\n(.*)\n/ )?.[ 1 ]
+      const line = err.stack?.match( /\n(.*)\n/ )?.[ 1 ]
 
       if (line && line.includes( `eval at <anonymous>` )) {
         this.commandLocation = line.split( `,` )[ 1 ]?.trim()

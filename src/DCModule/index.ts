@@ -63,7 +63,7 @@ export type ModuleInteractionCtx = {
   getStorage: (guildId?:string) => Promise<undefined | FileStorage>
 }
 
-type DCModuleEvent = Partial<{ [K in keyof Discord.ClientEvents]:(...args:Discord.ClientEvents[K]) => void}>
+type DCModuleEvent = Partial<{ [K in keyof Discord.ClientEvents]:(...args:Discord.ClientEvents[K]) => void }>
 export type DCModuleConfig = ModuleConfig & {
   translation?: TranslationObject
   interactions?: Record<string, (interaction:Discord.Interaction, ctx:ModuleInteractionCtx) => void>

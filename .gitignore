@@ -1,5 +1,5 @@
 node_modules/
-lib/
+dist/
 .vscode/
 
 .tsbuildinfo
@@ -8,6 +8,6 @@ guild_configs/
 namespaces_data/*
 !namespaces_data/_default_config/
 
-priv-*
 private*
-priv/
+
+playground/.env

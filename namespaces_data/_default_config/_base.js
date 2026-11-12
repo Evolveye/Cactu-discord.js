@@ -2,7 +2,7 @@ const { createCanvas, loadImage } = await import( `canvas` )
 const fs = await import( `fs` )
 const fsp = fs.promises
 
-/** @type {import("../../lib/index.js")} */
+/** @type {import("../../index.js")} */
 const { DCModule, DCScope, DCExecutor, DCCmdExecutor, DCFilter } = await import( `@lib/index.js` )
 
 const dcModule = new DCModule({
@@ -23,7 +23,7 @@ const dcModule = new DCModule({
             { name:`ID serwera`, type:/\d{18,19}/, optional:true },
           ],
         }, async($, force = false, guildId) => {
-          /** @type {import("../../lib/index.js").default} */ const bot = $.bot
+          /** @type {import("../../index.js").default} */ const bot = $.bot
 
           guildId ??= $.channel.guildId
 
@@ -45,7 +45,7 @@ const dcModule = new DCModule({
 
           if (!nsInfo) return $.send( `Wystąpił probleem z rozczytywaniem docelowego serwera` )
 
-          let duplicatedFilenames = []
+          const duplicatedFilenames = []
           let files
 
           try {
@@ -110,7 +110,7 @@ const dcModule = new DCModule({
             { name:`ID serwera`, type:`string`, optional:true },
           ],
         }, async($, moduleName, guildId) => {
-          /** @type {import("../../lib/index.js").default} */ const bot = $.bot
+          /** @type {import("../../index.js").default} */ const bot = $.bot
 
           guildId ??= $.channel.guildId
 
@@ -134,7 +134,7 @@ const dcModule = new DCModule({
           shortDescription: `Wylistuj moduł danego serwera`,
           params: [ { name:`ID serwera`, type:`string`, optional:true } ],
         }, async($, guildId) => {
-          /** @type {import("../../lib/index.js").default} */ const bot = $.bot
+          /** @type {import("../../index.js").default} */ const bot = $.bot
 
           guildId ??= $.channel.guildId
 

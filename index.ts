@@ -1,10 +1,9 @@
-import { ExecutorParam } from "src/namespaceStructure/Scope.js"
 import * as Discord from "discord.js"
-import { ActivityType, ChannelType, Guild, Partials, REST, Routes } from "discord.js"
-import { SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "@discordjs/builders"
+import { ActivityType, ChannelType, GatewayIntentBits, Partials, REST, Routes, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "discord.js"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
 import DCModule, { DCCmdExecutor, ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
 import BotBase, { BotBaseConfig, NamespaceInfo } from "./src/BotClientBase.js"
+import type { ExecutorParam } from "./src/namespaceStructure/Scope.js"
 
 export { default as DCModule } from "./src/DCModule/index.js"
 export * from "./src/DCModule/index.js"
@@ -15,7 +14,10 @@ export type Config = BotBaseConfig & {
   appId: string
 }
 
-type GlobalCommandsData = {cmd: SlashCommandBuilder; executor: DCCmdExecutor; registrationGuildId: string }
+type GlobalCommandsData = { cmd: SlashCommandBuilder, executor: DCCmdExecutor, registrationGuildId: string }
+
+/** Every gateway intent; the privileged ones (members, presences, message content) have to be enabled in the Developer Portal */
+const ALL_INTENTS = Object.values( GatewayIntentBits ).filter( (bit): bit is GatewayIntentBits => typeof bit === `number` )
 
 export default class CactuDiscordBot extends BotBase<DCModule> {
   client: Discord.Client
@@ -33,7 +35,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
 
     this.rest = new REST().setToken( config.botToken )
     this.client = new Discord.Client({
-      intents: (2 ** 22 - 1), // All intents
+      intents: ALL_INTENTS,
       partials: [ Partials.Channel, Partials.Message ],
     })
 
@@ -43,7 +45,7 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       .on( `guildCreate`, this.handleGuild )
       .on( `interactionCreate`, this.handleInterraction )
       .on( `guildDelete`, ({ name }) => this.logSystem( `I left from guild named [fgYellow]${name}[]` ) )
-      .on( `ready`, this.onReady )
+      .on( `clientReady`, this.onReady )
       .login( config.botToken )
       .catch( err => this.logSystem( `I can't login in.\n${err}` ) )
   }
@@ -140,10 +142,10 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
   }
 
 
-  handleResponse = (response:ProcessorResponseHandlerParam, ns:Namespace<DCModule>, { channel, member, user }:{ channel: null | Discord.DMChannel | Discord.PartialDMChannel | Discord.NewsChannel | Discord.StageChannel | Discord.TextChannel | Discord.PrivateThreadChannel | Discord.PublicThreadChannel<boolean> | Discord.VoiceChannel; member: Discord.GuildMember | Discord.APIInteractionGuildMember | null; user: Discord.User }) => {
+  handleResponse = (response:ProcessorResponseHandlerParam, ns:Namespace<DCModule>, { channel, member, user }:{ channel: null | Discord.TextBasedChannel, member: Discord.GuildMember | Discord.APIInteractionGuildMember | null, user: Discord.User }) => {
     const t:TranslationObject = ns.getCompoundModule().translation
 
-    if (!channel) return
+    if (!channel?.isSendable()) return
 
     const username = member && `displayName` in member ? member.displayName : user.username
 
@@ -232,8 +234,6 @@ export default class CactuDiscordBot extends BotBase<DCModule> {
       }
 
       channel.send({ embeds:[ embed ] })
-
-      return
     }
   }
 

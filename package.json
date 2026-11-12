@@ -6,13 +6,25 @@
   "homepage": "https://github.com/Evolveye/Cactu-discord.js",
   "repository": "https://github.com/Evolveye/Cactu-discord.js",
   "license": "ISC",
-  "main": "lib/index.js",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js.",
-    "test": "tsc && node ./priv/app.js",
-    "run": "node ./priv/app.js",
-    "build": "tsc"
+    "dev": "bun --env-file=playground/.env playground/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [
     "codecactu",
@@ -26,16 +38,13 @@
     "automated"
   ],
   "dependencies": {
-    "@discordjs/builders": "^1.7.0",
-    "canvas": "^3.1.1",
-    "discord.js": "14.20",
-    "formidable": "^1.2.2"
+    "canvas": "^3.2.3",
+    "discord.js": "^14.28.1"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.54.1",
-    "@typescript-eslint/parser": "^5.54.1",
-    "eslint": "^8.35.0",
-    "eslint-config-eye": "^1.2.6",
-    "typescript": "^5.4.3"
+    "@types/node": "^22",
+    "eslint": "^9",
+    "eslint-config-eye": "^2.1.1",
+    "typescript": "~6.0.3"
   }
 }

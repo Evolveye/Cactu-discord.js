@@ -1,34 +1,28 @@
 {
   "compilerOptions": {
     "strict": true,
-    "noEmit": false,
-    "sourceMap": true,
-    "incremental": true,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "removeComments": true,
-    "esModuleInterop": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
-    "allowJs": true,
+
+    "target": "ES2023",
+    "lib": [ "ES2023" ],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": [ "node" ],
+
+    "rootDir": "./",
+    "outDir": "./dist",
     "declaration": true,
-    "noImplicitAny": false,
+    "sourceMap": true,
+    "removeComments": true,
     "preserveConstEnums": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "baseUrl": "./",
-    "outDir": "./lib",
-    "tsBuildInfoFile": ".tsbuildinfo",
-    "jsx": "preserve",
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "target": "ES2022",
-    "paths": {
-      // "#src/*": [ "src/*" ],
-      // "@lib/*": [ "src/features/lib/*" ],
-      // "@fet/*": [ "src/features/*" ]
-    }
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": [ "index.ts", "src" ],
-  "exclude": [ "node_modules" ]
+  "exclude": [ "node_modules", "dist" ]
 }

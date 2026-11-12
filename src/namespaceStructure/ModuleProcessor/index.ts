@@ -6,13 +6,13 @@ import { CommandPermissionsError, CommandError, NoCommandError } from "./Command
 export * from "./CommandError.js"
 export * from "./ExecutorError.js"
 
-export type ProcessorNode = { path: string[];restPath: string; typeInstance: Executor | Scope }
+export type ProcessorNode = { path: string[], restPath: string, typeInstance: Executor | Scope }
 export type ProcessorPermissionChecker = (perms:string[]) => boolean
 export type ProcessorResponseHandlerParam = CommandError | ExecutionError | ProcessorNode
 export type ProcessorResponseHandler = (response:ProcessorResponseHandlerParam) => void
 export type ConditionalFilter = Filter | Filter[]
 
-export type ProcessConfig<T=unknown> = {
+export type ProcessConfig<T = unknown> = {
   prefix?: null | string
   checkPermissions?: ProcessorPermissionChecker
   executorDataGetter?: () => T
@@ -51,7 +51,7 @@ export default class ModuleProcessor {
     const commandPartRegExp = /[^ ]+/g
     let part:undefined | string = undefined
     let typeInstance:undefined | Scope | Executor = scope
-    let data = {
+    const data = {
       command,
       path: [] as string[],
       restPath: ``,

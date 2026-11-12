@@ -5,7 +5,7 @@ type FixedLogDataPart = {
   value: string | (() => string)
 }
 export type LoggerPart = Partial<FixedLogDataPart> & {
-  align?: "left" | "center" | "right"
+  align?: `left` | `center` | `right`
   color?: Color
   minLength?: number
   maxLength?: number
@@ -118,7 +118,7 @@ export default class Logger<Parts extends readonly LoggerPart[]> {
 
   static split( logString:string, lineLength:number, { initialLength = 0, notFirstLineMaxLength = lineLength } = {} ) {
     const { breakLineChars } = Logger
-    let lastLineBreak = { charIndex:0, prevCharIndex:0, char:`` }
+    const lastLineBreak = { charIndex:0, prevCharIndex:0, char:`` }
     let currentLineLength = initialLength
 
     for (let i = 0;  i < logString.length;  i++) {

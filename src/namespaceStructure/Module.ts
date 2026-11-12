@@ -1,15 +1,15 @@
 import Scope from "./Scope.js"
 import Filter from "./Filter.js"
 
-export interface ModuleData<T=unknown> {
+export interface ModuleData<T = unknown> {
   prefix: string
   commands: undefined | Scope
   filters: Filter<T>[]
 }
 
-export type ModuleConfig<T=unknown> = Partial<ModuleData<T>>
+export type ModuleConfig<T = unknown> = Partial<ModuleData<T>>
 
-export default class Module<T=unknown> implements ModuleData<T> {
+export default class Module<T = unknown> implements ModuleData<T> {
   prefix = ``
   commands: undefined | Scope = undefined
   filters: Filter<T>[] = []
