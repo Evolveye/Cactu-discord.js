@@ -1,5 +1,6 @@
 import { ExecutorParam } from "src/namespaceStructure/Scope.js"
-import Discord, { ActivityType, ChannelType, Guild, Partials, REST, Routes } from "discord.js"
+import * as Discord from "discord.js"
+import { ActivityType, ChannelType, Guild, Partials, REST, Routes } from "discord.js"
 import { SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "@discordjs/builders"
 import { Namespace, CommandPermissionsError, CommandError, ProcessorResponseHandlerParam, ExecutionError, MissingExecutionParameter, WrongExecutionParameter, OverlimitedExecutorParameter, NoCommandError, RuntimeExecutionError, ProcessorParam, CtxFromModule } from "./src/namespaceStructure/index.js"
 import DCModule, { DCCmdExecutor, ModuleCmdCtx, Scope, TranslationObject } from "./src/DCModule/index.js"
