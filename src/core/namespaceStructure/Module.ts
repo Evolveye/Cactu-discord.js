@@ -1,10 +1,12 @@
 import Scope from "./Scope.js"
 import Filter from "./Filter.js"
+import type { TranslationObject } from "../translations.js"
 
-export interface ModuleData<T = unknown> {
+export type ModuleData<T = unknown> = {
   prefix: string
   commands: undefined | Scope
   filters: Filter<T>[]
+  translation: TranslationObject
 }
 
 export type ModuleConfig<T = unknown> = Partial<ModuleData<T>>
@@ -13,6 +15,7 @@ export default class Module<T = unknown> implements ModuleData<T> {
   prefix = ``
   commands: undefined | Scope = undefined
   filters: Filter<T>[] = []
+  translation: TranslationObject = {}
 
   constructor( config:ModuleConfig<T> = {} ) {
     Module.merge( this, config )
@@ -27,6 +30,7 @@ export default class Module<T = unknown> implements ModuleData<T> {
   static merge( target:Module<any>, module:ModuleConfig<any> ) {
     if (module.prefix) target.prefix = module.prefix
     if (module.filters) target.filters.push( ...module.filters )
+    if (module.translation) Object.assign( target.translation, module.translation )
 
     if (module.commands) {
       if (target.commands) Scope.merge( target.commands, module.commands )

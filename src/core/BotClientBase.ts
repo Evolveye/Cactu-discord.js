@@ -102,7 +102,7 @@ export default class BotClientBase<TModule extends Module<any>> {
 
     this.#namespacesData.set( namespace.id, namespace )
 
-    if (this.#initialized) this.logSystem( `I have joined to guild named [fgYellow]${name}[]` )
+    if (this.#initialized) this.logSystem( `I have joined namespace named [fgYellow]${name}[]` )
     else {
       let message = name ? `I'm on namespace named [fgYellow]${name}[]` : `I'm on namespace with id [fgYellow]${name}[]`
 

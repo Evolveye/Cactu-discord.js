@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 
 /** Root of the running library: the repository root when run from sources (Bun), `dist/` when run from the build */
-const LIBRARY_ROOT = new URL( `../../`, import.meta.url ).href
+const LIBRARY_ROOT = new URL( `../../../`, import.meta.url ).href
 
 /**
  * Evaluates a module config file, so every call runs its current content instead of a cached module.
