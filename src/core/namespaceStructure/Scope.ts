@@ -7,6 +7,8 @@ export type ExecutorParam = {
   desc?: string
   type: ExecutorParamType
   optional?: boolean
+  /** What an optional parameter becomes when it's skipped; shown in the command's help */
+  defaultValue?: unknown
 }
 
 export type OnlyExecutorMetaData = {
@@ -16,11 +18,13 @@ export type OnlyExecutorMetaData = {
 export type ExecutorPartialMeta = UnnormalizedMeta & Partial<OnlyExecutorMetaData>
 export type ExecutorMeta = UnnormalizedMeta & OnlyExecutorMetaData
 
-export type ExecutorFn<T = unknown> = (context:T, ...params:unknown[]) => void | Promise<void>
+/** The parameters arrive in the order of `meta.params`, so an executor may type them itself */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ExecutorFn<T = unknown> = (context:T, ...params:any[]) => unknown
 export class Executor<T = unknown, AdditionlMeta extends Record<string, string | number | boolean> = {}> extends MetadataHolder<ExecutorMeta & AdditionlMeta> {
   #fn: ExecutorFn<T>
 
-  constructor( meta:ExecutorPartialMeta & Partial<AdditionlMeta>, fn:ExecutorFn<T> ) {
+  constructor( meta:ExecutorPartialMeta & Partial<NoInfer<AdditionlMeta>>, fn:ExecutorFn<T> ) {
     if (!Array.isArray( meta.params )) meta.params = []
 
     super( meta as ExecutorMeta & AdditionlMeta, `executor` )
@@ -87,7 +91,9 @@ export class Executor<T = unknown, AdditionlMeta extends Record<string, string |
 }
 
 
-export type ScopeConfig = Record<string, Scope | Executor>
+/** Executors of any communicator's context fit in */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ScopeConfig = Record<string, Scope | Executor<any, any>>
 export default class Scope extends MetadataHolder {
   config: ScopeConfig
 

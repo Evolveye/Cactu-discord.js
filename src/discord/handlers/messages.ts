@@ -26,12 +26,16 @@ export function handleMessage( bot:CactuDiscordBot, message:Message ) {
       channel: message.channel,
       send: async msg => message.channel.isSendable() ? message.channel.send( msg ) : null,
       sendOk: async msg => message.channel.isSendable() ? message.channel.send( `✅ ${msg}` ) : null,
-      getStorage: () => bot.getGuildStorage( message.guild ),
       deleteMsg: () => message.delete(),
       runCmd: command => namespace.processMessage({ ...processorParam, checkPermissions:() => true, message:command, prefix:null }),
       getWebHook: channel => bot.getWebHook( channel ?? message.channel ),
     }),
-    handleResponse: response => sendResponse( bot, response, namespace, { channel:message.channel, member:message.member, user:message.author } ),
+    handleResponse: response => sendResponse( bot, response, namespace, {
+      channel: message.channel,
+      user: message.author,
+      replyTo: message,
+      canAccess: perms => checkPermissions( perms, message, bot.ownerId ),
+    } ),
   }
 
   namespace.processMessage( processorParam )

@@ -6,6 +6,10 @@ export type { Config } from "./DiscordBot.js"
 export { default as DCModule } from "./DiscordModule.js"
 export * from "./DiscordModule.js"
 
+export * from "./modules/define.js"
+export { default as DiscordModules } from "./modules/DiscordModules.js"
+export type { NamespaceModulesInfo, AddLocalModuleResult } from "./modules/DiscordModules.js"
+
 export { getWebHook } from "./webhooks.js"
 export { checkPermissions } from "./permissions.js"
 export type { ResponseTarget } from "./responses.js"

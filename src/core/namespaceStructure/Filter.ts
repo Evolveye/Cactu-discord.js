@@ -5,7 +5,7 @@ export type FilterContext = {
 }
 
 export type FilterTester = RegExp | ((message:string) => boolean)
-export type FilterEvaluator<T = unknown> = (text:string, context:T, filterContext:FilterContext) => void | Promise<void>
+export type FilterEvaluator<T = unknown> = (text:string, context:T, filterContext:FilterContext) => unknown
 export default class Filter<T = unknown> {
   #tester: FilterTester
   #fn: FilterEvaluator<T>

@@ -6,10 +6,16 @@ import { CommandPermissionsError, CommandError, NoCommandError } from "./Command
 export * from "./CommandError.js"
 export * from "./ExecutorError.js"
 
-export type ProcessorNode = { path: string[], restPath: string, typeInstance: Executor | Scope }
+export type ProcessorNode = {
+  path: string[]
+  restPath: string
+  typeInstance: Executor | Scope
+  /** The command ended with `?` or `??`: its help instead of running it */
+  showHelp?: boolean
+}
 export type ProcessorPermissionChecker = (perms:string[]) => boolean
 export type ProcessorResponseHandlerParam = CommandError | ExecutionError | ProcessorNode
-export type ProcessorResponseHandler = (response:ProcessorResponseHandlerParam) => void
+export type ProcessorResponseHandler = (response:ProcessorResponseHandlerParam) => unknown
 export type ConditionalFilter = Filter | Filter[]
 
 export type ProcessConfig<T = unknown> = {
@@ -19,6 +25,9 @@ export type ProcessConfig<T = unknown> = {
   handleResponse?: ProcessorResponseHandler
 }
 
+/** A last word "?" or "??" asks for the help of the command (or group) before it */
+const HELP_MARKER = /(?:^|\s)\?{1,2}$/
+
 export default class ModuleProcessor {
   async processCommand( command:string, scope:Scope, { prefix, executorDataGetter, checkPermissions, handleResponse }:ProcessConfig = {} ) {
     if (prefix) {
@@ -27,20 +36,24 @@ export default class ModuleProcessor {
       command = command.slice( prefix.length )
     }
 
-    const trimedCmd = command.trim()
-    const node = this.#findNode( trimedCmd, scope, checkPermissions )
+    const fullCommand = command.trim()
+    const helpMarker = fullCommand.match( HELP_MARKER )
+    const commandPath = helpMarker ? fullCommand.slice( 0, helpMarker.index ).trim() : fullCommand
+    const node = this.#findNode( commandPath, scope, checkPermissions )
 
     if (node instanceof CommandError) {
-      handleResponse?.( node )
+      await handleResponse?.( node )
       return
     }
+
+    if (helpMarker) return handleResponse?.({ ...node, showHelp:true })
 
     if (node.typeInstance instanceof Executor) {
       const executionResult = await node.typeInstance.prepareAndExecute( node.restPath, executorDataGetter?.() )
 
       if (executionResult) {
         if (executionResult instanceof ExecutionError) executionResult.node = node
-        handleResponse?.( executionResult )
+        await handleResponse?.( executionResult )
       }
     }
 
@@ -95,14 +108,18 @@ export default class ModuleProcessor {
       filteringCtx.filterMatched = false
 
       for (const filter of filtersGroup) {
-        const testPassed = filter.test( message )
+        // A failing filter is logged and treated as not matched, so the other filters still run
+        try {
+          const testPassed = filter.test( message )
+          if (!testPassed) continue
 
-        if (!testPassed) continue
-        if (!ctx) ctx = executorDataGetter?.()
+          if (!ctx) ctx = executorDataGetter?.()
+          await filter.apply( message, ctx, filteringCtx )
+        } catch (error) {
+          console.error( `A filter failed:`, error )
+          continue
+        }
 
-        await filter.apply( message, ctx, filteringCtx )
-
-        if (filteringCtx.filterMatched) { /* TODO */ }
         if (!filteringCtx.continueFilteringGroup) break
       }
 

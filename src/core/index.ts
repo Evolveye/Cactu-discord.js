@@ -12,4 +12,8 @@ export * from "./responses.js"
 
 export { default as FileStorage } from "./FileStorage/index.js"
 export { default as Logger } from "./logger/index.js"
-export { default as ModulesManager } from "./ModulesManager.js"
+
+export { default as ModuleRegistry } from "./modules/ModuleRegistry.js"
+export type { RegisteredModule, ModuleLoadError } from "./modules/ModuleRegistry.js"
+export * from "./modules/params.js"
+export * from "./modules/namespaceConfig.js"

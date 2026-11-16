@@ -4,10 +4,15 @@ dist/
 
 .tsbuildinfo
 
-guild_configs/
-namespaces_data/*
-!namespaces_data/_default_config/
+# Data of the old module format, until the local folder is deleted
+namespaces_data/
+
+# Guild data (namespace.json, storage, local modules); only the template for new guilds is shared
+namespaces/*
+!namespaces/_default.json
 
 private*
 
+# Secrets: the local playground's and the server's (docker compose)
 playground/.env
+.env

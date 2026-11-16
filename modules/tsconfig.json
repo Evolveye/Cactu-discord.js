@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../",
+    "allowImportingTsExtensions": true,
+    // `import … from "cactu-discord.js"` resolves to the sources, like on Bun (package.json "bun" export)
+    "customConditions": [ "bun" ]
+  },
+  "include": [ "./**/*.ts" ]
+}

@@ -9,13 +9,11 @@ export function handleInteraction( bot:CactuDiscordBot, interaction:Interaction 
   if (!interaction.guildId || !(`customId` in interaction)) return
 
   const namespace = bot.namespacesData.get( interaction.guildId )
-  if (!namespace) return
+  if (!namespace?.hasModules()) return
 
   const handler = findInteractionHandler( namespace.getCompoundModule().interactions, interaction.customId )
 
-  handler?.( interaction, {
-    getStorage: async guildId => bot.getGuildStorage( guildId ? bot.client.guilds.cache.get( guildId ) : interaction.guild ),
-  } )
+  handler?.( interaction )
 }
 
 /** A handler keyed by the exact customId, or by a `/regex/` key matching it */

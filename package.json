@@ -11,18 +11,20 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "hello": "echo Hello. Look at here for more information https://github.com/Evolveye/Cactu-discord.js.",
     "dev": "bun --env-file=playground/.env playground/index.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tests && tsc -p modules",
+    "test": "bun test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -42,6 +44,7 @@
     "discord.js": "^14.28.1"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.4",
     "@types/node": "^22",
     "eslint": "^9",
     "eslint-config-eye": "^2.1.1",

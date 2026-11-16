@@ -1,2 +1,4 @@
 **/**
 !dist/**
+!index.ts
+!src/**
