@@ -4,6 +4,7 @@ import type CactuDiscordBot from "../DiscordBot.js"
 import type { TranslationObject } from "../../core/translations.js"
 import type { Namespace } from "../../core/namespaceStructure/index.js"
 import type { ParamsShape, ParamsValues } from "../../core/modules/params.js"
+import type { HttpAnswer, HttpRequest } from "../../core/http/HttpServer.js"
 import type FileStorage from "../../core/FileStorage/index.js"
 
 /** What every context has: the whole Discord API, plus this module's settings and storage in this namespace */
@@ -63,6 +64,13 @@ export type ComponentCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings
 
 export type EventCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings>
 
+export type EndpointCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings> & {
+  request: HttpRequest
+}
+
+/** Answers with a status, or `{ status, body }` for a JSON body; it should answer quickly and do slow work afterwards */
+export type EndpointHandler<TSettings extends ParamsShape = {}> = (ctx:EndpointCtx<TSettings>) => HttpAnswer | Promise<HttpAnswer>
+
 /** A cleanup undoes what the setup started (intervals, listeners…) before the module reloads */
 export type ModuleSetup<TSettings extends ParamsShape = {}> = (ctx:EventCtx<TSettings>) => unknown | (() => unknown) | Promise<unknown | (() => unknown)>
 
@@ -118,6 +126,8 @@ export type ModuleDefinition<TSettings extends ParamsShape = {}> = {
   components: Record<string, (ctx:ComponentCtx<TSettings>) => unknown>
   /** Client events, delivered only when they concern this namespace's guild (or no guild at all) */
   events: EventsDefinition<TSettings>
+  /** `METHOD /path` → handler, served by the bot's HTTP server (`http` in the bot's config) at `METHOD /api/<namespace id>/<module name>/<path>` while the module is loaded */
+  endpoints: Record<string, EndpointHandler<TSettings>>
   /** Runs when the module starts in a namespace, again after every reload; its returned cleanup runs before each reload */
   setup: null | ModuleSetup<TSettings>
   translation: TranslationObject
@@ -158,6 +168,7 @@ export function createModuleKit<TSettings extends ParamsShape = {}>( settings:TS
       filters: config.filters ?? [],
       components: config.components ?? {},
       events: config.events ?? {},
+      endpoints: config.endpoints ?? {},
       setup: config.setup ?? null,
       translation: config.translation ?? {},
     }),

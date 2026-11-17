@@ -23,6 +23,12 @@ COPY playground/index.ts ./playground/index.ts
 COPY --chown=bun:bun namespaces/_default.json ./namespaces/_default.json
 VOLUME /app/namespaces
 
+# The minecraft module's language files cache (downloaded on the first event), writable by the bot
+RUN mkdir modules/minecraft/_translation && chown bun:bun modules/minecraft/_translation
+
+# Minecraft events from the Cactu backend (CACTU_BOT_PORT)
+EXPOSE 3002
+
 USER bun
 
 CMD [ "bun", "--smol", "playground/index.ts" ]

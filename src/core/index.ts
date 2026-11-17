@@ -11,6 +11,8 @@ export * from "./translations.js"
 export * from "./responses.js"
 
 export { default as FileStorage } from "./FileStorage/index.js"
+export { default as HttpServer } from "./http/HttpServer.js"
+export type { HttpServerConfig, HttpRequest, HttpAnswer, HttpEndpointHandler } from "./http/HttpServer.js"
 export { default as Logger } from "./logger/index.js"
 
 export { default as ModuleRegistry } from "./modules/ModuleRegistry.js"

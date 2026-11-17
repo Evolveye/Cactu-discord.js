@@ -1,3 +1,8 @@
+/*
+  TODO: Replace this logger with the one the Cactu backend service uses, so both services log the same way.
+  Then move the plain `console.log` calls (e.g. the minecraft and cactu-cc modules) onto it.
+*/
+
 import { Color, colors, colorsReg } from "./colors.js"
 import { NegativeTupleCount, Tuple } from "./CountTuple.js"
 

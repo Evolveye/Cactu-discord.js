@@ -33,7 +33,7 @@ export default class CactuDiscordBot extends BotClientBase<DCModule> {
   modules = new DiscordModules( this )
 
   constructor( config:Config ) {
-    super()
+    super( config )
 
     if (!config?.botToken) throw new Error( `Config object have to have "botToken" field` )
     if (config.appOwnerId) this.ownerId = config.appOwnerId
@@ -66,8 +66,15 @@ export default class CactuDiscordBot extends BotClientBase<DCModule> {
 
     this.modules.loadGlobalModules()
       .then( () => Promise.allSettled( this.client.guilds.cache.map( guild => handleGuildCreate( this, guild ) ) ) )
+      .then( () => this.#startHttpServer() )
       .then( () => registerGlobalSlashCommands( this ) )
 
     this.endInitialization()
+  }
+
+  #startHttpServer() {
+    if (!this.http) return this.logSystem( `I have no HTTP server ([fgYellow]http[] isn't in my config)` )
+
+    return this.http.listen().catch( (error:Error) => this.logSystem( `[fgRed]The HTTP server didn't start[]: ${error.message}` ) )
   }
 }

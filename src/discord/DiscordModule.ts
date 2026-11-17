@@ -1,6 +1,7 @@
 import * as Discord from "discord.js"
 import { Executor, Filter, Module, Scope } from "../core/namespaceStructure/index.js"
 import type { Namespace, ModuleConfig } from "../core/namespaceStructure/index.js"
+import type { HttpEndpointHandler } from "../core/http/HttpServer.js"
 import type CactuDiscordBot from "./DiscordBot.js"
 
 export type DCChannel = Discord.TextBasedChannel | Discord.DMChannel | Discord.PartialDMChannel | Discord.NewsChannel | Discord.StageChannel | Discord.TextChannel | Discord.PrivateThreadChannel | Discord.PublicThreadChannel<boolean> | Discord.VoiceChannel
@@ -39,10 +40,14 @@ export type DCEventListener = { name: string, listener: (...args:unknown[]) => v
 /** Starts something when the namespace (re)loads; a returned function is its cleanup, run before the next reload */
 export type DCSetup = () => unknown
 
+/** A handler of the bot's HTTP server (`POST /path`); a list, so several modules of one namespace can serve the same endpoint */
+export type DCEndpoint = { endpoint: string, handler: HttpEndpointHandler }
+
 export type DCModuleConfig = ModuleConfig<ModuleCtx> & {
   interactions?: Record<string, DCInteractionHandler>
   events?: DCEventListener[]
   setups?: DCSetup[]
+  endpoints?: DCEndpoint[]
   slashCommands?: Record<string, DCCmdExecutor>
 }
 
@@ -56,6 +61,7 @@ export default class DCModule extends Module<ModuleCtx> {
   interactions: Record<string, DCInteractionHandler> = {}
   events: DCEventListener[] = []
   setups: DCSetup[] = []
+  endpoints: DCEndpoint[] = []
   slashCommands: Record<string, DCCmdExecutor> = {}
 
   constructor( config:DCModuleConfig ) {
@@ -71,6 +77,7 @@ export default class DCModule extends Module<ModuleCtx> {
   static merge( target:DCModule, module:DCModuleConfig ) {
     if (module.events) target.events.push( ...module.events )
     if (module.setups) target.setups.push( ...module.setups )
+    if (module.endpoints) target.endpoints.push( ...module.endpoints )
     if (module.slashCommands) Object.assign( target.slashCommands, module.slashCommands )
     if (module.interactions) Object.assign( target.interactions, module.interactions )
   }

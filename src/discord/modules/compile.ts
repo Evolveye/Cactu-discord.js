@@ -4,11 +4,12 @@ import { describeResponse } from "../../core/responses.js"
 import { ExecutionError } from "../../core/namespaceStructure/ModuleProcessor/ExecutorError.js"
 import { parseTextParams, parseValues, toExecutorParam } from "../../core/modules/params.js"
 import type { APIInteractionGuildMember, Interaction, Message } from "discord.js"
-import type { DCInteractionHandler, DCEventListener, ModuleCtx } from "../DiscordModule.js"
+import type { DCEndpoint, DCInteractionHandler, DCEventListener, ModuleCtx } from "../DiscordModule.js"
 import type CactuDiscordBot from "../DiscordBot.js"
 import type { Namespace } from "../../core/namespaceStructure/index.js"
 import type { ExecutorParam, ScopeConfig } from "../../core/namespaceStructure/Scope.js"
 import type { Param, ParamsShape } from "../../core/modules/params.js"
+import type { HttpRequest } from "../../core/http/HttpServer.js"
 import type FileStorage from "../../core/FileStorage/index.js"
 import type { AnyModuleDefinition, BaseCtx, CommandCtx, CommandDefinition, CommandsTree, FilterDefinition, FiltersList, ModuleDefinition } from "./define.js"
 
@@ -27,6 +28,9 @@ type CallKind = `Command` | `Slash` | `Filter` | `Event` | `Component`
 /** What a call came from: a message (its author), an interaction (its user), or only the user of an event */
 type CallSource = Message | Interaction | { channel?: null, user: null | User }
 type CreateBaseCtx = () => BaseCtx<ParamsShape>
+
+/** `METHOD /path`, any case, slashes around the path optional */
+const ENDPOINT_KEY = /^([a-z]+)\s+\/*([\w\-.~/]*?)\/*$/i
 
 /** Text commands parse their typed, named parameters themselves, instead of the processor's positional text values */
 class DefinedTextExecutor extends DCExecutor {
@@ -63,6 +67,7 @@ export function compileModule( definition:AnyModuleDefinition, env:CompileEnv ) 
     slashCommands,
     interactions: compileComponents( definition.components, createBaseCtx, env ),
     events: compileEvents( definition.events, createBaseCtx, env ),
+    endpoints: compileEndpoints( definition.endpoints, createBaseCtx, env ),
     setups: definition.setup ? [ () => definition.setup!( createBaseCtx() ) ] : [],
     translation: definition.translation,
   })
@@ -249,6 +254,60 @@ function compileEvents( events:ModuleDefinition<ParamsShape>[ `events` ], create
   }
 
   return compiled
+}
+
+/** Served under the namespace's and the module's prefix, so nothing clashes; errors aren't caught here: the HTTP server logs them and answers 500 */
+function compileEndpoints( endpoints:ModuleDefinition<ParamsShape>[ `endpoints` ], createBaseCtx:CreateBaseCtx, env:CompileEnv ) {
+  const compiled = new Map<string, DCEndpoint>()
+
+  for (const [ key, handler ] of Object.entries( endpoints )) {
+    const endpoint = toServerEndpoint( key, env.namespace.id, env.moduleName )
+
+    if (!endpoint) {
+      env.bot.logSystem( `[fgYellow]Module "${env.moduleName}"[]: the endpoint "${key}" isn't "METHOD /path"` )
+      continue
+    }
+
+    if (compiled.has( endpoint )) {
+      env.bot.logSystem( `[fgYellow]Module "${env.moduleName}"[]: the endpoint "${key}" repeats ${endpoint}` )
+      continue
+    }
+
+    compiled.set( endpoint, {
+      endpoint,
+      handler: async(request:HttpRequest) => {
+        const startedAt = performance.now()
+
+        try {
+          const answer = await handler({ ...createBaseCtx(), request })
+          logEndpointCall( env, request, typeof answer === `number` ? answer : answer.status, startedAt )
+
+          return answer
+        } catch (error) {
+          logEndpointCall( env, request, 500, startedAt )
+          throw error
+        }
+      },
+    } )
+  }
+
+  return [ ...compiled.values() ]
+}
+
+/** `post /events/` of the module `minecraft` in the namespace `123` → `POST /api/123/minecraft/events` */
+function toServerEndpoint( key:string, namespaceId:string, moduleName:string ) {
+  const match = key.trim().match( ENDPOINT_KEY )
+  if (!match) return null
+
+  const [ , method = ``, path = `` ] = match
+
+  return `${method.toUpperCase()} ${[ `/api`, namespaceId, moduleName, path.replace( /\/+/g, `/` ) ].filter( Boolean ).join( `/` )}`
+}
+
+/** In the columns of the message log: the module instead of the channel, the method instead of the user, then the path, the status and the handler's time */
+function logEndpointCall( env:CompileEnv, request:HttpRequest, status:number, startedAt:number ) {
+  const duration = Math.round( performance.now() - startedAt )
+  env.bot.logServer( env.guild.name, env.moduleName, request.method, `Endpoint`, `${request.path} → ${status} (${duration} ms)` )
 }
 
 /** The user an event is about (e.g. the member who joined), if any argument is one */

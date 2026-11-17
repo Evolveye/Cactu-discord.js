@@ -1,11 +1,11 @@
 import { registerGuildSlashCommands } from "./slashCommands.js"
 import type { Guild } from "discord.js"
-import type { DCSetup } from "../DiscordModule.js"
+import type { DCEndpoint, DCSetup } from "../DiscordModule.js"
 import type CactuDiscordBot from "../DiscordBot.js"
 
 /**
  * guildCreate (and every guild at startup): loads the guild's namespace (the global and local modules of its namespace.json), then
- * after every (re)load connects its slash commands, client events and setups; before every reload disconnects them and runs the cleanups
+ * after every (re)load connects its slash commands, client events, HTTP endpoints and setups; before every reload disconnects them and runs the cleanups
  */
 export async function handleGuildCreate( bot:CactuDiscordBot, guild:Guild ) {
   const namespace = bot.registerNamespace( guild.id, guild.name )
@@ -21,7 +21,8 @@ export async function handleGuildCreate( bot:CactuDiscordBot, guild:Guild ) {
     registerGuildSlashCommands( bot, guild, namespace )
     for (const { name, listener } of getEventListeners()) bot.client.on( name, listener )
 
-    cleanups = await runSetups( bot, guild, namespace.getCompoundModule().setups )
+    const endpointRemovals = connectEndpoints( bot, guild, namespace.getCompoundModule().endpoints )
+    cleanups = [ ...endpointRemovals, ...await runSetups( bot, guild, namespace.getCompoundModule().setups ) ]
   }
 
   const disconnectModules = () => {
@@ -39,6 +40,22 @@ export async function handleGuildCreate( bot:CactuDiscordBot, guild:Guild ) {
 
 export function handleGuildDelete( bot:CactuDiscordBot, { name }:Guild ) {
   bot.logSystem( `I left from guild named [fgYellow]${name}[]` )
+}
+
+/** Returns the endpoints' removals */
+function connectEndpoints( bot:CactuDiscordBot, guild:Guild, endpoints:DCEndpoint[] ) {
+  const { http } = bot
+  if (!http && endpoints.length) bot.logSystem( `[fgYellow]Namespace "${guild.name}"[]: its modules have HTTP endpoints, but the bot has no HTTP server (\`http\` in its config)` )
+  if (!http) return []
+
+  return endpoints.flatMap( ({ endpoint, handler }) => {
+    try {
+      return [ http.addEndpoint( endpoint, handler ) ]
+    } catch (error) {
+      bot.logSystem( `[fgRed]Namespace "${guild.name}"[]: ${error instanceof Error ? error.message : error}` )
+      return []
+    }
+  } )
 }
 
 /** Runs every setup; returns the cleanups they gave back */

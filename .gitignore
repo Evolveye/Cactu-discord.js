@@ -13,6 +13,9 @@ namespaces/*
 
 private*
 
+# The minecraft module's language files, downloaded for the configured version
+/modules/minecraft/_translation/
+
 # Secrets: the local playground's and the server's (docker compose)
 playground/.env
 .env

@@ -1,16 +1,28 @@
 import { Namespace } from "./namespaceStructure/index.js"
 import Logger from "./logger/index.js"
 import formatDate from "./logger/formatDate.js"
+import HttpServer from "./http/HttpServer.js"
 import type { Module } from "./namespaceStructure/index.js"
 import type { LoggerPart } from "./logger/index.js"
+import type { HttpServerConfig } from "./http/HttpServer.js"
 
-export type BotBaseConfig = {}
+export type BotBaseConfig = {
+  /** Its endpoints come from the modules' `endpoints` */
+  http?: HttpServerConfig
+}
 
 /** What every communicator's bot shares: its namespaces and the console logs */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default class BotClientBase<TModule extends Module<any>> {
   #initialized = false
   #namespacesData = new Map<string, Namespace<TModule>>()
+
+  /** Started by the communicator once its namespaces are ready, so early requests fail to connect and get sent again */
+  http: null | HttpServer
+
+  constructor( config:BotBaseConfig = {} ) {
+    this.http = config.http ? new HttpServer( config.http, message => this.logSystem( message ) ) : null
+  }
 
   static loggers = {
     system: new Logger( [

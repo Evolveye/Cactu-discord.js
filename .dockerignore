@@ -11,6 +11,7 @@ dist
 namespaces/*
 !namespaces/_default.json
 namespaces_data
+modules/minecraft/_translation
 
 tests
 uploader
