@@ -34,6 +34,9 @@ export type ModuleCmdCtx = {
 }
 
 export type DCInteractionHandler = (interaction:Discord.Interaction) => void
+
+/** Suggestions for an option while it's typed, at most 25; `typed` is the option's text so far */
+export type DCAutocompleter = (interaction:Discord.AutocompleteInteraction, typed:string) => Promise<Discord.ApplicationCommandOptionChoiceData<string>[]>
 /** A client event listener; a list, so several modules of one namespace can listen to the same event */
 export type DCEventListener = { name: string, listener: (...args:unknown[]) => void }
 
@@ -52,7 +55,10 @@ export type DCModuleConfig = ModuleConfig<ModuleCtx> & {
 }
 
 /** A slash command; `forPrivateMessages` registers it globally, so it works in DMs too */
-export class DCCmdExecutor extends Executor<ModuleCmdCtx, { forPrivateMessages: boolean, groupDescription: string }> {}
+export class DCCmdExecutor extends Executor<ModuleCmdCtx, { forPrivateMessages: boolean, groupDescription: string }> {
+  /** The text options suggesting values while they're typed, by parameter name */
+  autocompleters = new Map<string, DCAutocompleter>()
+}
 export class DCExecutor extends Executor<ModuleCtx> {}
 export class DCFilter extends Filter<ModuleCtx> {}
 export class DCScope extends Scope {}

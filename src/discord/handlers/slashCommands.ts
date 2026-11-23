@@ -1,6 +1,6 @@
 import { MessageFlags, Routes, SlashCommandBuilder } from "discord.js"
 import { sendResponse } from "../responses.js"
-import type { ChatInputCommandInteraction, CommandInteractionOption, Guild, MessageCreateOptions, MessagePayload, SharedSlashCommandOptions, SlashCommandBooleanOption, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "discord.js"
+import type { ApplicationCommandOptionChoiceData, AutocompleteInteraction, ChatInputCommandInteraction, CommandInteractionOption, Guild, MessageCreateOptions, MessagePayload, SharedSlashCommandOptions, SlashCommandBooleanOption, SlashCommandMentionableOption, SlashCommandNumberOption, SlashCommandStringOption } from "discord.js"
 import type DCModule from "../DiscordModule.js"
 import type { DCCmdExecutor, ModuleCmdCtx, ModuleCtx } from "../DiscordModule.js"
 import type CactuDiscordBot from "../DiscordBot.js"
@@ -53,19 +53,10 @@ export function registerGlobalSlashCommands( bot:CactuDiscordBot ) {
 
 /** Runs a slash command with the namespace of its guild; in private messages, with the namespace that registered it */
 export async function handleSlashCommand( bot:CactuDiscordBot, interaction:ChatInputCommandInteraction ) {
-  const globalCommand = interaction.guildId ? undefined : bot.globals.commands.get( interaction.commandName )
+  const command = findCommand( bot, interaction )
+  if (!command) return
 
-  const registrationGuildId = interaction.guildId ?? globalCommand?.registrationGuildId
-  if (!registrationGuildId) return
-
-  const namespace = bot.namespacesData.get( registrationGuildId )
-  if (!namespace?.hasModules()) return
-
-  const subcommandName = interaction.options.getSubcommand( false )
-  const commandKey = subcommandName ? `${interaction.commandName} ${subcommandName}` : interaction.commandName
-
-  const executor = globalCommand?.executor ?? namespace.getCompoundModule().slashCommands[ commandKey ]
-  if (!executor) return
+  const { namespace, executor, commandKey, registrationGuildId, subcommandName } = command
 
   // A subcommand's options are nested inside it
   const options = subcommandName ? interaction.options.data[ 0 ]?.options ?? [] : interaction.options.data
@@ -107,6 +98,51 @@ export async function handleSlashCommand( bot:CactuDiscordBot, interaction:ChatI
   if (failure) await reportSlashCommandFailure( bot, namespace, interaction, commandKey, failure )
 }
 
+/** Suggests values of the option being typed; with nothing to suggest, or a failed suggester, Discord shows "no options" instead of loading forever */
+export async function handleAutocomplete( bot:CactuDiscordBot, interaction:AutocompleteInteraction ) {
+  const choices = await suggestChoices( bot, interaction ).catch( (error:Error) => {
+    bot.logSystem( `[fgRed]Suggestions for /${interaction.commandName} failed[]\n${error.stack ?? error.message}` )
+    return []
+  } )
+
+  // Discord takes up to 25 choices, each up to 100 characters
+  const validChoices = choices.slice( 0, 25 ).map( choice => ({ name:choice.name.slice( 0, 100 ), value:choice.value.slice( 0, 100 ) }) )
+
+  await interaction.respond( validChoices ).catch( (error:Error) => bot.logSystem( `[fgYellow]Can't suggest values for /${interaction.commandName}[]: ${error.message}` ) )
+}
+
+async function suggestChoices( bot:CactuDiscordBot, interaction:AutocompleteInteraction ): Promise<ApplicationCommandOptionChoiceData<string>[]> {
+  const command = findCommand( bot, interaction )
+  if (!command) return []
+
+  const focused = interaction.options.getFocused( true )
+  const param = command.executor.meta.params.find( param => toOptionName( param.name ) === focused.name )
+
+  const autocompleter = param && command.executor.autocompleters.get( param.name )
+  if (!autocompleter) return []
+
+  return autocompleter( interaction, focused.value )
+}
+
+/** The executor of a slash command (or of its suggestions) with its namespace: its guild's, or in private messages, the one that registered it */
+function findCommand( bot:CactuDiscordBot, interaction:ChatInputCommandInteraction | AutocompleteInteraction ) {
+  const globalCommand = interaction.guildId ? undefined : bot.globals.commands.get( interaction.commandName )
+
+  const registrationGuildId = interaction.guildId ?? globalCommand?.registrationGuildId
+  if (!registrationGuildId) return null
+
+  const namespace = bot.namespacesData.get( registrationGuildId )
+  if (!namespace?.hasModules()) return null
+
+  const subcommandName = interaction.options.getSubcommand( false )
+  const commandKey = subcommandName ? `${interaction.commandName} ${subcommandName}` : interaction.commandName
+
+  const executor = globalCommand?.executor ?? namespace.getCompoundModule().slashCommands[ commandKey ]
+  if (!executor) return null
+
+  return { namespace, executor, commandKey, registrationGuildId, subcommandName }
+}
+
 /** A slash command that threw: logged for the maintainers; the user gets an error instead of an endless "is thinking…" */
 async function reportSlashCommandFailure( bot:CactuDiscordBot, namespace:Namespace<DCModule>, interaction:ChatInputCommandInteraction, commandKey:string, failure:RuntimeExecutionError ) {
   bot.logSystem( `[fgRed]The slash command /${commandKey} failed[]\n${failure.stack ?? failure.message}` )
@@ -137,7 +173,7 @@ function addOptions<T extends SharedSlashCommandOptions<any>>( builder:T, execut
     if (param.type === `mention`) builder.addMentionableOption( option => configureOption( option, param ) )
     else if (param.type === `bool`) builder.addBooleanOption( option => configureOption( option, param ) )
     else if (param.type === `number`) builder.addNumberOption( option => configureOption( option, param ) )
-    else if (param.type === `message`) builder.addStringOption( option => configureOption( option, param ) )
+    else if (param.type === `message`) builder.addStringOption( option => configureOption( option, param ).setAutocomplete( executor.autocompleters.has( param.name ) ) )
   }
 
   return builder

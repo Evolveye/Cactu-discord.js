@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction, Client, ClientEvents, Guild, GuildMember, Message, MessageComponentInteraction, MessageCreateOptions, MessagePayload, ModalSubmitInteraction, TextBasedChannel } from "discord.js"
+import type { AutocompleteInteraction, ChatInputCommandInteraction, Client, ClientEvents, Guild, GuildMember, Message, MessageComponentInteraction, MessageCreateOptions, MessagePayload, ModalSubmitInteraction, TextBasedChannel } from "discord.js"
 import type DCModule from "../DiscordModule.js"
 import type CactuDiscordBot from "../DiscordBot.js"
 import type { TranslationObject } from "../../core/translations.js"
@@ -62,6 +62,18 @@ export type ComponentCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings
   match: null | RegExpMatchArray
 }
 
+export type AutocompleteCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings> & {
+  interaction: AutocompleteInteraction
+  channel: null | TextBasedChannel
+  member: null | GuildMember
+}
+
+/** A suggestion: a value shown as it is, or a value with its own label (both up to 100 characters) */
+export type AutocompleteChoice = string | { name: string, value: string }
+
+/** Suggests values of a slash command's text option while it's typed (`typed`: its text so far); Discord shows up to 25 and waits up to 3 seconds */
+export type Autocompleter<TSettings extends ParamsShape = {}> = (ctx:AutocompleteCtx<TSettings>, typed:string) => AutocompleteChoice[] | Promise<AutocompleteChoice[]>
+
 export type EventCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings>
 
 export type EndpointCtx<TSettings extends ParamsShape = {}> = BaseCtx<TSettings> & {
@@ -83,6 +95,8 @@ export type CommandDefinition<TSettings extends ParamsShape = {}, TParams extend
   message: boolean
   /** Registered as a slash command; only for commands at the root of `commands` */
   slash: boolean
+  /** Suggesters of the slash command's text options, by parameter name */
+  autocomplete: { [K in keyof TParams]?:Autocompleter<TSettings> }
   run: (ctx:CommandCtx<TSettings>, params:ParamsValues<TParams>) => unknown
 }
 
@@ -145,6 +159,7 @@ type CommandConfig<TSettings extends ParamsShape, TParams extends ParamsShape> =
   params?: TParams
   message?: boolean
   slash?: boolean
+  autocomplete?: { [K in keyof TParams]?:Autocompleter<TSettings> }
   run: (ctx:CommandCtx<TSettings>, params:ParamsValues<TParams>) => unknown
 }
 
@@ -179,6 +194,7 @@ export function createModuleKit<TSettings extends ParamsShape = {}>( settings:TS
       params: config.params ?? {} as TParams,
       message: config.message ?? true,
       slash: config.slash ?? false,
+      autocomplete: config.autocomplete ?? {},
       run: config.run,
     }),
     group: (config:GroupConfig): GroupDefinition => ({ kind:`group`, description:config.description, perms:toArray( config.perms ), commands:config.commands }),

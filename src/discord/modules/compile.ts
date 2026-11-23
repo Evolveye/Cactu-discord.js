@@ -124,7 +124,7 @@ function createSlashExecutor( command:AnyCommand, createBaseCtx:CreateBaseCtx, e
   const names = Object.keys( command.params )
   const meta = { sd:command.description, params:mapParams( command.params, toSlashParam ), groupDescription }
 
-  return new DCCmdExecutor( meta, async(cmdCtx, ...values:unknown[]) => {
+  const executor = new DCCmdExecutor( meta, async(cmdCtx, ...values:unknown[]) => {
     const params = parseValues( command.params, name => normalizeOptionValue( command.params[ name ], values[ names.indexOf( name ) ] ) )
 
     if (params instanceof ExecutionError) {
@@ -146,6 +146,27 @@ function createSlashExecutor( command:AnyCommand, createBaseCtx:CreateBaseCtx, e
       runCommand: cmdCtx.runCmd,
     }, params )
   } )
+
+  for (const [ name, autocomplete ] of Object.entries( command.autocomplete )) {
+    if (!autocomplete) continue
+
+    const param = command.params[ name ]
+
+    // Discord suggests values only for text options
+    if (!param || toSlashParam( name, param ).type !== `message`) {
+      env.bot.logSystem( `[fgYellow]Module "${env.moduleName}"[]: "${name}" of /${slashName} isn't a text option, so it can't suggest values` )
+      continue
+    }
+
+    executor.autocompleters.set( name, async(interaction, typed) => {
+      const ctx = { ...createBaseCtx(), interaction, channel:interaction.channel, member:toGuildMember( interaction.member ) }
+      const choices = await autocomplete( ctx, typed )
+
+      return choices.map( choice => typeof choice === `string` ? { name:choice, value:choice } : choice )
+    } )
+  }
+
+  return executor
 }
 
 /** Discord's slash command names are lowercase: `fromSlash` becomes `from-slash` */

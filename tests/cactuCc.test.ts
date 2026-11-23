@@ -37,7 +37,7 @@ async function runLogin() {
 
 beforeEach( () => {
   process.env.CACTU_BACKEND_ORIGIN = `http://localhost:3001/`
-  process.env.CACTU_BOT_SECRET = SECRET
+  process.env.CACTU_BACKEND_API_KEY = SECRET
   console.log = mock()
 } )
 
@@ -56,7 +56,7 @@ describe( `cactu-cc: /cactu-cc login`, () => {
     const { interaction, reply } = await runLogin()
     const [ url, init ] = fetchMock.mock.calls[ 0 ]!
 
-    expect( url ).toBe( `http://localhost:3001/api/auth/login-codes` )
+    expect( url ).toBe( `http://localhost:3001/api/v1/auth/login-codes` )
     expect( init ).toMatchObject({ method:`POST`, headers:{ Authorization:`Bearer ${SECRET}` }, body:`{"discordId":"315215466215899146"}` })
     expect( interaction.deferReply ).toHaveBeenCalledWith({ flags:MessageFlags.Ephemeral })
 
@@ -128,15 +128,15 @@ describe( `cactu-cc: /cactu-cc login`, () => {
     mockBackend( 400, { code:`BAD_REQUEST` } )
     expect( (await runLogin()).reply ).toBe( `Coś poszło nie tak. Spróbuj ponownie później.` )
 
-    delete process.env.CACTU_BOT_SECRET
+    delete process.env.CACTU_BACKEND_API_KEY
     expect( (await runLogin()).reply ).toBe( `Coś poszło nie tak. Spróbuj ponownie później.` )
 
     const logs = (console.log as ReturnType<typeof mock>).mock.calls.map( args => args.join( ` ` ) )
 
     expect( logs ).toEqual([
-      `cactu-cc: no login code for a user (HTTP 401 UNAUTHORIZED)`,
+      `cactu-cc: no login code for a user (HTTP 401 UNAUTHORIZED, check CACTU_BACKEND_API_KEY)`,
       `cactu-cc: no login code for a user (HTTP 400 BAD_REQUEST)`,
-      `cactu-cc: no login code for a user (CACTU_BACKEND_ORIGIN or CACTU_BOT_SECRET isn't set)`,
+      `cactu-cc: no login code for a user (CACTU_BACKEND_ORIGIN or CACTU_BACKEND_API_KEY isn't set)`,
     ])
     expect( logs.join( `\n` ) ).not.toContain( SECRET )
   } )

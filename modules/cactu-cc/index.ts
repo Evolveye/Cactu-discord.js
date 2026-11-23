@@ -1,11 +1,14 @@
 /*
-  The Cactu site (cactu.cc): `/cactu-cc login` gives a one-time code for logging in to the site, visible only to the caller.
-  Needs CACTU_BACKEND_ORIGIN (e.g. http://localhost:3001) and CACTU_BOT_SECRET (the backend's secret) in the environment.
+  The Cactu site (cactu.cc): `/cactu-cc login` gives a one-time code for logging in to the site, visible only to the caller;
+  `/cactu-cc mc-scan` shows the Minecraft server's satellite scans in the command's channel.
+  Needs CACTU_BACKEND_ORIGIN (e.g. http://localhost:3001) and CACTU_BACKEND_API_KEY (the backend's `bot` account key) in the environment;
+  CACTU_FRONTEND_ORIGIN (e.g. https://cactu.cc) adds links to the scans on the website.
   The bot never sees sessions or passwords: it only passes the caller's Discord ID to the backend and the code back.
 */
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js"
-import { command, defineModule, group } from "cactu-discord.js"
+import { command, defineModule, group, string } from "cactu-discord.js"
+import { NEWEST_BUTTON_ID, OLDER_BUTTON_ID, sendScan, showNewestScan, showOlderScan, suggestWorlds } from "./mcScan/index.js"
 import type { ChatInputCommandInteraction } from "discord.js"
 
 type LoginCode = { code: string, expiresAt: number, loginUri: null | string }
@@ -13,7 +16,7 @@ type LoginCode = { code: string, expiresAt: number, loginUri: null | string }
 /** Why there's no code; `canRetry`: a moment later it may work (vs. a configuration problem or a bug) */
 type LoginCodeFailure = { failure: string, canRetry: boolean }
 
-const LOGIN_CODES_PATH = `/api/auth/login-codes`
+const LOGIN_CODES_PATH = `/api/v1/auth/login-codes`
 const REQUEST_TIMEOUT = 1000 * 10
 
 const RETRY_SOON_MESSAGE = `Nie udało się teraz przygotować kodu. Spróbuj ponownie za chwilę.`
@@ -32,8 +35,23 @@ export default defineModule({
             if (ctx.source === `slash`) await sendLoginCode( ctx.interaction )
           },
         }),
+        "mc-scan": command({
+          description: `Skan satelitarny serwera Minecraft`,
+          params: { world:string().optional().describe( `Świat; bez niego najnowszy skan dowolnego świata` ) },
+          message: false, // Only as a slash command: its reply has buttons and an attachment that can take a while
+          slash: true,
+          autocomplete: { world:(_ctx, typed) => suggestWorlds( typed ) },
+          run: async(ctx, { world }) => {
+            if (ctx.source === `slash`) await sendScan( ctx.interaction, world )
+          },
+        }),
       },
     }),
+  },
+
+  components: {
+    [ `/^${OLDER_BUTTON_ID}(.+)$/` ]: ({ interaction, match }) => interaction.isButton() && match && showOlderScan( interaction, match[ 1 ]! ),
+    [ `/^${NEWEST_BUTTON_ID}(.+)$/` ]: ({ interaction, match }) => interaction.isButton() && match && showNewestScan( interaction, match[ 1 ]! ),
   },
 })
 
@@ -87,12 +105,12 @@ function describeLink( loginUri:string ) {
 /** Asks the backend for the user's login code; each user has one, so asking again replaces the previous one */
 async function requestLoginCode( discordId:string ) {
   const backendOrigin = process.env.CACTU_BACKEND_ORIGIN?.replace( /\/+$/, `` )
-  const secret = process.env.CACTU_BOT_SECRET
-  if (!backendOrigin || !secret) return { failure:`CACTU_BACKEND_ORIGIN or CACTU_BOT_SECRET isn't set`, canRetry:false } as LoginCodeFailure
+  const apiKey = process.env.CACTU_BACKEND_API_KEY
+  if (!backendOrigin || !apiKey) return { failure:`CACTU_BACKEND_ORIGIN or CACTU_BACKEND_API_KEY isn't set`, canRetry:false } as LoginCodeFailure
 
   const response = await fetch( backendOrigin + LOGIN_CODES_PATH, {
     method: `POST`,
-    headers: { "Authorization":`Bearer ${secret}`, "Content-Type":`application/json` },
+    headers: { "Authorization":`Bearer ${apiKey}`, "Content-Type":`application/json` },
     body: JSON.stringify({ discordId }),
     signal: AbortSignal.timeout( REQUEST_TIMEOUT ),
   } ).catch( () => null )
@@ -101,6 +119,9 @@ async function requestLoginCode( discordId:string ) {
 
   const body = await response.json().catch( () => null ) as null | Partial<LoginCode>
   if (!body) return { failure:`HTTP ${response.status} without JSON`, canRetry:response.status >= 500 } as LoginCodeFailure
+
+  // A wrong or revoked key: the bot's owner has to replace it
+  if (response.status === 401) return { failure:`HTTP 401 ${body.code ?? `?`}, check CACTU_BACKEND_API_KEY`, canRetry:false } as LoginCodeFailure
 
   // Errors are `{ code:"<ERROR>" }`; DISCORD_UNAVAILABLE and server errors may pass in a moment, the rest are configuration or bugs
   if (!response.ok || typeof body.expiresAt !== `number`) return {

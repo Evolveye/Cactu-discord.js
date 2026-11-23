@@ -1,9 +1,9 @@
 import { describe, expect, mock, test } from "bun:test"
-import { handleSlashCommand, registerGlobalSlashCommands, registerGuildSlashCommands } from "../src/discord/handlers/slashCommands.js"
+import { handleAutocomplete, handleSlashCommand, registerGlobalSlashCommands, registerGuildSlashCommands } from "../src/discord/handlers/slashCommands.js"
 import DCModule, { DCCmdExecutor, DCExecutor } from "../src/discord/DiscordModule.js"
 import { Scope } from "../src/core/index.js"
 import { createFakeBot, createFakeInteraction, createNamespace, flushAsyncWork, GUILD } from "./fakes.js"
-import type { Guild, SlashCommandBuilder } from "discord.js"
+import type { AutocompleteInteraction, Guild, SlashCommandBuilder } from "discord.js"
 import type { ModuleCmdCtx } from "../src/discord/DiscordModule.js"
 
 const RANDOM_PARAMS = [
@@ -66,6 +66,68 @@ describe( `slash command registration`, () => {
 
     expect( getRegisteredCommands( bot, 1 ).map( cmd => cmd.name ) ).toEqual([ `in-private` ])
     expect( bot.globals.commands.get( `in-private` )?.registrationGuildId ).toBe( GUILD.id )
+  } )
+} )
+
+describe( `slash command suggestions`, () => {
+  /** `/find` with a suggesting `query` option and a plain `note` option */
+  const createSuggestingSetup = (suggest:(typed:string) => Promise<{ name: string, value: string }[]>) => {
+    const executor = new DCCmdExecutor( { sd:`Finds`, params:[ { name:`query`, type:`message`, desc:`What` }, { name:`note`, type:`message`, desc:`Note`, optional:true } ] }, mock() )
+    executor.autocompleters.set( `query`, async(_interaction, typed) => suggest( typed ) )
+
+    const namespace = createNamespace( new DCModule({ slashCommands:{ find:executor } }) )
+
+    return { bot:createFakeBot( namespace ), namespace }
+  }
+
+  /** Typing `value` into the `option` of `/find` */
+  const createAutocompleteInteraction = (option:string, value:string) => {
+    const interaction = {
+      commandName: `find`,
+      guildId: GUILD.id,
+      options: { getSubcommand:() => null, getFocused:() => ({ name:option, value }) },
+      respond: mock( async(_choices:unknown) => undefined ),
+    }
+
+    return interaction as typeof interaction & AutocompleteInteraction
+  }
+
+  test( `only options with a suggester are registered with autocomplete`, () => {
+    const { bot, namespace } = createSuggestingSetup( async() => [] )
+
+    registerGuildSlashCommands( bot, GUILD as Guild, namespace )
+
+    const options = getRegisteredCommands( bot, 0 )[ 0 ]?.options as { name: string, autocomplete?: boolean }[]
+
+    expect( options.map( option => [ option.name, !!option.autocomplete ] ) ).toEqual([ [ `query`, true ], [ `note`, false ] ])
+  } )
+
+  test( `the typed text goes to the suggester, its choices to Discord: at most 25, each up to 100 characters`, async() => {
+    const longName = `x`.repeat( 120 )
+    const { bot } = createSuggestingSetup( async typed => [ { name:longName, value:typed }, ...Array.from( { length:30 }, (_, i) => ({ name:`${i}`, value:`${i}` }) ) ] )
+    const interaction = createAutocompleteInteraction( `query`, `wor` )
+
+    await handleAutocomplete( bot, interaction )
+
+    const choices = interaction.respond.mock.calls[ 0 ]?.[ 0 ] as { name: string, value: string }[]
+
+    expect( choices ).toHaveLength( 25 )
+    expect( choices[ 0 ] ).toEqual({ name:`x`.repeat( 100 ), value:`wor` })
+  } )
+
+  test( `an option without a suggester, or a failing suggester: no choices instead of loading forever`, async() => {
+    const { bot } = createSuggestingSetup( async() => {
+      throw new Error( `backend down` )
+    } )
+    const withoutSuggester = createAutocompleteInteraction( `note`, `a` )
+    const failing = createAutocompleteInteraction( `query`, `a` )
+
+    await handleAutocomplete( bot, withoutSuggester )
+    await handleAutocomplete( bot, failing )
+
+    expect( withoutSuggester.respond ).toHaveBeenCalledWith([])
+    expect( failing.respond ).toHaveBeenCalledWith([])
+    expect( bot.logSystem ).toHaveBeenCalledTimes( 1 )
   } )
 } )
 
