@@ -1,5 +1,6 @@
 import { AttachmentBuilder } from "discord.js"
 import { afterEach, describe, expect, mock, test } from "bun:test"
+import { pollFilter } from "../modules/cactu/filters/poll.js"
 import { stormCommand, stormComponents } from "../modules/cactu/commands/storm.js"
 import { minecraftCommand } from "../modules/cactu/commands/minecraft.js"
 import { flushAsyncWork } from "./fakes.js"
@@ -85,6 +86,24 @@ describe( `cactu: storm`, () => {
     expect( edited.files[ 0 ]?.name ).toBe( `burze-europa.png` )
     expect( edited.attachments ).toEqual([])
     expect( edited.content ).toBe( `**@Tester wezwał burzę!** · mapa z <t:${MAP_TIMESTAMP}:R> · [mapa na żywo](<https://www.lightningmaps.org/>)` )
+  } )
+} )
+
+describe( `cactu: cc? poll`, () => {
+  const pollMatch = pollFilter.match as RegExp
+
+  test( `a question after "cc?" gets the answers as reactions, in order`, async() => {
+    const react = mock( async(_emoji:string) => undefined )
+    await pollFilter.run( { message:{ react } } as never )
+
+    expect( react.mock.calls.map( ([ emoji ]) => emoji ) ).toEqual([ `👍`, `🤷`, `👎` ])
+  } )
+
+  test( `only a message starting with "cc?" and a question is a poll`, () => {
+    expect( pollMatch.test( `cc? Gramy dziś?` ) ).toBeTrue()
+    expect( pollMatch.test( `CC?gramy` ) ).toBeTrue()
+    expect( pollMatch.test( `cc?` ) ).toBeFalse()
+    expect( pollMatch.test( `a cc? gramy` ) ).toBeFalse()
   } )
 } )
 

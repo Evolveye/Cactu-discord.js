@@ -4,6 +4,7 @@ import { translation } from "./translation.js"
 import { defineModule, group } from "./kit.js"
 import { vulgarismsFilter } from "./filters/vulgarisms.js"
 import { reactionFilters } from "./filters/reactions.js"
+import { pollFilter } from "./filters/poll.js"
 import { findingsFilter } from "./filters/findings.js"
 import { emojisFilter } from "./filters/emojis.js"
 import { membersEvents } from "./events.js"
@@ -14,8 +15,17 @@ import { funCommands } from "./commands/fun.js"
 export default defineModule({
   translation,
   events: membersEvents,
-  components: { ...randomComponents, ...stormComponents },
-  filters: [ ...reactionFilters, emojisFilter, findingsFilter, vulgarismsFilter ],
+  components: {
+    ...randomComponents,
+    ...stormComponents,
+  },
+  filters: [
+    ...reactionFilters,
+    pollFilter,
+    emojisFilter,
+    findingsFilter,
+    vulgarismsFilter,
+  ],
   commands: {
     fun: group({
       description: `Polecenia czysto rozrywkowe, generujące nawet i dziwne rzeczy`,
